@@ -20,6 +20,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=arroyoseco;Username=postgres;Password=${DB_PASSWORD}
+      - Cors__AllowedOrigins__0=${CORS_ALLOWED_ORIGIN_0}
+      - Cors__AllowedOrigins__1=${CORS_ALLOWED_ORIGIN_1:-}
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=arroyoSeco
       - Jwt__Audience=arroyoSeco-client

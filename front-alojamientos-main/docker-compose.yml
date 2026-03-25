@@ -1,11 +1,9 @@
 services:
   front:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${FRONT_IMAGE:-ghcr.io/113012davidt/arroyo-seco-front:latest}
     container_name: frontserverarroyoseco
     ports:
-      - "4200:80"
+      - "80:80"
     environment:
-      API_BASE_URL: "http://34.58.123.99:8080"
+      API_BASE_URL: ${API_BASE_URL}
     restart: unless-stopped

@@ -25,7 +25,7 @@ export class ApiService {
 
   private resolveBackendUrl(): string {
     const runtime = window.__env?.API_BASE_URL?.trim();
-    const configured = runtime || 'http://localhost:8080';
+    const configured = runtime || '/api';
     return configured.replace(/\/+$/, '');
   }
 

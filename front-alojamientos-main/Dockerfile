@@ -9,7 +9,7 @@ RUN npm run build:pwa
 
 FROM nginx:1.27-alpine
 
-COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/default.conf /etc/nginx/templates/default.conf.template
 COPY docker/nginx/40-env.sh /docker-entrypoint.d/40-env.sh
 RUN chmod +x /docker-entrypoint.d/40-env.sh
 

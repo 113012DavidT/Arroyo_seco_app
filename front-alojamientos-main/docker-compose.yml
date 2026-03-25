@@ -5,5 +5,8 @@ services:
     ports:
       - "80:80"
     environment:
-      API_BASE_URL: ${API_BASE_URL}
+      API_BASE_URL: ${API_BASE_URL:-/api}
+      API_UPSTREAM: ${API_UPSTREAM:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped

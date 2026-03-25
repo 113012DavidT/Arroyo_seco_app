@@ -31,7 +31,8 @@ API_IMAGE=ghcr.io/113012davidt/arroyo-seco-api:latest
 Archivo: `~/back-alojamientos/front-alojamientos-main/.env`
 
 ```env
-API_BASE_URL=http://TU_IP_PUBLICA:8080
+API_BASE_URL=/api
+API_UPSTREAM=http://host.docker.internal:8080
 FRONT_IMAGE=ghcr.io/113012davidt/arroyo-seco-front:latest
 ```
 

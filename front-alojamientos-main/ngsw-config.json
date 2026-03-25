@@ -1,6 +1,9 @@
 {
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
+  "appData": {
+    "version": "1"
+  },
   "assetGroups": [
     {
       "name": "app",
@@ -8,8 +11,8 @@
       "resources": {
         "files": [
           "/favicon.ico",
-          "/index.csr.html",
           "/index.html",
+          "/env.js",
           "/manifest.webmanifest",
           "/*.css",
           "/*.js"
@@ -27,30 +30,35 @@
       }
     }
   ],
+  "navigationUrls": [
+    "/**",
+    "!/**/*.*",
+    "!/api/**"
+  ],
   "dataGroups": [
     {
-      "name": "api-freshness",
+      "name": "api-listas-fresh",
       "urls": [
-        "http://34.58.123.99:8080/api/Gastronomias",
-        "http://34.58.123.99:8080/api/Gastronomias/**",
-        "http://34.58.123.99:8080/api/Alojamientos",
-        "http://34.58.123.99:8080/api/Alojamientos/**"
+        "/api/Gastronomias",
+        "/api/Gastronomias/**",
+        "/api/Alojamientos",
+        "/api/Alojamientos/**"
       ],
       "cacheConfig": {
         "maxSize": 100,
-        "maxAge": "5m",
-        "timeout": "10s",
+        "maxAge": "12h",
+        "timeout": "5s",
         "strategy": "freshness"
       }
     },
     {
       "name": "api-reviews-fresh",
       "urls": [
-        "http://34.58.123.99:8080/api/Gastronomias/*/reviews"
+        "/api/Gastronomias/*/reviews"
       ],
       "cacheConfig": {
         "maxSize": 100,
-        "maxAge": "30s",
+        "maxAge": "30m",
         "timeout": "5s",
         "strategy": "freshness"
       }
@@ -58,13 +66,13 @@
     {
       "name": "api-performance",
       "urls": [
-        "http://34.58.123.99:8080/api/Gastronomias/*/menus",
-        "http://34.58.123.99:8080/api/Gastronomias/*/disponibilidad"
+        "/api/Gastronomias/*/menus",
+        "/api/Gastronomias/*/disponibilidad"
       ],
       "cacheConfig": {
         "maxSize": 100,
-        "maxAge": "1h",
-        "timeout": "10s",
+        "maxAge": "24h",
+        "timeout": "3s",
         "strategy": "performance"
       }
     }

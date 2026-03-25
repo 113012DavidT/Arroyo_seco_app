@@ -1,19 +1,17 @@
-name: Deploy Neurona to Google Cloud
+name: Deploy Neurona
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'neurona/**'
+      - 'back-alojamientos-main/neurona/**'
+      - '.github/workflows/deploy-neurona.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,7 +19,8 @@ jobs:
           username: ${{ secrets.GCE_USER }}
           key: ${{ secrets.GCE_SSH_KEY }}
           script: |
-            cd ~/neurona-arroyoseco
+            cd ~/back-alojamientos
             git pull origin main
+            cd back-alojamientos-main/neurona
             docker compose up -d --build
             docker image prune -f

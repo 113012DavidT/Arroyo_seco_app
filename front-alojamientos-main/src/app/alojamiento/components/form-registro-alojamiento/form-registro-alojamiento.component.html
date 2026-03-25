@@ -1,0 +1,73 @@
+<section class="alojamiento-form">
+  <header>
+    <h2>{{ modoTitulo }}</h2>
+    <p class="subtitle">Completa la información del alojamiento.</p>
+  </header>
+
+  <form #f="ngForm" (ngSubmit)="onSubmit(f)" class="form-grid">
+    <label>
+      Nombre del alojamiento
+      <input type="text" name="nombre" [(ngModel)]="formModel.nombre" required />
+    </label>
+
+    <label class="col-span-2">
+      📍 Ubicación (texto)
+      <input 
+        type="text" 
+        name="ubicacion" 
+        [(ngModel)]="formModel.ubicacion"
+        placeholder="Ej: Centro de Arroyo Seco, Querétaro"
+        required 
+      />
+    </label>
+
+    <div class="col-span-2">
+      <label>📍 Marcar en el mapa (opcional pero recomendado)</label>
+      <app-map-picker 
+        [latitud]="formModel.latitud" 
+        [longitud]="formModel.longitud"
+        (locationSelected)="onLocationSelected($event)">
+      </app-map-picker>
+    </div>
+
+    <label>
+      Huéspedes
+      <input type="number" name="huespedes" min="1" [(ngModel)]="formModel.huespedes" required />
+    </label>
+
+    <label>
+      Habitaciones
+      <input type="number" name="habitaciones" min="1" [(ngModel)]="formModel.habitaciones" required />
+    </label>
+
+    <label>
+      Baños
+      <input type="number" name="banos" min="1" [(ngModel)]="formModel.banos" required />
+    </label>
+
+    <label>
+      Precio por noche (MXN)
+      <input type="number" name="precio" min="0" [(ngModel)]="formModel.precio" required />
+    </label>
+
+    <div class="col-span-2">
+      <label>Fotos (URLs)
+        <div class="fotos">
+          <input #fotoUrl type="url" placeholder="https://..." />
+          <button type="button" class="btn" (click)="agregarFoto(fotoUrl.value); fotoUrl.value=''">Agregar</button>
+        </div>
+      </label>
+      <div class="galeria" *ngIf="formModel.fotos.length">
+        <div class="thumb" *ngFor="let f of formModel.fotos; index as i">
+          <img [src]="f" alt="foto" />
+          <button type="button" class="remove" (click)="eliminarFoto(i)">×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions col-span-2">
+      <a routerLink="/oferente/hospedajes" class="btn ghost">Cancelar</a>
+      <button class="btn primary" [disabled]="f.invalid">Guardar</button>
+    </div>
+  </form>
+</section>

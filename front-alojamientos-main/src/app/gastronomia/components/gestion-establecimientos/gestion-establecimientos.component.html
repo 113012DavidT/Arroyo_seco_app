@@ -1,0 +1,66 @@
+<section class="establecimientos">
+  <header class="establecimientos__header">
+    <div>
+      <h2>Gestión de Restaurantes</h2>
+      <p class="info">Tienes <strong>{{ establecimientos.length }} restaurantes activos</strong></p>
+    </div>
+
+    <div class="establecimientos__actions">
+      <input
+        type="search"
+        placeholder="Buscar por nombre o ubicación..."
+        [(ngModel)]="searchTerm"
+      />
+      <a routerLink="/oferente/gastronomia/establecimientos/agregar" class="btn primary">Agregar restaurante</a>
+    </div>
+  </header>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="skeleton-grid">
+      <div class="skeleton-card" *ngFor="let i of [1,2,3]">
+        <div class="skeleton-img"></div>
+        <div class="skeleton-line wide"></div>
+        <div class="skeleton-line"></div>
+        <div class="skeleton-line short"></div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!loading && filteredEstablecimientos.length === 0 && establecimientos.length === 0" class="empty-state">
+    <p>No tienes restaurantes registrados.</p>
+    <a routerLink="/oferente/gastronomia/establecimientos/agregar" class="btn primary">
+      Registrar mi primer restaurante
+    </a>
+  </div>
+
+  <div *ngIf="!loading && filteredEstablecimientos.length === 0 && establecimientos.length > 0" class="empty-state">
+    <p>No se encontraron resultados para "{{ searchTerm }}".</p>
+  </div>
+
+  <div class="cards" *ngIf="!loading && filteredEstablecimientos.length > 0">
+    <article *ngFor="let est of filteredEstablecimientos" class="establecimiento-card">
+      <div class="card-image">
+        <img [src]="est.fotoPrincipal || 'assets/images/hero-oferentes.svg'" [alt]="est.nombre" />
+      </div>
+
+      <div class="card-content">
+        <h3 class="card-title">{{ est.nombre }}</h3>
+        <p class="card-location">📍 {{ est.ubicacion }}</p>
+        <p class="card-desc">{{ est.descripcion }}</p>
+
+        <div class="card-stats">
+          <span>🍽️ {{ est.menus?.length || 0 }} menús</span>
+          <span>🪑 {{ est.mesas?.length || 0 }} mesas</span>
+        </div>
+
+        <div class="card-footer">
+          <div class="actions">
+            <a [routerLink]="['/oferente/gastronomia/establecimientos', est.id]" class="btn-link">Ver detalles</a>
+            <a [routerLink]="['/oferente/gastronomia/establecimientos', est.id, 'editar']" class="btn-link">Editar</a>
+            <button type="button" class="btn-link danger" (click)="eliminar(est)">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>

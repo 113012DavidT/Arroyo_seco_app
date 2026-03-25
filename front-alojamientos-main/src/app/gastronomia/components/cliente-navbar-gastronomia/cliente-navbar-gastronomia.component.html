@@ -1,0 +1,31 @@
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a routerLink="/cliente/home" class="brand">
+      <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="brand__logo" />
+    </a>
+
+    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="nav-links" [class.active]="menuOpen">
+      <a routerLink="/cliente/gastronomia" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Restaurantes</a>
+      <a routerLink="/cliente/gastronomia/reservas" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Mis Reservas</a>
+      <a routerLink="/cliente/gastronomia/notificaciones" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Notificaciones</a>
+      <a routerLink="/cliente/gastronomia/perfil" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Mi Perfil</a>
+      <a routerLink="/cliente/alojamientos" class="ir-alojamientos mobile-link" (click)="closeMenu()">
+        🏠 Ir a Alojamientos
+      </a>
+      <a (click)="logout()" class="logout logout-mobile">Cerrar sesión</a>
+    </div>
+
+    <div class="navbar-actions">
+      <a routerLink="/cliente/alojamientos" class="ir-alojamientos desktop-link" title="Ver alojamientos">
+        🏠 Ir a Alojamientos
+      </a>
+      <a (click)="logout()" class="logout logout-desktop">Cerrar sesión</a>
+    </div>
+  </div>
+</nav>

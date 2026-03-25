@@ -1,0 +1,18 @@
+<svg width="1440" height="480" viewBox="0 0 1440 480" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Fondo Quejas y Retroalimentación</title>
+  <desc id="desc">Ilustración abstracta con tonos cálidos y azules para la sección de quejas y retroalimentación.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F6A942" />
+      <stop offset="45%" stop-color="#EB6841" />
+      <stop offset="100%" stop-color="#1C6BD6" />
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.45)" />
+      <stop offset="100%" stop-color="rgba(255,255,255,0.1)" />
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="480" fill="url(#bg)" />
+  <path d="M0 360C160 320 320 340 480 380C640 420 800 460 960 440C1120 420 1280 340 1440 320V480H0V360Z" fill="url(#wave)" />
+  <path d="M0 260C120 300 240 300 360 280C480 260 600 200 720 210C840 220 960 300 1080 320C1200 340 1320 300 1440 260V480H0V260Z" fill="rgba(255,255,255,0.16)" />
+</svg>

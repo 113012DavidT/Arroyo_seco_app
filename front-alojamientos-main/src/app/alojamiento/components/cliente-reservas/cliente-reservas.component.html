@@ -1,0 +1,88 @@
+<section class="reservas">
+  <div class="tabs">
+    <h2>Mis Reservas</h2>
+  </div>
+
+  <div class="section">
+    <h3>Reservas Activas</h3>
+    <div class="grid" *ngIf="reservasActivas.length > 0; else noActivas">
+      <div class="card" *ngFor="let r of reservasActivas">
+        <div class="card-header">
+          <h4>{{ r.alojamiento }}</h4>
+          <span class="badge activa">Activa</span>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="label">Entrada:</span>
+            <span>{{ r.fechaEntrada }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Salida:</span>
+            <span>{{ r.fechaSalida }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Huéspedes:</span>
+            <span>{{ r.huespedes }}</span>
+          </div>
+          <div class="info-row total">
+            <span class="label">Total:</span>
+            <span>${{ r.total }}</span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn-cancel" (click)="openCancelModal(r)">Cancelar reserva</button>
+        </div>
+      </div>
+    </div>
+    <ng-template #noActivas>
+      <p class="empty">No tienes reservas activas.</p>
+    </ng-template>
+  </div>
+
+  <div class="section">
+    <h3>Historial</h3>
+    <div class="grid" *ngIf="reservasPasadas.length > 0; else noPasadas">
+      <div class="card" *ngFor="let r of reservasPasadas">
+        <div class="card-header">
+          <h4>{{ r.alojamiento }}</h4>
+          <span class="badge" [class.pasada]="r.estado === 'pasada'" [class.cancelada]="r.estado === 'cancelada'">
+            {{ r.estado === 'pasada' ? 'Completada' : 'Cancelada' }}
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="label">Entrada:</span>
+            <span>{{ r.fechaEntrada }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Salida:</span>
+            <span>{{ r.fechaSalida }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Huéspedes:</span>
+            <span>{{ r.huespedes }}</span>
+          </div>
+          <div class="info-row total">
+            <span class="label">Total:</span>
+            <span>${{ r.total }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ng-template #noPasadas>
+      <p class="empty">No tienes reservas pasadas.</p>
+    </ng-template>
+  </div>
+</section>
+
+<!-- Modal de cancelación -->
+<div class="modal-overlay" *ngIf="showCancelModal" (click)="closeCancelModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <h3>¿Cancelar reserva?</h3>
+    <p>¿Estás seguro de que deseas cancelar la reserva de <strong>{{ selectedReserva?.alojamiento }}</strong>?</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="closeCancelModal()">No, mantener</button>
+      <button class="btn-danger" (click)="cancelReserva()">Sí, cancelar</button>
+    </div>
+  </div>
+</div>

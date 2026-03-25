@@ -1,0 +1,6 @@
+# Local migration backups
+/git-history-backups_*/
+
+# Common local artifacts at workspace root
+/.DS_Store
+/Thumbs.db

@@ -1,0 +1,114 @@
+<section class="reservas">
+  <header class="reservas__header">
+    <div>
+      <h2>Gestión de Reservas</h2>
+      <p class="subtitle">Administra las reservas de tus hospedajes.</p>
+    </div>
+
+    <div class="reservas__actions">
+      <input
+        type="search"
+        placeholder="Buscar por folio, huésped o hospedaje"
+        [(ngModel)]="searchTerm"
+      />
+      <select [(ngModel)]="estadoFiltro">
+        <option value="">-- Estado --</option>
+        <option *ngFor="let e of estadosPosibles" [value]="e">{{ e }}</option>
+      </select>
+    </div>
+  </header>
+
+  <div *ngIf="loading" class="loading">Cargando reservas...</div>
+  <div *ngIf="!loading && error" class="error">{{ error }}</div>
+
+  <div class="table-wrapper" *ngIf="!loading && !error && filteredReservas.length; else emptyState">
+    <table>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Hospedaje</th>
+          <th>Huésped</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Total</th>
+          <th>Estado</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let reserva of filteredReservas">
+          <td>{{ reserva.folio || reserva.id }}</td>
+          <td>{{ reserva.hospedaje }}</td>
+          <td>{{ reserva.huesped }}</td>
+          <td>{{ reserva.fechaEntrada }}</td>
+          <td>{{ reserva.fechaSalida }}</td>
+          <td>${{ reserva.total.toLocaleString() }} MXN</td>
+          <td>
+            <span
+              class="pill"
+              [ngClass]="reserva.estado.toLowerCase()"
+            >
+              {{ reserva.estado }}
+            </span>
+          </td>
+          <td class="actions">
+            <button type="button" class="btn ghost" (click)="abrirDetalle(reserva)">Ver detalle</button>
+            <button type="button" class="btn success" *ngIf="reserva.estado === 'Pendiente' || reserva.estado === 'PagoEnRevision'" (click)="confirmar(reserva)">Confirmar</button>
+            <button type="button" class="btn danger" *ngIf="reserva.estado === 'Pendiente' || reserva.estado === 'PagoEnRevision'" (click)="rechazar(reserva)">Rechazar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty">
+      <p>No se encontraron reservas para "{{ searchTerm }}".</p>
+    </div>
+  </ng-template>
+
+  <div class="modal-backdrop" *ngIf="detalleAbierto" (click)="cerrarDetalle()"></div>
+  <div class="modal" *ngIf="detalleAbierto">
+    <div class="modal__header">
+      <h3>Detalle de la reserva</h3>
+      <button class="close" (click)="cerrarDetalle()">×</button>
+    </div>
+    <div class="modal__body" *ngIf="reservaSeleccionada as r">
+      <div class="detail-grid">
+        <div><strong>Folio:</strong> {{ r.id }}</div>
+        <div><strong>Hospedaje:</strong> {{ r.hospedaje }}</div>
+        <div><strong>Huésped:</strong> {{ r.huesped }}</div>
+        <div><strong>Entrada:</strong> {{ r.fechaEntrada }}</div>
+        <div><strong>Salida:</strong> {{ r.fechaSalida }}</div>
+        <div><strong>Total:</strong> ${{ r.total.toLocaleString() }} MXN</div>
+        <div><strong>Estado:</strong> {{ r.estado }}</div>
+      </div>
+
+      <div class="comprobante">
+        <strong>Comprobante:</strong>
+        <!-- Vista previa segura vía blob (pdf o imagen) -->
+        <div class="comp-preview">
+          <ng-container *ngIf="!previewError; else compError">
+            <ng-container *ngIf="previewType === 'image' && previewUrl">
+              <img [src]="previewUrl" alt="Comprobante" class="comprobante-img" />
+            </ng-container>
+            <ng-container *ngIf="previewType === 'pdf' && previewUrl">
+              <iframe class="comprobante-pdf" title="Comprobante PDF" [src]="previewUrl"></iframe>
+            </ng-container>
+          </ng-container>
+          <ng-template #compError>
+            <div class="text-muted">{{ previewError }}</div>
+          </ng-template>
+        </div>
+
+        <!-- Botón debajo, como pediste -->
+        <div class="comp-actions">
+          <button type="button" class="btn" (click)="descargarComprobante(r)">Descargar comprobante</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn" (click)="cerrarDetalle()">Cerrar</button>
+    </div>
+  </div>
+</section>

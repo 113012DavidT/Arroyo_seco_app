@@ -1,0 +1,59 @@
+<section class="notificaciones">
+  <div class="tabs">
+    <h2>Notificaciones</h2>
+  </div>
+
+  <!-- Notificaciones No Leídas -->
+  <div class="section">
+    <h3>No leídas ({{ notificacionesNoLeidas.length }})</h3>
+    <div class="list" *ngIf="notificacionesNoLeidas.length > 0; else noNoLeidas">
+      <div class="notification-card no-leida" *ngFor="let notif of notificacionesNoLeidas">
+        <div class="notification-header">
+          <span class="badge" [ngClass]="notif.tipo">{{ notif.tipo }}</span>
+          <span class="fecha">{{ notif.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <h4>{{ notif.titulo }}</h4>
+        <p>{{ notif.mensaje }}</p>
+        <div class="notification-actions">
+          <button class="btn-action" (click)="marcarLeida(notif)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Marcar como leída
+          </button>
+          <button class="btn-delete" (click)="eliminar(notif)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <ng-template #noNoLeidas>
+      <p class="empty">No tienes notificaciones sin leer.</p>
+    </ng-template>
+  </div>
+
+  <!-- Notificaciones Leídas -->
+  <div class="section">
+    <h3>Leídas ({{ notificacionesLeidas.length }})</h3>
+    <div class="list" *ngIf="notificacionesLeidas.length > 0; else noLeidas">
+      <div class="notification-card leida" *ngFor="let notif of notificacionesLeidas">
+        <div class="notification-header">
+          <span class="badge" [ngClass]="notif.tipo">{{ notif.tipo }}</span>
+          <span class="fecha">{{ notif.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <h4>{{ notif.titulo }}</h4>
+        <p>{{ notif.mensaje }}</p>
+        <div class="notification-actions">
+          <button class="btn-action" (click)="marcarNoLeida(notif)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Marcar como no leída
+          </button>
+          <button class="btn-delete" (click)="eliminar(notif)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <ng-template #noLeidas>
+      <p class="empty">No tienes notificaciones leídas.</p>
+    </ng-template>
+  </div>
+</section>

@@ -1,0 +1,37 @@
+<header class="admin-navbar">
+  <div class="navbar-inner">
+    <a class="brand" [routerLink]="homeRoute">
+      <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="brand__logo" />
+      <span class="brand__text">{{ isGastronomia ? 'Gastronomía' : 'Alojamiento' }}</span>
+    </a>
+
+    <button class="hamburger" [class.open]="menuOpen" (click)="toggleMenu()" aria-label="Abrir menú">
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="nav-drawer" [class.open]="menuOpen">
+      <button class="close-btn" (click)="toggleMenu()" aria-label="Cerrar menú">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+      </button>
+      <nav class="drawer-links">
+        <a
+          *ngFor="let link of links"
+          [routerLink]="link.route"
+          routerLinkActive="active"
+          class="nav-link"
+        >
+          {{ link.label }}
+        </a>
+      </nav>
+      <div class="drawer-actions">
+        <a class="btn-module" routerLink="/admin/home" title="Cambiar módulo">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M3 9h14V7H3v2zm0 4h14v-2H3v2zm0 4h14v-2H3v2zm16 0h2v-2h-2v2zm0-10v2h2V7h-2zm0 6h2v-2h-2v2z"/>
+          </svg>
+          Cambiar módulo
+        </a>
+        <a class="logout" (click)="logout()">Cerrar Sesión</a>
+      </div>
+    </div>
+  </div>
+</header>

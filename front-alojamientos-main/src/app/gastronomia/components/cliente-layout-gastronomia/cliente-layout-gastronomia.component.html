@@ -1,0 +1,17 @@
+<app-cliente-navbar-gastronomia></app-cliente-navbar-gastronomia>
+
+<header class="hero" *ngIf="heroTitle">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <h1>{{ heroTitle }}</h1>
+      <p *ngIf="heroSubtitle">{{ heroSubtitle }}</p>
+    </div>
+    <img *ngIf="heroImage" [src]="heroImage" [alt]="heroTitle" />
+  </div>
+</header>
+
+<main class="content">
+  <router-outlet></router-outlet>
+</main>
+
+<app-cliente-footer-gastronomia></app-cliente-footer-gastronomia>

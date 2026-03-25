@@ -1,0 +1,240 @@
+.navbar {
+  background: #fff;
+  border-bottom: 2px solid var(--color-primary, #E31B23);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+
+  @media (min-width: 768px) {
+    padding: 0 1.5rem;
+    min-height: 72px;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+
+  &__logo {
+    height: 40px;
+    width: auto;
+
+    @media (min-width: 768px) {
+      height: 52px;
+    }
+  }
+}
+
+// Hamburger menu button (mobile only)
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  z-index: 101;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+
+  span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background: var(--color-primary, #E31B23);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+  }
+
+  &.active {
+    span:nth-child(1) {
+      transform: rotate(45deg) translate(8px, 8px);
+    }
+
+    span:nth-child(2) {
+      opacity: 0;
+    }
+
+    span:nth-child(3) {
+      transform: rotate(-45deg) translate(7px, -7px);
+    }
+  }
+}
+
+// Navigation links
+.nav-links {
+  display: none;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  background: #fff;
+  flex-direction: column;
+  padding: 1rem;
+  border-bottom: 2px solid var(--color-primary, #E31B23);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+
+  &.active {
+    display: flex;
+  }
+
+  @media (min-width: 768px) {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+    padding: 0;
+    margin-left: 2rem;
+    border-bottom: none;
+    box-shadow: none;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #4b5563;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 0;
+    border-bottom: 3px solid transparent;
+  }
+
+  &:hover {
+    color: #1f2937;
+
+    @media (min-width: 768px) {
+      border-bottom-color: #d1d5db;
+    }
+  }
+
+  &.active {
+    color: var(--color-primary, #E31B23);
+    background: #fef3c7;
+    padding-left: 1rem;
+
+    @media (min-width: 768px) {
+      background: transparent;
+      padding-left: 0;
+      border-bottom-color: var(--color-primary, #E31B23);
+    }
+  }
+}
+
+.navbar-actions {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+.ir-alojamientos {
+  text-decoration: none;
+  color: var(--color-primary, #E31B23);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 2px solid var(--color-primary, #E31B23);
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  &:hover {
+    background: var(--color-primary, #E31B23);
+    color: #fff;
+  }
+}
+
+.mobile-link {
+  display: block;
+  margin-top: 0.5rem;
+  border-top: 2px solid #e5e7eb;
+  padding-top: 1rem;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.desktop-link {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+}
+
+.logout {
+  text-decoration: none;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #fee2e2;
+  }
+}
+
+.logout-mobile {
+  display: block;
+  margin-top: 1rem;
+  text-align: center;
+  background: #fee2e2;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.logout-desktop {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: block;
+  }
+}

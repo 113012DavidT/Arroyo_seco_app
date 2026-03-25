@@ -1,0 +1,38 @@
+<div class="tabs">
+  <button [class.active]="tab === 'pendientes'" (click)="tab = 'pendientes'">
+    Pendientes
+  </button>
+  <button [class.active]="tab === 'confirmadas'" (click)="tab = 'confirmadas'">
+    Confirmadas
+  </button>
+  <button [class.active]="tab === 'todas'" (click)="tab = 'todas'">
+    Todas
+  </button>
+</div>
+
+<div *ngIf="loading" class="loading">Cargando...</div>
+
+<div *ngIf="!loading && filteredReservas.length === 0" class="empty">
+  No hay reservas en esta categoría.
+</div>
+
+<div class="reservas-grid" *ngIf="!loading && filteredReservas.length > 0">
+  <div class="reserva-card" *ngFor="let res of filteredReservas">
+    <div class="header">
+      <h3>{{ res.clienteNombre || 'Cliente' }}</h3>
+      <span class="estado" [ngClass]="getEstadoClass(res.estado)">
+        {{ res.estado }}
+      </span>
+    </div>
+    <div class="body">
+      <p><strong>Restaurante:</strong> {{ res.establecimientoNombre }}</p>
+      <p><strong>Fecha:</strong> {{ res.fecha | date:'dd/MM/yyyy HH:mm' }}</p>
+      <p><strong>Personas:</strong> {{ res.numeroPersonas }}</p>
+      <p *ngIf="res.mesaNumero"><strong>Mesa:</strong> {{ res.mesaNumero }}</p>
+    </div>
+    <div class="actions" *ngIf="res.estado === 'Pendiente'">
+      <button class="btn-confirm" (click)="confirmar(res.id)">Confirmar</button>
+      <button class="btn-cancel" (click)="cancelar(res.id)">Rechazar</button>
+    </div>
+  </div>
+</div>

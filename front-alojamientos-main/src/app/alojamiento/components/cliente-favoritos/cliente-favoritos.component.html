@@ -1,0 +1,28 @@
+<section class="favoritos">
+  <div class="header">
+    <h2>Mis Favoritos</h2>
+    <button class="btn-clear" (click)="clearAll()" [disabled]="favoritos().length === 0">Vaciar lista</button>
+  </div>
+
+  <div class="grid" *ngIf="favoritos().length > 0; else empty">
+    <div class="card" *ngFor="let a of favoritos()">
+      <div class="thumb" [style.background-image]="'url(' + a.imagen + ')'"> </div>
+      <div class="info">
+        <h3>{{ a.nombre }}</h3>
+        <p class="meta">{{ a.ubicacion }}</p>
+        <div class="bottom">
+          <span class="price">${{ a.precioNoche }} <small>/ noche</small></span>
+          <span class="rating">★ {{ a.rating }}</span>
+        </div>
+        <div class="actions">
+          <a class="btn-primary" [routerLink]="['/cliente/alojamientos', a.id]">Ver detalle</a>
+          <button class="btn-outline" (click)="remove(a.id)">Quitar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #empty>
+    <p class="empty">Aún no tienes favoritos. Explora <a routerLink="/cliente/alojamientos">alojamientos</a> y agrega algunos.</p>
+  </ng-template>
+</section>

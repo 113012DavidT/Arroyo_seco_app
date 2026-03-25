@@ -1,0 +1,72 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.csr.html",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "api-freshness",
+      "urls": [
+        "http://34.58.123.99:8080/api/Gastronomias",
+        "http://34.58.123.99:8080/api/Gastronomias/**",
+        "http://34.58.123.99:8080/api/Alojamientos",
+        "http://34.58.123.99:8080/api/Alojamientos/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "5m",
+        "timeout": "10s",
+        "strategy": "freshness"
+      }
+    },
+    {
+      "name": "api-reviews-fresh",
+      "urls": [
+        "http://34.58.123.99:8080/api/Gastronomias/*/reviews"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "30s",
+        "timeout": "5s",
+        "strategy": "freshness"
+      }
+    },
+    {
+      "name": "api-performance",
+      "urls": [
+        "http://34.58.123.99:8080/api/Gastronomias/*/menus",
+        "http://34.58.123.99:8080/api/Gastronomias/*/disponibilidad"
+      ],
+      "cacheConfig": {
+        "maxSize": 100,
+        "maxAge": "1h",
+        "timeout": "10s",
+        "strategy": "performance"
+      }
+    }
+  ]
+}

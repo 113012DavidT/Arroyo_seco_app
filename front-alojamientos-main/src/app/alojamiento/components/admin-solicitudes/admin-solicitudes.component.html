@@ -1,0 +1,51 @@
+<div class="solicitudes-container">
+  <div class="solicitudes-header">
+    <h2>Solicitudes de Oferentes {{ getTituloFiltro() }}</h2>
+    <div class="search-box">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm" 
+        placeholder="Buscar por nombre, teléfono o tipo..."
+        class="search-input"
+      />
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <p>Cargando solicitudes...</p>
+  </div>
+
+  <div *ngIf="!loading && filteredSolicitudes.length === 0" class="empty-state">
+    <p>No hay solicitudes pendientes</p>
+  </div>
+
+  <div *ngIf="!loading && filteredSolicitudes.length > 0" class="solicitudes-grid">
+    <div *ngFor="let solicitud of filteredSolicitudes" class="solicitud-card">
+      <div class="solicitud-header">
+        <h3>{{ solicitud.nombre }}</h3>
+        <span class="tipo-badge" [class.tipo-alojamiento]="solicitud.tipoNegocio === 1" 
+              [class.tipo-gastronomia]="solicitud.tipoNegocio === 2">
+          {{ solicitud.tipoTexto }}
+        </span>
+      </div>
+      
+      <div class="solicitud-body">
+        <p><strong>Teléfono:</strong> {{ solicitud.telefono }}</p>
+        <p><strong>Contexto:</strong></p>
+        <p class="contexto">{{ solicitud.contexto }}</p>
+        <p *ngIf="solicitud.fechaSolicitud" class="fecha">
+          <strong>Fecha:</strong> {{ solicitud.fechaSolicitud | date:'dd/MM/yyyy HH:mm' }}
+        </p>
+      </div>
+
+      <div class="solicitud-actions">
+        <button (click)="aprobar(solicitud)" class="btn btn-aprobar">
+          ✓ Aprobar
+        </button>
+        <button (click)="rechazar(solicitud)" class="btn btn-rechazar">
+          ✗ Rechazar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

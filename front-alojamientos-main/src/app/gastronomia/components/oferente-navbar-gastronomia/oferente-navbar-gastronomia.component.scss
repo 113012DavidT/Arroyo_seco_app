@@ -1,0 +1,253 @@
+.navbar {
+  background: #fff;
+  border-bottom: 2px solid var(--color-primary, #E31B23);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+
+  @media (min-width: 768px) {
+    padding: 0 1.5rem;
+    min-height: 72px;
+    gap: 2rem;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  flex-shrink: 0;
+
+  @media (min-width: 768px) {
+    gap: 0.75rem;
+  }
+
+  &__logo {
+    height: 40px;
+    width: auto;
+
+    @media (min-width: 768px) {
+      height: 52px;
+    }
+  }
+
+  &__text {
+    font-weight: 700;
+    color: var(--color-primary, #E31B23);
+    font-size: 0.9rem;
+
+    @media (min-width: 768px) {
+      font-size: 1.05rem;
+    }
+  }
+}
+
+// Botón hamburguesa
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 25px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 101;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+
+  span {
+    width: 100%;
+    height: 3px;
+    background: var(--color-primary, #E31B23);
+    border-radius: 10px;
+    transition: all 0.3s;
+    transform-origin: center;
+  }
+
+  &.active {
+    span:nth-child(1) {
+      transform: rotate(45deg) translateY(8px);
+    }
+
+    span:nth-child(2) {
+      opacity: 0;
+    }
+
+    span:nth-child(3) {
+      transform: rotate(-45deg) translateY(-8px);
+    }
+  }
+}
+
+.nav-links {
+  display: none;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  background: white;
+  flex-direction: column;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+
+  &.active {
+    display: flex;
+  }
+
+  @media (min-width: 768px) {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    flex: 1;
+    padding: 0;
+    box-shadow: none;
+    gap: 1.5rem;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.nav-link {
+  text-decoration: none;
+  color: #4b5563;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  border-radius: 6px;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 0;
+    border-radius: 0;
+  }
+
+  &:hover {
+    color: #1f2937;
+    background: #f9fafb;
+
+    @media (min-width: 768px) {
+      background: transparent;
+      border-bottom-color: #d1d5db;
+    }
+  }
+
+  &.active {
+    color: var(--color-primary, #E31B23);
+    background: #fef3c7;
+
+    @media (min-width: 768px) {
+      background: transparent;
+      border-bottom-color: var(--color-primary, #E31B23);
+    }
+  }
+}
+
+.logout {
+  text-decoration: none;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-align: center;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1.25rem;
+  }
+
+  &:hover {
+    background: #fee2e2;
+  }
+}
+
+.cambiar-experiencia {
+  text-decoration: none;
+  color: var(--color-primary, #E31B23);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 2px solid var(--color-primary, #E31B23);
+  transition: all 0.2s;
+  text-align: center;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  &:hover {
+    background: var(--color-primary, #E31B23);
+    color: #fff;
+  }
+}
+
+.navbar-actions {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+.mobile-cambiar {
+  display: block;
+  margin-top: 0.5rem;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.desktop-cambiar {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: block;
+  }
+}
+
+.mobile-logout {
+  display: block;
+  margin-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
+}
+
+.desktop-logout {
+  display: none;
+  flex-shrink: 0;
+
+  @media (min-width: 768px) {
+    display: block;
+  }
+}

@@ -1,0 +1,179 @@
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  padding: 2rem;
+  background-color: #4a1b0b;
+  background-image: url('/assets/images/hero-login.svg');
+  background-repeat: no-repeat;
+  background-position: center 40%;
+  background-size: clamp(720px, 80vw, 1280px);
+}
+
+.visual-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.visual-text {
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  text-align: left;
+}
+
+.visual-text h1 {
+  font-size: clamp(2.2rem, 6vw, 3rem);
+  margin-bottom: 0.75rem;
+}
+
+.visual-text p {
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+.form-panel {
+  background: linear-gradient(135deg, #8c1f17 0%, #b23427 50%, #d1462f 100%);
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 8vw, 4.5rem);
+}
+
+.form-panel__content {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.logo img {
+  width: 110px;
+  height: auto;
+}
+
+.form-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 18px;
+  padding: clamp(2rem, 5vw, 2.75rem);
+  box-shadow: 0 24px 48px rgba(27, 32, 50, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.form-card .logo {
+  display: flex;
+  justify-content: center;
+}
+
+.form-card h2 {
+  margin: 0;
+  color: #1f1f1f;
+  text-align: center;
+}
+
+.form-card .subtitle {
+  margin: -0.75rem 0 0;
+  color: var(--color-primary, #E31B23);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.form-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.form-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #323232;
+}
+
+.form-card input {
+  border: 1px solid #cfcfcf;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+.form-card button[type='submit'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: var(--color-primary, #E31B23);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.9rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(28, 102, 214, 0.25);
+}
+
+.form-card button[type='submit']:hover:not(:disabled) {
+  background: var(--color-primary-dark, #c41019);
+}
+
+.form-card button[type='submit']:disabled {
+  background: #8aaee8;
+  cursor: not-allowed;
+}
+
+.form-card button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.form-card .links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+
+.form-card .links a {
+  color: var(--color-primary, #E31B23);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color .2s;
+}
+
+.form-card .links a:hover {
+  text-decoration: underline;
+  color: var(--color-primary-dark, #c41019);
+}
+
+@media (max-width: 768px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .visual {
+    min-height: 45vh;
+  }
+
+  .form-panel {
+    padding: 2rem 1.5rem 3rem;
+  }
+}

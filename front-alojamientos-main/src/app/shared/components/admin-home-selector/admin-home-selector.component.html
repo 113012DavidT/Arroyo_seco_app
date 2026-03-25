@@ -1,0 +1,45 @@
+<section class="home-selector">
+  <div class="visual">
+    <div class="visual-overlay"></div>
+    <div class="visual-text">
+      <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="logo" />
+      <h1>Panel de Administración</h1>
+      <p>Selecciona el módulo a gestionar</p>
+    </div>
+  </div>
+
+  <div class="selector-panel">
+    <div class="selector-content">
+      <h2>¿Qué módulo deseas administrar?</h2>
+      <p class="subtitle">Selecciona el área de gestión</p>
+
+      <div class="module-cards">
+        <a
+          *ngFor="let module of modules"
+          [routerLink]="module.route"
+          class="module-card"
+          [style.--card-color]="module.color"
+        >
+          <div class="card-icon" [ngSwitch]="module.icon">
+            <svg *ngSwitchCase="'alojamiento'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            <svg *ngSwitchCase="'gastronomia'" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
+            </svg>
+          </div>
+
+          <h3>{{ module.title }}</h3>
+          <p>{{ module.description }}</p>
+
+          <span class="cta">
+            Administrar
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+            </svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>

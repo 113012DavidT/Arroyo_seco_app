@@ -1,0 +1,154 @@
+<div class="container" *ngIf="!loading && establecimiento">
+  <div class="header">
+    <button class="btn-back" (click)="volver()">← Volver</button>
+    <h2>{{ establecimiento.nombre }}</h2>
+    <a [routerLink]="['/oferente/gastronomia/establecimientos', establecimiento.id, 'editar']" class="btn-edit">
+      Editar Información
+    </a>
+  </div>
+
+  <div class="info-card">
+    <img [src]="establecimiento.fotoPrincipal || 'assets/images/hero-oferentes.svg'" [alt]="establecimiento.nombre" class="foto" />
+    <div class="detalles">
+      <p><strong>📍 Ubicación:</strong> {{ establecimiento.ubicacion }}</p>
+      <p><strong>📝 Descripción:</strong> {{ establecimiento.descripcion || 'Sin descripción' }}</p>
+    </div>
+  </div>
+
+  <!-- MENÚS -->
+  <div class="section">
+    <div class="section-header">
+      <h3>🍽️ Menús ({{ establecimiento.menus?.length || 0 }})</h3>
+      <button class="btn-add" (click)="abrirModalMenu()">+ Agregar Menú</button>
+    </div>
+
+    <div *ngIf="!establecimiento.menus || establecimiento.menus.length === 0" class="empty">
+      <p>No has creado menús todavía</p>
+    </div>
+
+    <div class="menus-grid" *ngIf="establecimiento.menus && establecimiento.menus.length > 0">
+      <div class="menu-card" *ngFor="let menu of establecimiento.menus">
+        <div class="menu-header">
+          <h4>{{ menu.nombre }}</h4>
+          <button class="btn-add-small" (click)="abrirModalItem(menu)">+ Agregar Item</button>
+        </div>
+        
+        <div *ngIf="!menu.items || menu.items.length === 0" class="empty-small">
+          Sin items
+        </div>
+
+        <div class="items-list" *ngIf="menu.items && menu.items.length > 0">
+          <div class="item" *ngFor="let item of menu.items">
+            <div class="item-info">
+              <strong>{{ item.nombre }}</strong>
+              <p>{{ item.descripcion }}</p>
+            </div>
+            <div class="item-precio">${{ item.precio }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESAS -->
+  <div class="section">
+    <div class="section-header">
+      <h3>🪑 Mesas ({{ establecimiento.mesas?.length || 0 }})</h3>
+      <button class="btn-add" (click)="abrirModalMesa()">+ Agregar Mesa</button>
+    </div>
+
+    <div *ngIf="!establecimiento.mesas || establecimiento.mesas.length === 0" class="empty">
+      <p>No has creado mesas todavía</p>
+    </div>
+
+    <div class="mesas-grid" *ngIf="establecimiento.mesas && establecimiento.mesas.length > 0">
+      <div class="mesa-card" *ngFor="let mesa of establecimiento.mesas" [class.no-disponible]="!mesa.disponible">
+        <div class="mesa-numero">Mesa {{ mesa.numero }}</div>
+        <div class="mesa-capacidad">👥 {{ mesa.capacidad }} personas</div>
+        <div class="mesa-estado">
+          <span [class.disponible]="mesa.disponible" [class.ocupada]="!mesa.disponible">
+            {{ mesa.disponible ? '✓ Disponible' : '✗ No disponible' }}
+          </span>
+        </div>
+        <button class="btn-toggle" (click)="toggleDisponibilidadMesa(mesa)">
+          {{ mesa.disponible ? 'Marcar no disponible' : 'Marcar disponible' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading" *ngIf="loading">Cargando...</div>
+
+<!-- MODAL AGREGAR MENÚ -->
+<div class="modal-backdrop" *ngIf="modalMenuAbierto" (click)="cerrarModalMenu()"></div>
+<div class="modal" *ngIf="modalMenuAbierto">
+  <div class="modal-header">
+    <h3>Agregar Menú</h3>
+    <button class="close" (click)="cerrarModalMenu()">×</button>
+  </div>
+  <div class="modal-body">
+    <label>
+      Nombre del Menú
+      <input type="text" [(ngModel)]="nuevoMenu.nombre" placeholder="Ej: Menú Principal, Postres, Bebidas" />
+    </label>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-cancel" (click)="cerrarModalMenu()">Cancelar</button>
+    <button class="btn-primary" (click)="agregarMenu()">Agregar</button>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR ITEM -->
+<div class="modal-backdrop" *ngIf="modalItemAbierto" (click)="cerrarModalItem()"></div>
+<div class="modal" *ngIf="modalItemAbierto">
+  <div class="modal-header">
+    <h3>Agregar Item a {{ menuSeleccionado?.nombre }}</h3>
+    <button class="close" (click)="cerrarModalItem()">×</button>
+  </div>
+  <div class="modal-body">
+    <label>
+      Nombre del Platillo
+      <input type="text" [(ngModel)]="nuevoItem.nombre" placeholder="Ej: Tacos de Bistec" />
+    </label>
+    <label>
+      Descripción
+      <textarea [(ngModel)]="nuevoItem.descripcion" rows="3" placeholder="Ej: 3 tacos con cebolla y cilantro"></textarea>
+    </label>
+    <label>
+      Precio
+      <input type="number" [(ngModel)]="nuevoItem.precio" min="0" step="0.01" placeholder="0.00" />
+    </label>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-cancel" (click)="cerrarModalItem()">Cancelar</button>
+    <button class="btn-primary" (click)="agregarItem()">Agregar</button>
+  </div>
+</div>
+
+<!-- MODAL AGREGAR MESA -->
+<div class="modal-backdrop" *ngIf="modalMesaAbierto" (click)="cerrarModalMesa()"></div>
+<div class="modal" *ngIf="modalMesaAbierto">
+  <div class="modal-header">
+    <h3>Agregar Mesa</h3>
+    <button class="close" (click)="cerrarModalMesa()">×</button>
+  </div>
+  <div class="modal-body">
+    <label>
+      Número de Mesa
+      <input type="number" [(ngModel)]="nuevaMesa.numero" min="1" />
+    </label>
+    <label>
+      Capacidad (personas)
+      <input type="number" [(ngModel)]="nuevaMesa.capacidad" min="1" max="20" />
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" [(ngModel)]="nuevaMesa.disponible" />
+      <span>Marcar como disponible</span>
+    </label>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-cancel" (click)="cerrarModalMesa()">Cancelar</button>
+    <button class="btn-primary" (click)="agregarMesa()">Agregar</button>
+  </div>
+</div>

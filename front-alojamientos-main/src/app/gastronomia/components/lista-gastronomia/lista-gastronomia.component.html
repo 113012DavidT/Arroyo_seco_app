@@ -1,0 +1,86 @@
+<div class="loading-state" *ngIf="loading">
+	<div class="skeleton-grid">
+		<div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6]">
+			<div class="skeleton-img"></div>
+			<div class="skeleton-line wide"></div>
+			<div class="skeleton-line"></div>
+			<div class="skeleton-line short"></div>
+		</div>
+	</div>
+</div>
+
+<div class="error-state" *ngIf="error && !loading">
+	<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+	<p>{{ error }}</p>
+	<button class="btn-retry" (click)="retry()">Reintentar</button>
+</div>
+
+<div class="listing-container" *ngIf="!loading && !error">
+	<div class="toolbar">
+		<div class="search-wrapper">
+			<svg class="search-icon" viewBox="0 0 24 24">
+				<path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+			</svg>
+			<input
+				type="text"
+				placeholder="Buscar por nombre o ubicación..."
+				[(ngModel)]="search"
+				class="search-input"
+			/>
+		</div>
+
+		<div class="toolbar-actions">
+			<div class="sort-wrapper">
+				<select [(ngModel)]="sortMode" class="sort-select">
+					<option value="nombre">Ordenar por nombre</option>
+					<option value="ubicacion">Ordenar por ubicación</option>
+				</select>
+			</div>
+			<span class="results-count">{{ filtered.length }} restaurantes</span>
+		</div>
+	</div>
+
+	<div class="empty-state" *ngIf="filtered.length === 0">
+		<svg class="empty-icon" viewBox="0 0 24 24" width="48" height="48"><path fill="#b0b0b0" d="M11 2a2 2 0 012 0l7 4a2 2 0 011 1.73V17a2 2 0 01-1.1 1.79l-7 3.5a2 2 0 01-1.8 0l-7-3.5A2 2 0 013 17V7.73a2 2 0 011-1.73l7-4zm0 2.24L5 7.36V17l6 3 6-3V7.36l-6-3.12z"/></svg>
+		<h3>No se encontraron restaurantes</h3>
+		<p>Intenta con otra búsqueda o ajusta el orden.</p>
+	</div>
+
+	<section class="grid">
+		<article class="card" *ngFor="let e of filtered" (click)="navigateToDetail(e.id)">
+			<div class="card-image-wrapper">
+					<div class="card-image">
+						<img [src]="e.imagen" loading="lazy" [alt]="e.nombre" class="card-img"
+						     onerror="this.src='assets/images/hero-login.svg'" />
+					<span class="card-badge">Restaurante</span>
+					<span class="card-rating" *ngIf="e.totalReviews > 0">
+						★ {{ e.ratingPromedio | number:'1.1-1' }}
+					</span>
+				</div>
+			</div>
+
+			<div class="card-body">
+				<div class="card-header">
+					<h3 class="card-title">{{ e.nombre }}</h3>
+				</div>
+
+				<p class="card-location">
+					<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+					{{ e.ubicacion }}
+				</p>
+
+				<p class="card-description">{{ e.descripcion }}</p>
+
+				<div class="card-footer">
+					<span class="card-category">Gastronomía local</span>
+					<span class="card-reviews" *ngIf="e.totalReviews > 0">{{ e.totalReviews }} reseñas</span>
+					<span class="card-link">Ver detalles</span>
+				</div>
+			</div>
+		</article>
+	</section>
+</div>
+
+<div *ngIf="!loading && !error && filtered.length === 0" class="empty">
+	No se encontraron restaurantes.
+</div>

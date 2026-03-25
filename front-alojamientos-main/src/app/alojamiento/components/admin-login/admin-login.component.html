@@ -1,0 +1,57 @@
+<section class="login">
+  <div class="visual">
+    <div class="visual-overlay"></div>
+    <div class="visual-text">
+      <h1>Arroyo Seco</h1>
+      <p>“El tesoro escondido de Querétaro”</p>
+    </div>
+  </div>
+
+  <div class="form-panel">
+    <div class="form-panel__content">
+      <div class="form-card">
+        <div class="logo">
+          <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" />
+        </div>
+
+        <h2>Inicio de Sesión</h2>
+
+        <form #loginForm="ngForm" (ngSubmit)="onSubmit(loginForm)">
+          <label>
+            Correo Electrónico
+            <input
+              type="email"
+              name="email"
+              placeholder="Ejemplo: correo@gmail.com"
+              [(ngModel)]="loginModel.email"
+              required
+            />
+          </label>
+
+          <label>
+            Contraseña
+            <input
+              type="password"
+              name="password"
+              placeholder="Contraseña"
+              [(ngModel)]="loginModel.password"
+              required
+            />
+          </label>
+
+          <button type="submit" [disabled]="loginForm.invalid">
+            Iniciar sesión
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 17l5-5-5-5v10zm9-14H5a2 2 0 0 0-2 2v4h2V5h14v14H5v-4H3v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
+            </svg>
+          </button>
+        </form>
+
+        <div class="links">
+          <a href="#">¿Olvidaste tu contraseña?</a>
+          <a routerLink="/login">Cambiar de rol</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

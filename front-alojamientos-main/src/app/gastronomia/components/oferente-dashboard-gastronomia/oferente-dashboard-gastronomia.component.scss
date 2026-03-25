@@ -1,0 +1,259 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+
+  @media (min-width: 768px) {
+    gap: 2rem;
+    padding: 0;
+  }
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+.stat-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.2s;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  &.highlight {
+    border-color: var(--color-primary, #E31B23);
+    background: var(--color-primary-light, #fee2e2);
+  }
+}
+
+.stat-icon {
+  font-size: 2rem;
+
+  @media (min-width: 768px) {
+    font-size: 2.5rem;
+  }
+}
+
+.stat-info {
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #1f2937;
+
+    @media (min-width: 768px) {
+      font-size: 2rem;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.85rem;
+
+    @media (min-width: 768px) {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.actions {
+  h2 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1.3rem;
+
+    @media (min-width: 768px) {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+.action-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+  text-align: center;
+
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+  }
+
+  &:hover {
+    border-color: var(--color-primary, #E31B23);
+    box-shadow: 0 4px 12px rgba(227, 27, 35, 0.12);
+    transform: translateY(-4px);
+  }
+
+  .action-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+
+    @media (min-width: 768px) {
+      font-size: 3rem;
+    }
+  }
+
+  h3 {
+    margin: 0 0 0.5rem 0;
+    color: #1f2937;
+    font-size: 1rem;
+
+    @media (min-width: 768px) {
+      font-size: 1.1rem;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.85rem;
+
+    @media (min-width: 768px) {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.establecimientos-list {
+  h2 {
+    margin: 0 0 1rem 0;
+    color: #1f2937;
+    font-size: 1.3rem;
+
+    @media (min-width: 768px) {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  @media (min-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+.establecimiento-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+
+    @media (min-width: 768px) {
+      height: 180px;
+    }
+  }
+
+  .info {
+    padding: 1rem;
+
+    @media (min-width: 768px) {
+      padding: 1.25rem;
+    }
+
+    h3 {
+      margin: 0 0 0.5rem 0;
+      color: #1f2937;
+      font-size: 1.1rem;
+
+      @media (min-width: 768px) {
+        font-size: 1.2rem;
+      }
+    }
+
+    p {
+      margin: 0 0 1rem 0;
+      color: #6b7280;
+      font-size: 0.85rem;
+
+      @media (min-width: 768px) {
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .btn-ver {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary, #E31B23);
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+
+    @media (min-width: 768px) {
+      font-size: 0.9rem;
+    }
+
+    &:hover {
+      background: var(--color-primary-dark, #c41019);
+    }
+  }
+}
+

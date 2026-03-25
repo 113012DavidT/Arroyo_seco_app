@@ -1,0 +1,30 @@
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a routerLink="/oferente/gastronomia/dashboard" class="brand" (click)="closeMenu()">
+      <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="brand__logo" />
+      <span class="brand__text">Gastronomía</span>
+    </a>
+
+    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <div class="nav-links" [class.active]="menuOpen">
+      <a routerLink="/oferente/gastronomia/dashboard" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Dashboard</a>
+      <a routerLink="/oferente/gastronomia/establecimientos" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Mis Restaurantes</a>
+      <a routerLink="/oferente/gastronomia/reservas" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Reservas</a>
+      <a routerLink="/oferente/gastronomia/analytics" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Analítica</a>
+      <a routerLink="/oferente/gastronomia/notificaciones" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Notificaciones</a>
+      <a routerLink="/oferente/gastronomia/configuracion" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Configuración</a>
+      <a routerLink="/oferente/home" class="cambiar-experiencia mobile-cambiar" (click)="closeMenu()">🔄 Cambiar Experiencia</a>
+      <a (click)="logout()" class="logout mobile-logout">Cerrar sesión</a>
+    </div>
+
+    <div class="navbar-actions">
+      <a routerLink="/oferente/home" class="cambiar-experiencia desktop-cambiar" title="Cambiar de módulo">🔄 Cambiar Experiencia</a>
+      <a (click)="logout()" class="logout desktop-logout">Cerrar sesión</a>
+    </div>
+  </div>
+</nav>

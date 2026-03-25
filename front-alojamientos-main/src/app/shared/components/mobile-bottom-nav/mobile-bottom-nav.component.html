@@ -1,0 +1,10 @@
+<nav class="mobile-bottom-nav" *ngIf="isLoggedIn()">
+  <a *ngFor="let item of items()"
+     [routerLink]="item.path"
+     routerLinkActive="active"
+     class="nav-item"
+     [attr.aria-label]="item.label">
+    <span class="material-icons">{{ item.icon }}</span>
+    <span class="label">{{ item.label }}</span>
+  </a>
+</nav>

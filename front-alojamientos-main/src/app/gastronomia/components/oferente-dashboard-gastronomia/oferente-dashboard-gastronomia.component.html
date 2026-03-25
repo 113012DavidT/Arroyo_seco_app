@@ -1,0 +1,74 @@
+<div class="dashboard">
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-icon">🍽️</div>
+      <div class="stat-info">
+        <h3>{{ establecimientos.length }}</h3>
+        <p>Restaurantes</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📅</div>
+      <div class="stat-info">
+        <h3>{{ totalReservas }}</h3>
+        <p>Reservas Activas</p>
+      </div>
+    </div>
+    <div class="stat-card highlight">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-info">
+        <h3>{{ reservasPendientes }}</h3>
+        <p>Pendientes</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <h2>Acciones Rápidas</h2>
+    <div class="action-grid">
+      <a routerLink="/oferente/gastronomia/establecimientos" class="action-card">
+        <div class="action-icon">🏪</div>
+        <h3>Mis Restaurantes</h3>
+        <p>Gestiona tus establecimientos</p>
+      </a>
+      <a routerLink="/oferente/gastronomia/establecimientos/agregar" class="action-card">
+        <div class="action-icon">➕</div>
+        <h3>Nuevo Restaurante</h3>
+        <p>Registra un nuevo establecimiento</p>
+      </a>
+      <a routerLink="/oferente/gastronomia/reservas" class="action-card">
+        <div class="action-icon">📋</div>
+        <h3>Ver Reservas</h3>
+        <p>Administra las reservas</p>
+      </a>
+      <a routerLink="/oferente/gastronomia/configuracion" class="action-card">
+        <div class="action-icon">⚙️</div>
+        <h3>Configuración</h3>
+        <p>Ajusta tu perfil</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="establecimientos-list" *ngIf="establecimientos.length > 0">
+    <h2>Tus Restaurantes</h2>
+    <div class="grid">
+      <div class="establecimiento-card" *ngFor="let est of establecimientos">
+        <img [src]="est.fotoPrincipal || 'assets/images/hero-oferentes.svg'" [alt]="est.nombre" />
+        <div class="info">
+          <h3>{{ est.nombre }}</h3>
+          <p>📍 {{ est.ubicacion }}</p>
+          <a [routerLink]="['/oferente/gastronomia/establecimientos', est.id]" class="btn-ver">
+            Ver Detalles
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && establecimientos.length === 0">
+    <p>No tienes restaurantes registrados aún.</p>
+    <a routerLink="/oferente/gastronomia/establecimientos/agregar" class="btn-primary">
+      ➕ Registrar primer restaurante
+    </a>
+  </div>
+</div>

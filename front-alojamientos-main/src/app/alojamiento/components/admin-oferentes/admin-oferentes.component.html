@@ -1,0 +1,203 @@
+<section class="oferentes">
+  <header class="toolbar">
+    <div class="search">
+      <input
+        type="text"
+        placeholder="Buscar oferente por nombre, correo o estado"
+        [(ngModel)]="searchTerm"
+      />
+      <button type="button" aria-label="Buscar">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15.5 14h-.79l-.28-.27a6.471 6.471 0 0 0 1.57-4.23 6.5 6.5 0 1 0-6.5 6.5 6.471 6.471 0 0 0 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM10 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
+        </svg>
+      </button>
+    </div>
+
+    <button type="button" class="btn primary" (click)="abrirRegistro()">
+      Registrar oferente
+    </button>
+  </header>
+
+  <div class="table-wrapper" *ngIf="filteredOferentes.length; else emptyState">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>Teléfono</th>
+          <th>Alojamientos</th>
+          <th>Estado</th>
+          <th class="actions">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let oferente of filteredOferentes">
+          <td>{{ oferente.nombre }}</td>
+          <td>{{ oferente.correo }}</td>
+          <td>{{ oferente.telefono }}</td>
+          <td>{{ oferente.alojamientos }}</td>
+          <td>
+            <span class="pill" [ngClass]="oferente.estado.toLowerCase()">
+              {{ oferente.estado }}
+            </span>
+          </td>
+          <td class="actions">
+            <button type="button" class="btn ghost" (click)="abrirDetalles(oferente)">Ver detalles</button>
+            <button type="button" class="btn" [class.warning]="oferente.estado === 'Activo'" [class.success]="oferente.estado !== 'Activo'" (click)="toggleEstado(oferente)">
+              {{ oferente.estado === 'Activo' ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button type="button" class="btn ghost" (click)="abrirEditar(oferente)">Editar</button>
+            <button type="button" class="btn danger" (click)="eliminar(oferente)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty">
+      <p>No se encontraron oferentes para "{{ searchTerm }}".</p>
+    </div>
+  </ng-template>
+
+  <!-- Modal detalles -->
+  <div class="modal-backdrop" *ngIf="modalDetallesAbierto" (click)="cerrarDetalles()"></div>
+  <div class="modal" *ngIf="modalDetallesAbierto && seleccionado as s">
+    <div class="modal__header">
+      <h3>Detalles del oferente</h3>
+      <button class="close" (click)="cerrarDetalles()">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="detail-grid">
+        <div><strong>Nombre:</strong> {{ s.nombre }}</div>
+        <div><strong>Correo:</strong> {{ s.correo }}</div>
+        <div><strong>Teléfono:</strong> {{ s.telefono }}</div>
+        <div><strong>Alojamientos:</strong> {{ s.alojamientos }}</div>
+        <div><strong>Estado:</strong> {{ s.estado }}</div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn" (click)="cerrarDetalles()">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal registro -->
+  <div class="modal-backdrop" *ngIf="modalRegistroAbierto" (click)="cerrarRegistro()"></div>
+  <div class="modal modal--register" *ngIf="modalRegistroAbierto">
+    <div class="modal__header">
+      <div class="modal__header-icon">
+        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="var(--color-primary, #E31B23)" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      </div>
+      <div>
+        <h3>Registrar nuevo oferente</h3>
+        <p class="modal__subtitle">Ingresa los datos del nuevo oferente para darlo de alta en el sistema</p>
+      </div>
+      <button class="close" (click)="cerrarRegistro()">×</button>
+    </div>
+    <form #f="ngForm" (ngSubmit)="registrar(f)">
+      <div class="modal__body">
+        <div class="form-section">
+          <h4 class="form-section__title">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            Información personal
+          </h4>
+          <div class="form-grid">
+            <label class="form-field">
+              <span class="form-field__label">Nombre completo <span class="required">*</span></span>
+              <input type="text" name="nombre" [(ngModel)]="nuevo.nombre" placeholder="Ej: María González Rivera" required />
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Correo electrónico <span class="required">*</span></span>
+              <input type="email" name="correo" [(ngModel)]="nuevo.correo" placeholder="correo@ejemplo.com" required />
+            </label>
+            <label class="form-field">
+              <span class="form-field__label">Teléfono <span class="required">*</span></span>
+              <input type="tel" name="telefono" [(ngModel)]="nuevo.telefono" placeholder="442-123-4567" required />
+            </label>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section__title">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+            Tipo de negocio
+          </h4>
+          <div class="tipo-selector">
+            <label class="tipo-card" [class.selected]="nuevo.tipo === 1" (click)="nuevo.tipo = 1">
+              <input type="radio" name="tipo" [value]="1" [(ngModel)]="nuevo.tipo" required hidden />
+              <div class="tipo-card__icon">
+                <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+              </div>
+              <span class="tipo-card__label">Alojamiento</span>
+              <span class="tipo-card__desc">Hospedaje, cabañas, hotel</span>
+            </label>
+            <label class="tipo-card" [class.selected]="nuevo.tipo === 2" (click)="nuevo.tipo = 2">
+              <input type="radio" name="tipo" [value]="2" [(ngModel)]="nuevo.tipo" required hidden />
+              <div class="tipo-card__icon">
+                <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+              </div>
+              <span class="tipo-card__label">Gastronomía</span>
+              <span class="tipo-card__desc">Restaurante, café, bar</span>
+            </label>
+            <label class="tipo-card" [class.selected]="nuevo.tipo === 3" (click)="nuevo.tipo = 3">
+              <input type="radio" name="tipo" [value]="3" [(ngModel)]="nuevo.tipo" required hidden />
+              <div class="tipo-card__icon">
+                <svg viewBox="0 0 24 24" width="32" height="32"><path fill="currentColor" d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/></svg>
+              </div>
+              <span class="tipo-card__label">Ambos</span>
+              <span class="tipo-card__desc">Alojamiento y gastronomía</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-info">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#6b7280" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <span>Se asignará la contraseña temporal <strong>Temporal.123</strong> al nuevo oferente.</span>
+        </div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn ghost" type="button" (click)="cerrarRegistro()">Cancelar</button>
+        <button class="btn primary" [disabled]="f.invalid">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          Registrar oferente
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal edición -->
+  <div class="modal-backdrop" *ngIf="modalEditarAbierto" (click)="cerrarEditar()"></div>
+  <div class="modal" *ngIf="modalEditarAbierto && editar as e">
+    <div class="modal__header">
+      <h3>Editar oferente</h3>
+      <button class="close" (click)="cerrarEditar()">×</button>
+    </div>
+    <form #fe="ngForm" (ngSubmit)="guardarEditar(fe)">
+      <div class="modal__body form-grid">
+        <label>
+          Nombre completo
+          <input type="text" name="nombre" [(ngModel)]="e.nombre" required />
+        </label>
+        <label>
+          Correo
+          <input type="email" name="correo" [(ngModel)]="e.correo" required />
+        </label>
+        <label>
+          Teléfono
+          <input type="tel" name="telefono" [(ngModel)]="e.telefono" required />
+        </label>
+        <label>
+          Tipo de Oferente
+          <select name="tipo" [(ngModel)]="e.tipo" required>
+            <option [value]="1">Alojamiento</option>
+            <option [value]="2">Gastronomía</option>
+            <option [value]="3">Ambos</option>
+          </select>
+        </label>
+        <!-- Estatus se gestiona fuera: campo removido del modal -->
+      </div>
+      <div class="modal__footer">
+        <button class="btn ghost" type="button" (click)="cerrarEditar()">Cancelar</button>
+        <button class="btn primary" [disabled]="fe.invalid">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</section>

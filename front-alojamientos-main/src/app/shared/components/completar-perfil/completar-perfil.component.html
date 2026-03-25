@@ -1,0 +1,36 @@
+<section class="completar-perfil">
+  <div class="card">
+    <h1>Completa tu perfil</h1>
+    <p class="subtitle">Antes de continuar necesitamos algunos datos obligatorios.</p>
+
+    <form #f="ngForm" (ngSubmit)="submit(f)">
+      <label>
+        Direccion
+        <input
+          type="text"
+          name="direccion"
+          [(ngModel)]="model.direccion"
+          placeholder="Calle, colonia, municipio"
+          required
+        />
+      </label>
+
+      <label>
+        Sexo
+        <select name="sexo" [(ngModel)]="model.sexo" required>
+          <option value="" disabled>Selecciona una opcion</option>
+          <option value="Masculino">Masculino</option>
+          <option value="Femenino">Femenino</option>
+          <option value="No especifica">No especifica</option>
+        </select>
+      </label>
+
+      <button type="submit" [disabled]="f.invalid || loading">
+        <span *ngIf="!loading">Guardar y continuar</span>
+        <span *ngIf="loading">Guardando...</span>
+      </button>
+    </form>
+
+    <a routerLink="/login" class="back-link">Volver al inicio de sesion</a>
+  </div>
+</section>

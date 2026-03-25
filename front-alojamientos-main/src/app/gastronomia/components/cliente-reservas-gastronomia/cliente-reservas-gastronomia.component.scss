@@ -1,0 +1,255 @@
+.reservas {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.tabs h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #1f2937;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #374151;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.estado-confirmada {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.badge.estado-pendiente {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.badge.estado-cancelada {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.95rem;
+}
+
+.info-row .label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.info-row.total {
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  font-weight: 700;
+  color: var(--color-primary-dark, #c41019);
+  font-size: 1.05rem;
+}
+
+.card-actions {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.card-actions--historial {
+  justify-content: flex-start;
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  background: #fff;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-review {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid #e31b23;
+  background: #fff;
+  color: #e31b23;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-review:hover {
+  background: #fff1f2;
+}
+
+.review-panel {
+  margin: 0 1.25rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem;
+  background: #fafafa;
+}
+
+.review-panel__label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.review-stars {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.star-btn {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: #eceff3;
+  color: #9ca3af;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.star-btn.active {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.review-panel__textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.7rem;
+  font: inherit;
+  min-height: 84px;
+  resize: vertical;
+}
+
+.review-panel__textarea:focus {
+  outline: none;
+  border-color: #e31b23;
+  box-shadow: 0 0 0 3px rgba(227, 27, 35, 0.12);
+}
+
+.review-panel__actions {
+  margin-top: 0.7rem;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.btn-submit-review {
+  padding: 0.5rem 0.95rem;
+  border: none;
+  border-radius: 8px;
+  background: #e31b23;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-submit-review:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancel-review {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 2rem;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-header,
+  .info-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,50 @@
+.admin-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg, #fafafa);
+}
+
+.admin-hero {
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #fff;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(227, 27, 35, 0.85), rgba(139, 15, 20, 0.9));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 3rem 1rem;
+}
+
+.hero-content h1 {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05rem;
+}
+
+.hero-content p {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.admin-main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}

@@ -1,0 +1,67 @@
+<section class="hospedajes">
+  <header class="hospedajes__header">
+    <div>
+      <h2>Gestión de hospedajes</h2>
+      <p class="subtitle">Hola, (nombre) bienvenido de nuevo.</p>
+  <p class="info">Tienes <strong>{{ hospedajes.length }} alojamientos activos</strong><span *ngIf="false"> y <strong>0 reservas pendientes.</strong></span></p>
+    </div>
+
+    <div class="hospedajes__actions">
+      <input
+        type="search"
+        placeholder="Buscar Alojamiento"
+        [(ngModel)]="searchTerm"
+      />
+      <a routerLink="/oferente/hospedajes/agregar" class="btn primary">Agregar alojamiento</a>
+    </div>
+  </header>
+
+  <div class="cards">
+    <article *ngFor="let hospedaje of filteredHospedajes" class="hospedaje-card">
+      <div class="card-image">
+        <img [src]="hospedaje.imagen" [alt]="hospedaje.nombre" />
+      </div>
+
+      <div class="card-content">
+        <h3 class="card-title">{{ hospedaje.nombre }}</h3>
+        <p class="card-location">{{ hospedaje.ubicacion }}</p>
+
+        <dl class="card-details">
+          <div>
+            <dt>{{ hospedaje.huespedes }} huéspedes</dt>
+          </div>
+          <div>
+            <dt>{{ hospedaje.habitaciones }} habitaciones</dt>
+          </div>
+          <div>
+            <dt>{{ hospedaje.banos }} baños</dt>
+          </div>
+          <div>
+            <dt>${{ hospedaje.precio.toLocaleString() }} MXN por noche</dt>
+          </div>
+        </dl>
+
+        <div class="card-footer">
+          <span
+            class="status"
+            [class.reserved]="hospedaje.estado === 'Reservado'"
+            [class.pending]="hospedaje.estado === 'Pendiente de pago'"
+            [class.confirmed]="hospedaje.estado === 'Confirmado'"
+          >
+            Estado: {{ hospedaje.estado }}
+          </span>
+
+          <div class="actions">
+            <a [routerLink]="['/oferente/hospedajes', hospedaje.id]" class="btn-link">Ver reservas</a>
+            <a [routerLink]="['/oferente/hospedajes', hospedaje.id, 'editar']" class="btn-link">Editar</a>
+            <button type="button" class="btn-link danger" (click)="eliminar(hospedaje)">Eliminar</button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div *ngIf="filteredHospedajes.length === 0" class="empty">
+    <p>No se encontraron hospedajes para "{{ searchTerm }}".</p>
+  </div>
+</section>

@@ -1,0 +1,17 @@
+<footer class="oferente-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="footer-logo" />
+      <p class="slogan">Arroyo Seco, Querétaro</p>
+    </div>
+
+    <div class="footer-sections">
+      <div *ngFor="let section of sections" class="footer-section">
+        <h4>{{ section.title }}</h4>
+        <ul>
+          <li *ngFor="let item of section.items">{{ item }}</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>

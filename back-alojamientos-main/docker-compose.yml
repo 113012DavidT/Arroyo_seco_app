@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: arroyoseco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/113012davidt/arroyo-seco-api:latest}
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=arroyoseco;Username=postgres;Password=${DB_PASSWORD}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=arroyoSeco
+      - Jwt__Audience=arroyoSeco-client
+      - Jwt__ExpirationMinutes=120
+      - SeedAdmin__Email=${SEED_ADMIN_EMAIL}
+      - SeedAdmin__Password=${SEED_ADMIN_PASSWORD}
+      - Email__SmtpHost=smtp.gmail.com
+      - Email__SmtpPort=587
+      - Email__SmtpUsername=${EMAIL_USERNAME}
+      - Email__SmtpPassword=${EMAIL_PASSWORD}
+      - Email__FromEmail=${EMAIL_USERNAME}
+      - Email__FromName=Arroyo Seco
+
+volumes:
+  pgdata:

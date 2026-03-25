@@ -1,0 +1,264 @@
+import { inject, Injectable } from '@angular/core';
+import { ApiService } from '../../core/services/api.service';
+import { map, Observable, shareReplay } from 'rxjs';
+
+interface ApiEnvelope<T> {
+  data?: T;
+}
+
+// ===== Interfaces =====
+export interface EstablecimientoDto {
+  id?: number;
+  oferenteId?: string;
+  nombre: string;
+  ubicacion: string;
+  descripcion: string;
+  fotoPrincipal?: string;
+  estado?: string;
+  direccion?: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  menus?: MenuDto[];
+  mesas?: MesaDto[];
+}
+
+export interface MenuDto {
+  id?: number;
+  establecimientoId?: number;
+  nombre: string;
+  items?: MenuItemDto[];
+}
+
+export interface MenuItemDto {
+  id?: number;
+  menuId?: number;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+}
+
+export interface MesaDto {
+  id?: number;
+  establecimientoId?: number;
+  numero: number;
+  capacidad: number;
+  disponible?: boolean;
+}
+
+export interface ReservaGastronomiaDto {
+  id?: number;
+  usuarioId?: string;
+  establecimientoId?: number;
+  mesaId?: number;
+  fecha: string; // ISO string
+  numeroPersonas: number;
+  estado?: string;
+  total?: number;
+  establecimientoNombre?: string;
+  clienteNombre?: string;
+  mesaNumero?: number;
+}
+
+export interface CrearReservaGastronomiaDto {
+  fecha: string;
+  numeroPersonas: number;
+  mesaId?: number;
+}
+
+export interface DisponibilidadDto {
+  mesasDisponibles: number;
+}
+
+export interface ReviewGastronomiaDto {
+  id?: number;
+  establecimientoId?: number;
+  usuarioId?: string;
+  puntuacion: number;
+  comentario: string;
+  fecha?: string;
+  usuarioNombre?: string;
+  nombreUsuario?: string;
+  nombre?: string;
+}
+
+export interface CrearReviewGastronomiaDto {
+  puntuacion: number;
+  comentario: string;
+}
+
+export interface RankingGastronomiaDto extends EstablecimientoDto {
+  promedio?: number;
+  totalResenas?: number;
+  scoreNeurona?: number;
+}
+
+export interface AnalyticsBucketDto {
+  etiqueta: string;
+  valor: number;
+}
+
+export interface AnalyticsTopBottomDto {
+  nombre: string;
+  promedio?: number;
+  totalResenas?: number;
+}
+
+export interface GastronomiaAnalyticsDto {
+  totalResenas: number;
+  promedio: number;
+  distribucionEstrellas: AnalyticsBucketDto[];
+  top5: AnalyticsTopBottomDto[];
+  bottom5: AnalyticsTopBottomDto[];
+  tendenciaMensual: AnalyticsBucketDto[];
+}
+
+@Injectable({ providedIn: 'root' })
+export class GastronomiaService {
+  private readonly api = inject(ApiService);
+  private analyticsCache$?: Observable<GastronomiaAnalyticsDto>;
+
+  private unwrapItem<T>(response: T | ApiEnvelope<T> | null | undefined): T | null {
+    if (response && typeof response === 'object' && 'data' in response) {
+      return (response as ApiEnvelope<T>).data ?? null;
+    }
+
+    return (response as T) ?? null;
+  }
+
+  private unwrapArray<T>(response: T[] | ApiEnvelope<T[]> | null | undefined): T[] {
+    return this.unwrapItem<T[]>(response) ?? [];
+  }
+
+  // ===== Públicos (sin autenticación) =====
+  
+  /** Listar todos los establecimientos */
+  listAll(): Observable<EstablecimientoDto[]> {
+    return this.api
+      .get<EstablecimientoDto[] | ApiEnvelope<EstablecimientoDto[]>>('/Gastronomias')
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Ranking de restaurantes (orden del backend) */
+  getRanking(): Observable<RankingGastronomiaDto[]> {
+    return this.api
+      .get<RankingGastronomiaDto[] | ApiEnvelope<RankingGastronomiaDto[]>>('/Gastronomias/ranking')
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Analitica de restaurantes del oferente autenticado */
+  getAnalytics(forceRefresh = false): Observable<GastronomiaAnalyticsDto> {
+    if (!this.analyticsCache$ || forceRefresh) {
+      this.analyticsCache$ = this.api
+        .get<GastronomiaAnalyticsDto | ApiEnvelope<GastronomiaAnalyticsDto>>('/Gastronomias/analytics')
+        .pipe(
+          map((response) => this.unwrapItem(response) ?? {
+            totalResenas: 0,
+            promedio: 0,
+            distribucionEstrellas: [],
+            top5: [],
+            bottom5: [],
+            tendenciaMensual: []
+          }),
+          shareReplay({ bufferSize: 1, refCount: true })
+        );
+    }
+
+    return this.analyticsCache$;
+  }
+
+  /** Detalle de un establecimiento */
+  getById(id: number): Observable<EstablecimientoDto> {
+    return this.api
+      .get<EstablecimientoDto | ApiEnvelope<EstablecimientoDto>>(`/Gastronomias/${id}`)
+      .pipe(map((response) => this.unwrapItem(response) as EstablecimientoDto));
+  }
+
+  /** Listar menús de un establecimiento */
+  getMenus(id: number): Observable<MenuDto[]> {
+    return this.api
+      .get<MenuDto[] | ApiEnvelope<MenuDto[]>>(`/Gastronomias/${id}/menus`)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Verificar disponibilidad en una fecha */
+  getDisponibilidad(id: number, fecha: string): Observable<DisponibilidadDto> {
+    return this.api
+      .get<DisponibilidadDto | ApiEnvelope<DisponibilidadDto>>(`/Gastronomias/${id}/disponibilidad`, { fecha })
+      .pipe(map((response) => this.unwrapItem(response) as DisponibilidadDto));
+  }
+
+  /** Listar reseñas de un establecimiento */
+  getReviews(id: number): Observable<ReviewGastronomiaDto[]> {
+    return this.api
+      .get<ReviewGastronomiaDto[] | ApiEnvelope<ReviewGastronomiaDto[]>>(`/Gastronomias/${id}/reviews`)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Crear reseña de un establecimiento */
+  createReview(id: number, payload: CrearReviewGastronomiaDto): Observable<number> {
+    return this.api.post<number>(`/Gastronomias/${id}/reviews`, payload);
+  }
+
+  // ===== Oferente (autenticado) =====
+
+  /** Crear establecimiento */
+  create(payload: EstablecimientoDto): Observable<any> {
+    return this.api.post('/Gastronomias', payload);
+  }
+
+  /** Crear menú */
+  createMenu(establecimientoId: number, payload: { nombre: string }): Observable<any> {
+    return this.api.post(`/Gastronomias/${establecimientoId}/menus`, payload);
+  }
+
+  /** Agregar item a menú */
+  addMenuItem(establecimientoId: number, menuId: number, payload: MenuItemDto): Observable<any> {
+    return this.api.post(`/Gastronomias/${establecimientoId}/menus/${menuId}/items`, payload);
+  }
+
+  /** Crear mesa */
+  createMesa(establecimientoId: number, payload: { numero: number; capacidad: number }): Observable<any> {
+    return this.api.post(`/Gastronomias/${establecimientoId}/mesas`, payload);
+  }
+
+  /** Cambiar disponibilidad de mesa */
+  setMesaDisponible(establecimientoId: number, mesaId: number, disponible: boolean): Observable<any> {
+    return this.api.put(`/Gastronomias/${establecimientoId}/mesas/${mesaId}/disponible`, disponible);
+  }
+
+  /** Actualizar disponibilidad de mesa */
+  updateDisponibilidadMesa(establecimientoId: number, mesaId: number, disponible: boolean): Observable<any> {
+    return this.api.put(`/Gastronomias/${establecimientoId}/mesas/${mesaId}/disponibilidad`, { disponible });
+  }
+
+  /** Listar reservas del establecimiento */
+  getReservas(establecimientoId: number): Observable<ReservaGastronomiaDto[]> {
+    return this.api
+      .get<ReservaGastronomiaDto[] | ApiEnvelope<ReservaGastronomiaDto[]>>(`/Gastronomias/${establecimientoId}/reservas`)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Listar establecimientos propios del oferente */
+  listMine(): Observable<EstablecimientoDto[]> {
+    return this.api
+      .get<EstablecimientoDto[] | ApiEnvelope<EstablecimientoDto[]>>('/Gastronomias/mios')
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Actualizar establecimiento */
+  update(id: number, payload: Partial<EstablecimientoDto>): Observable<any> {
+    return this.api.put(`/Gastronomias/${id}`, payload);
+  }
+
+  /** Eliminar establecimiento */
+  delete(id: number): Observable<any> {
+    return this.api.delete(`/Gastronomias/${id}`);
+  }
+
+  // ===== Cliente (autenticado) =====
+
+  /** Crear reserva */
+  createReserva(establecimientoId: number, payload: CrearReservaGastronomiaDto): Observable<any> {
+    return this.api.post(`/Gastronomias/${establecimientoId}/reservas`, payload);
+  }
+}

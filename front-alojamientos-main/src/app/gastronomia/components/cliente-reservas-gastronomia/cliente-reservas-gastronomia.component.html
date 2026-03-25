@@ -1,0 +1,119 @@
+<section class="reservas">
+  <div class="tabs">
+    <h2>Mis Reservas de Restaurantes</h2>
+  </div>
+
+  <div *ngIf="loading" class="empty">Cargando reservas...</div>
+
+  <div class="section" *ngIf="!loading">
+    <h3>Reservas Activas</h3>
+    <div class="grid" *ngIf="reservasActivas.length > 0; else noActivas">
+      <div class="card" *ngFor="let reserva of reservasActivas">
+        <div class="card-header">
+          <h4>{{ reserva.establecimientoNombre }}</h4>
+          <span class="badge" [ngClass]="getEstadoClass(reserva.estado)">
+            {{ reserva.estado || 'Activa' }}
+          </span>
+        </div>
+
+        <div class="card-body">
+          <div class="info-row">
+            <span class="label">Fecha:</span>
+            <span>{{ reserva.fecha | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Personas:</span>
+            <span>{{ reserva.numeroPersonas }}</span>
+          </div>
+          <div class="info-row" *ngIf="reserva.mesaNumero">
+            <span class="label">Mesa:</span>
+            <span>{{ reserva.mesaNumero }}</span>
+          </div>
+          <div class="info-row total" *ngIf="reserva.total">
+            <span class="label">Total:</span>
+            <span>${{ reserva.total }}</span>
+          </div>
+        </div>
+
+        <div class="card-actions" *ngIf="reserva.estado !== 'Cancelada'">
+          <button class="btn-cancel" (click)="cancelarReserva(reserva)">Cancelar reserva</button>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noActivas>
+      <p class="empty">No tienes reservas activas.</p>
+    </ng-template>
+  </div>
+
+  <div class="section" *ngIf="!loading">
+    <h3>Historial</h3>
+    <div class="grid" *ngIf="reservasHistorial.length > 0; else noHistorial">
+      <div class="card" *ngFor="let reserva of reservasHistorial">
+        <div class="card-header">
+          <h4>{{ reserva.establecimientoNombre }}</h4>
+          <span class="badge" [ngClass]="getEstadoClass(reserva.estado)">
+            {{ reserva.estado || 'Completada' }}
+          </span>
+        </div>
+
+        <div class="card-body">
+          <div class="info-row">
+            <span class="label">Fecha:</span>
+            <span>{{ reserva.fecha | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Personas:</span>
+            <span>{{ reserva.numeroPersonas }}</span>
+          </div>
+          <div class="info-row" *ngIf="reserva.mesaNumero">
+            <span class="label">Mesa:</span>
+            <span>{{ reserva.mesaNumero }}</span>
+          </div>
+          <div class="info-row total" *ngIf="reserva.total">
+            <span class="label">Total:</span>
+            <span>${{ reserva.total }}</span>
+          </div>
+        </div>
+
+        <div class="card-actions card-actions--historial">
+          <button class="btn-review" (click)="abrirReview(reserva)" *ngIf="reviewOpenForReservaId !== reserva.id">Calificar y reseñar</button>
+        </div>
+
+        <div class="review-panel" *ngIf="reviewOpenForReservaId === reserva.id">
+          <label class="review-panel__label">Calificación</label>
+          <div class="review-stars">
+            <button
+              type="button"
+              class="star-btn"
+              *ngFor="let star of [1,2,3,4,5]"
+              [class.active]="star <= reviewPuntuacion"
+              (click)="reviewPuntuacion = star"
+              [attr.aria-label]="'Calificar con ' + star + ' estrellas'">
+              ★
+            </button>
+          </div>
+
+          <textarea
+            [(ngModel)]="reviewComentario"
+            class="review-panel__textarea"
+            rows="3"
+            maxlength="500"
+            placeholder="Comparte tu experiencia en este restaurante"></textarea>
+
+          <div class="review-panel__actions">
+            <button class="btn-submit-review" (click)="enviarReview(reserva)" [disabled]="submittingReview">
+              <span *ngIf="!submittingReview">Enviar reseña</span>
+              <span *ngIf="submittingReview">Enviando...</span>
+            </button>
+            <button class="btn-cancel-review" (click)="cerrarReview()" [disabled]="submittingReview">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noHistorial>
+      <p class="empty">No tienes reservas en el historial.</p>
+    </ng-template>
+  </div>
+</section>

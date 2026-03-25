@@ -9,6 +9,7 @@ build/
 # Environment files
 .env
 .env.*
+!.env.example
 
 # IDEs and editors
 .vscode/
@@ -45,6 +46,7 @@ yarn-error.log*
 /.env.development.local
 /.env.test.local
 /.env.production.local
+!/.env.example
 
 # Configuración sensible - NO SUBIR A GITHUB
 src/app/config/maps.config.ts

@@ -22,7 +22,7 @@ Abre `src/app/config/maps.config.ts` y reemplaza `TU_API_KEY_AQUI`:
 
 ```typescript
 export const GOOGLE_MAPS_CONFIG = {
-  apiKey: 'AIzaSyBFaivF4msZGnn1PsEP_wSxa_t7rUNrWvE', // Tu key real aquí
+   apiKey: 'TU_API_KEY_AQUI',
   libraries: ['places'],
   language: 'es'
 };

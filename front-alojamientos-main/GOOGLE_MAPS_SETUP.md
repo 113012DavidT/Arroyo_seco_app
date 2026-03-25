@@ -63,7 +63,7 @@ loadGoogleMapsScript() {
   }
   
   const script = document.createElement('script');
-  script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&libraries=places&language=es';
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_CONFIG.apiKey}&libraries=places&language=es`;
   script.async = true;
   script.defer = true;
   script.onload = () => this.initAutocomplete();

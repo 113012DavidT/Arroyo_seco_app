@@ -41,10 +41,11 @@ export class OferenteLoginComponent {
     this.isLoading = true;
     this.auth.login({ email: this.loginModel.email, password: this.loginModel.password }).pipe(first()).subscribe({
       next: () => {
+        this.isLoading = false;
         // Detectar rol y redirigir
         const roles = this.auth.getRoles();
         console.log('Login exitoso, roles:', roles);
-        
+
         if (roles.some(r => /admin/i.test(r))) {
           this.router.navigate(['/admin/home']);
         } else if (roles.some(r => /oferente/i.test(r))) {

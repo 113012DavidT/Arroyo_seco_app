@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Arroyo Seco",
   "short_name": "ArroyoSeco",
   "description": "Turismo y gastronomía en Arroyo Seco: reservas, hospedajes y restaurantes.",
@@ -10,12 +11,6 @@
   "categories": ["travel", "food", "lifestyle"],
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "assets/images/logo-arroyo-seco.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
     {
       "src": "icons/icon-72x72.png",
       "sizes": "72x72",

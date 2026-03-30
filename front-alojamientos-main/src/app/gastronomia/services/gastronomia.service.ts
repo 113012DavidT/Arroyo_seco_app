@@ -1,4 +1,5 @@
 import { inject, Injectable } from '@angular/core';
+import { HttpHeaders } from '@angular/common/http';
 import { ApiService } from '../../core/services/api.service';
 import { map, Observable, shareReplay } from 'rxjs';
 
@@ -145,6 +146,14 @@ export class GastronomiaService {
       .pipe(map((response) => this.unwrapArray(response)));
   }
 
+  /** Ranking silencioso: no activa el spinner global (para enriquecer en background) */
+  getRankingBackground(): Observable<RankingGastronomiaDto[]> {
+    const h = new HttpHeaders({ 'X-Skip-Loading': '1' });
+    return this.api
+      .get<RankingGastronomiaDto[] | ApiEnvelope<RankingGastronomiaDto[]>>('/Gastronomias/ranking', undefined, h)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
   /** Analitica de restaurantes del oferente autenticado */
   getAnalytics(forceRefresh = false): Observable<GastronomiaAnalyticsDto> {
     if (!this.analyticsCache$ || forceRefresh) {
@@ -191,6 +200,14 @@ export class GastronomiaService {
   getReviews(id: number): Observable<ReviewGastronomiaDto[]> {
     return this.api
       .get<ReviewGastronomiaDto[] | ApiEnvelope<ReviewGastronomiaDto[]>>(`/Gastronomias/${id}/reviews`)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  /** Reseñas silenciosas: no activa el spinner global (para carga en background) */
+  getReviewsBackground(id: number): Observable<ReviewGastronomiaDto[]> {
+    const h = new HttpHeaders({ 'X-Skip-Loading': '1' });
+    return this.api
+      .get<ReviewGastronomiaDto[] | ApiEnvelope<ReviewGastronomiaDto[]>>(`/Gastronomias/${id}/reviews`, undefined, h)
       .pipe(map((response) => this.unwrapArray(response)));
   }
 

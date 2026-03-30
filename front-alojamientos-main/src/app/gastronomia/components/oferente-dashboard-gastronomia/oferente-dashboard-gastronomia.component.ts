@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { first } from 'rxjs/operators';
 import { GastronomiaService, EstablecimientoDto } from '../../services/gastronomia.service';
 import { ReservasGastronomiaService } from '../../services/reservas-gastronomia.service';
-import { first } from 'rxjs/operators';
 
 @Component({
   selector: 'app-oferente-dashboard-gastronomia',
@@ -29,27 +30,22 @@ export class OferenteDashboardGastronomiaComponent implements OnInit {
 
   private loadData() {
     this.loading = true;
-    
-    // Cargar establecimientos del oferente
-    this.gastronomiaService.listMine().pipe(first()).subscribe({
-      next: (data) => {
-        this.establecimientos = data || [];
+
+    forkJoin({
+      establecimientos: this.gastronomiaService.listMine(),
+      reservas: this.reservasService.activas()
+    }).pipe(first()).subscribe({
+      next: ({ establecimientos, reservas }) => {
+        this.establecimientos = establecimientos || [];
+        this.totalReservas = reservas?.length || 0;
+        this.reservasPendientes = reservas?.filter((r: any) => r.estado === 'Pendiente').length || 0;
         this.loading = false;
       },
       error: (err) => {
-        console.error('Error al cargar establecimientos:', err);
+        console.error('Error al cargar dashboard:', err);
         this.establecimientos = [];
         this.loading = false;
       }
-    });
-
-    // Cargar estadísticas de reservas
-    this.reservasService.activas().pipe(first()).subscribe({
-      next: (data) => {
-        this.totalReservas = data?.length || 0;
-        this.reservasPendientes = data?.filter(r => r.estado === 'Pendiente').length || 0;
-      },
-      error: () => {}
     });
   }
 }

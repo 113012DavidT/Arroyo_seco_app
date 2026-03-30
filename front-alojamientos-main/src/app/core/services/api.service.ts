@@ -34,8 +34,8 @@ export class ApiService {
     return `${this.baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   }
 
-  get<T>(path: string, params?: HttpParams | { [key: string]: string | number | boolean }): Observable<T> {
-    return this.http.get<T>(this.url(path), { params: params as any });
+  get<T>(path: string, params?: HttpParams | { [key: string]: string | number | boolean }, headers?: HttpHeaders): Observable<T> {
+    return this.http.get<T>(this.url(path), { params: params as any, headers });
   }
 
   // Descarga de binarios (e.g., comprobantes)

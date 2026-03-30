@@ -14,12 +14,17 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
   const isAuthEndpoint = /\/Auth\/(login|register)$/i.test(req.url);
   const token = auth.getToken();
 
-  const reqToSend = !isAuthEndpoint && token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-    : req;
+  // Si la petición lleva X-Skip-Loading, no mostrar spinner global
+  const skipLoading = req.headers.has('X-Skip-Loading');
 
-  // Show global spinner
-  loading.show();
+  // Construir request: agregar token y quitar el header interno antes de enviarlo al backend
+  let headersBuilder = skipLoading ? req.headers.delete('X-Skip-Loading') : req.headers;
+  if (!isAuthEndpoint && token) {
+    headersBuilder = headersBuilder.set('Authorization', `Bearer ${token}`);
+  }
+  const reqToSend = req.clone({ headers: headersBuilder });
+
+  if (!skipLoading) loading.show();
 
   return next(reqToSend).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -55,6 +60,6 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
       }
       return throwError(() => error);
     }),
-    finalize(() => loading.hide())
+    finalize(() => { if (!skipLoading) loading.hide(); })
   );
 };

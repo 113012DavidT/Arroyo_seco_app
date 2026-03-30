@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { first } from 'rxjs/operators';
 import { GastronomiaService, EstablecimientoDto } from '../../../gastronomia/services/gastronomia.service';
 import { AdminOferentesService } from '../../services/admin-oferentes.service';
 
@@ -42,30 +44,23 @@ export class AdminDashboardGastronomiaComponent implements OnInit {
 
   loadDashboardData(): void {
     this.loading = true;
-    
-    // Cargar establecimientos
-    this.gastronomiaService.listAll().subscribe({
-      next: (data: EstablecimientoDto[]) => {
-        this.establecimientos = data;
+
+    forkJoin({
+      establecimientos: this.gastronomiaService.listAll(),
+      solicitudes: this.adminService.listSolicitudes()
+    }).pipe(first()).subscribe({
+      next: ({ establecimientos, solicitudes }) => {
+        this.establecimientos = establecimientos;
+        const gastronomiaSolicitudes = (solicitudes || []).filter(
+          (s: any) => s.tipoSolicitado === 2 || s.tipoNegocio === 2
+        );
+        this.stats.solicitudesPendientes = gastronomiaSolicitudes.length;
         this.calculateStats();
         this.loading = false;
       },
       error: (error: any) => {
         console.error('Error loading dashboard:', error);
         this.loading = false;
-      }
-    });
-
-    // Cargar solicitudes pendientes
-    this.adminService.listSolicitudes().subscribe({
-      next: (solicitudes: any[]) => {
-        const gastronomiaSolicitudes = solicitudes.filter(
-          s => s.tipoSolicitado === 2 || s.tipoNegocio === 2
-        );
-        this.stats.solicitudesPendientes = gastronomiaSolicitudes.length;
-      },
-      error: (error: any) => {
-        console.error('Error loading solicitudes:', error);
       }
     });
   }

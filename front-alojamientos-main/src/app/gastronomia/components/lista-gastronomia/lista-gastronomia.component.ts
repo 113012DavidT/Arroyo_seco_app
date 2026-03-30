@@ -77,7 +77,7 @@ export class ListaGastronomiaComponent implements OnInit {
   }
 
   private loadRankingAsync() {
-    this.gastronomiaService.getRanking().pipe(first()).subscribe({
+    this.gastronomiaService.getRankingBackground().pipe(first()).subscribe({
       next: (ranking: RankingGastronomiaDto[]) => {
         if (!(ranking || []).length) return;
         this.rankingMode = true;
@@ -114,7 +114,7 @@ export class ListaGastronomiaComponent implements OnInit {
       .pipe(
         mergeMap(
           (e) =>
-            this.gastronomiaService.getReviews(e.id).pipe(
+            this.gastronomiaService.getReviewsBackground(e.id).pipe(
               map((reviews) => {
                 const total = (reviews || []).length;
                 const suma = (reviews || []).reduce((acc, r) => acc + (Number(r.puntuacion) || 0), 0);

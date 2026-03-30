@@ -7,11 +7,12 @@ import { ReservasGastronomiaService } from '../../services/reservas-gastronomia.
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { first } from 'rxjs/operators';
+import { MapViewComponent } from '../../../shared/components/map-view/map-view.component';
 
 @Component({
   selector: 'app-detalle-gastronomia',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, MapViewComponent],
   templateUrl: './detalle-gastronomia.component.html',
   styleUrl: './detalle-gastronomia.component.scss'
 })
@@ -35,6 +36,8 @@ export class DetalleGastronomiaComponent implements OnInit {
   numeroPersonas = 2;
   mesaId: number | null = null;
   submitting = false;
+  lightboxOpen = false;
+  lightboxIndex = 0;
   readonly horariosDisponibles = [
     '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
@@ -68,6 +71,7 @@ export class DetalleGastronomiaComponent implements OnInit {
       next: (data) => {
         console.log('Establecimiento cargado:', data);
         console.log('Mesas disponibles:', data?.mesas);
+        data.fotosUrls = this.extractGalleryUrls(data);
         this.establecimiento = data;
         this.loading = false;
       },
@@ -273,6 +277,48 @@ export class DetalleGastronomiaComponent implements OnInit {
     }
     const url = `https://www.google.com/maps/dir/?api=1&destination=${this.establecimiento.latitud},${this.establecimiento.longitud}`;
     window.open(url, '_blank');
+  }
+
+  get galleryImages(): string[] {
+    const urls = this.extractGalleryUrls(this.establecimiento);
+    return urls.length ? urls : ['assets/images/hero-oferentes.svg'];
+  }
+
+  get heroImage(): string {
+    return this.galleryImages[0];
+  }
+
+  openLightbox(index = 0) {
+    this.lightboxIndex = index;
+    this.lightboxOpen = true;
+  }
+
+  closeLightbox() {
+    this.lightboxOpen = false;
+  }
+
+  prevImage(event: Event) {
+    event.stopPropagation();
+    this.lightboxIndex = this.lightboxIndex > 0 ? this.lightboxIndex - 1 : this.galleryImages.length - 1;
+  }
+
+  nextImage(event: Event) {
+    event.stopPropagation();
+    this.lightboxIndex = (this.lightboxIndex + 1) % this.galleryImages.length;
+  }
+
+  private extractGalleryUrls(establecimiento: EstablecimientoDto | null): string[] {
+    if (!establecimiento) {
+      return [];
+    }
+
+    const urls = [
+      establecimiento.fotoPrincipal,
+      ...(establecimiento.fotos || []).map((foto) => foto.url),
+      ...(establecimiento.fotosUrls || [])
+    ].filter((value): value is string => !!value);
+
+    return [...new Set(urls)];
   }
 
   // Exponer autenticación al template

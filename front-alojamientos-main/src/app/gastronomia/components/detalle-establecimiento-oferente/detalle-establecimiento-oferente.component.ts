@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { GastronomiaService, EstablecimientoDto, MenuDto, MenuItemDto, MesaDto } from '../../services/gastronomia.service';
+import { GastronomiaService, EstablecimientoDto, FotoEstablecimientoDto, MenuDto, MenuItemDto, MesaDto } from '../../services/gastronomia.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { first } from 'rxjs/operators';
 
@@ -34,6 +34,8 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   nuevoItem: MenuItemDto = { nombre: '', descripcion: '', precio: 0 };
   
   nuevaMesa: MesaDto = { numero: 1, capacidad: 2, disponible: true };
+  subiendoFotos = false;
+  eliminandoFotoId: number | null = null;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -49,6 +51,7 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
         console.log('Establecimiento cargado:', data);
         console.log('Menús recibidos:', data.menus);
         console.log('Mesas recibidas:', data.mesas);
+        data.fotosUrls = this.galleryUrls(data);
         this.establecimiento = data;
         this.loading = false;
       },
@@ -245,6 +248,96 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
           this.toast.error('Error al actualizar disponibilidad');
         }
       });
+  }
+
+  onFotosSeleccionadas(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (!files.length || !this.establecimiento?.id) {
+      return;
+    }
+
+    this.subiendoFotos = true;
+    this.gastronomiaService.uploadFotos(this.establecimiento.id, files).pipe(first()).subscribe({
+      next: (fotos) => {
+        if (!this.establecimiento) {
+          return;
+        }
+
+        this.establecimiento.fotos = [...(this.establecimiento.fotos || []), ...fotos];
+        this.establecimiento.fotosUrls = this.galleryUrls(this.establecimiento);
+        if (!this.establecimiento.fotoPrincipal && this.establecimiento.fotosUrls.length) {
+          this.establecimiento.fotoPrincipal = this.establecimiento.fotosUrls[0];
+        }
+        this.subiendoFotos = false;
+        input.value = '';
+        this.toast.success('Fotos agregadas correctamente');
+      },
+      error: () => {
+        this.subiendoFotos = false;
+        this.toast.error('No se pudieron subir las fotos');
+      }
+    });
+  }
+
+  eliminarFoto(foto: FotoEstablecimientoDto) {
+    if (!this.establecimiento?.id || !foto.id) {
+      return;
+    }
+
+    this.eliminandoFotoId = foto.id;
+    this.gastronomiaService.deleteFoto(this.establecimiento.id, foto.id).pipe(first()).subscribe({
+      next: () => {
+        if (!this.establecimiento) {
+          return;
+        }
+
+        this.establecimiento.fotos = (this.establecimiento.fotos || []).filter((item) => item.id !== foto.id);
+        this.establecimiento.fotosUrls = this.galleryUrls(this.establecimiento);
+        if (this.establecimiento.fotoPrincipal === foto.url) {
+          this.establecimiento.fotoPrincipal = this.establecimiento.fotosUrls[0] || '';
+        }
+        this.eliminandoFotoId = null;
+        this.toast.success('Foto eliminada');
+      },
+      error: () => {
+        this.eliminandoFotoId = null;
+        this.toast.error('No se pudo eliminar la foto');
+      }
+    });
+  }
+
+  usarComoPortada(url: string) {
+    if (!this.establecimiento?.id) {
+      return;
+    }
+
+    this.gastronomiaService.update(this.establecimiento.id, {
+      fotoPrincipal: url,
+      fotosUrls: this.galleryUrls(this.establecimiento)
+    }).pipe(first()).subscribe({
+      next: () => {
+        if (this.establecimiento) {
+          this.establecimiento.fotoPrincipal = url;
+        }
+        this.toast.success('Portada actualizada');
+      },
+      error: () => this.toast.error('No se pudo actualizar la portada')
+    });
+  }
+
+  get fotosGaleria(): FotoEstablecimientoDto[] {
+    return [...(this.establecimiento?.fotos || [])].sort((left, right) => (left.orden || 0) - (right.orden || 0));
+  }
+
+  private galleryUrls(establecimiento: EstablecimientoDto): string[] {
+    const urls = [
+      establecimiento.fotoPrincipal,
+      ...(establecimiento.fotos || []).map((foto) => foto.url),
+      ...(establecimiento.fotosUrls || [])
+    ].filter((value): value is string => !!value);
+
+    return [...new Set(urls)];
   }
 
   private getNextMesaNumber(): number {

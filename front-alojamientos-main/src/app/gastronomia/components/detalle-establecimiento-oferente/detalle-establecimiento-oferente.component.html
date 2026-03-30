@@ -15,6 +15,34 @@
     </div>
   </div>
 
+  <div class="section">
+    <div class="section-header">
+      <h3>📸 Galería ({{ fotosGaleria.length }})</h3>
+      <label class="btn-add photo-upload-btn">
+        <input type="file" accept="image/*" multiple (change)="onFotosSeleccionadas($event)" hidden />
+        {{ subiendoFotos ? 'Subiendo...' : '+ Agregar fotos' }}
+      </label>
+    </div>
+
+    <div *ngIf="fotosGaleria.length === 0" class="empty">
+      <p>No has agregado fotos todavía</p>
+    </div>
+
+    <div class="photo-grid" *ngIf="fotosGaleria.length > 0">
+      <article class="photo-card" *ngFor="let foto of fotosGaleria">
+        <img [src]="foto.url" [alt]="establecimiento.nombre" />
+        <div class="photo-actions">
+          <button class="btn-add-small" (click)="usarComoPortada(foto.url)" [disabled]="establecimiento.fotoPrincipal === foto.url">
+            {{ establecimiento.fotoPrincipal === foto.url ? 'Portada actual' : 'Usar de portada' }}
+          </button>
+          <button class="btn-toggle btn-toggle--danger" (click)="eliminarFoto(foto)" [disabled]="eliminandoFotoId === foto.id">
+            {{ eliminandoFotoId === foto.id ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+        </div>
+      </article>
+    </div>
+  </div>
+
   <!-- MENÚS -->
   <div class="section">
     <div class="section-header">

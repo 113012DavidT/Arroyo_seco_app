@@ -18,6 +18,7 @@ public class Establecimiento
     public string? FotoPrincipal { get; set; }
 
     public List<Menu> Menus { get; set; } = new();
+    public List<FotoEstablecimiento> Fotos { get; set; } = new();
     public List<Mesa> Mesas { get; set; } = new();
     public List<ReservaGastronomia> Reservas { get; set; } = new();
     public List<Review> Reviews { get; set; } = new();

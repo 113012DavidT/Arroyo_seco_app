@@ -19,6 +19,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<FotoAlojamiento> FotosAlojamiento => Set<FotoAlojamiento>();
     public DbSet<Reserva> Reservas => Set<Reserva>();
     public DbSet<Establecimiento> Establecimientos => Set<Establecimiento>();
+    public DbSet<FotoEstablecimiento> FotosEstablecimiento => Set<FotoEstablecimiento>();
     public DbSet<Menu> Menus => Set<Menu>();
     public DbSet<MenuItem> MenuItems => Set<MenuItem>();
     public DbSet<Mesa> Mesas => Set<Mesa>();
@@ -54,6 +55,12 @@ public class AppDbContext : DbContext, IAppDbContext
             .WithMany(o => o.Establecimientos)
             .HasForeignKey(e => e.OferenteId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<Establecimiento>()
+            .HasMany(e => e.Fotos)
+            .WithOne(f => f.Establecimiento)
+            .HasForeignKey(f => f.EstablecimientoId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<Establecimiento>()
             .HasMany(e => e.Menus)

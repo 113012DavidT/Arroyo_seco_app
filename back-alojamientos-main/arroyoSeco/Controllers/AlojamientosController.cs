@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Application.Features.Alojamiento.Commands.Crear;
+using arroyoSeco.Domain.Entities.Alojamientos;
 using AlojamientoEntity = arroyoSeco.Domain.Entities.Alojamientos.Alojamiento;
 
 namespace arroyoSeco.Controllers;
@@ -14,12 +15,14 @@ public class AlojamientosController : ControllerBase
     private readonly IAppDbContext _db;
     private readonly CrearAlojamientoCommandHandler _crear;
     private readonly ICurrentUserService _current;
+    private readonly IStorageService _storage;
 
-    public AlojamientosController(IAppDbContext db, CrearAlojamientoCommandHandler crear, ICurrentUserService current)
+    public AlojamientosController(IAppDbContext db, CrearAlojamientoCommandHandler crear, ICurrentUserService current, IStorageService storage)
     {
         _db = db;
         _crear = crear;
         _current = current;
+        _storage = storage;
     }
 
     // Público
@@ -84,14 +87,16 @@ public class AlojamientosController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id }, id);
     }
 
-    public record ActualizarAlojamientoDto(string Nombre, string Ubicacion, double? Latitud, double? Longitud, string? Direccion, int MaxHuespedes, int Habitaciones, int Banos, decimal PrecioPorNoche, string? FotoPrincipal);
+    public record ActualizarAlojamientoDto(string Nombre, string Ubicacion, double? Latitud, double? Longitud, string? Direccion, int MaxHuespedes, int Habitaciones, int Banos, decimal PrecioPorNoche, string? FotoPrincipal, List<string>? FotosUrls);
 
     // Solo Oferente
     [Authorize(Roles = "Oferente")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarAlojamientoDto dto, CancellationToken ct)
     {
-        var a = await _db.Alojamientos.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var a = await _db.Alojamientos
+            .Include(x => x.Fotos)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound();
 
         a.Nombre = dto.Nombre;
@@ -104,6 +109,106 @@ public class AlojamientosController : ControllerBase
         a.Banos = dto.Banos;
         a.PrecioPorNoche = dto.PrecioPorNoche;
         a.FotoPrincipal = dto.FotoPrincipal;
+
+        if (dto.FotosUrls is not null)
+        {
+            _db.FotosAlojamiento.RemoveRange(a.Fotos);
+            a.Fotos = dto.FotosUrls
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Select((url, index) => new FotoAlojamiento
+                {
+                    Url = url.Trim(),
+                    Orden = index + 1
+                })
+                .ToList();
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/fotos")]
+    public async Task<ActionResult<IEnumerable<FotoAlojamiento>>> ListFotos(int id, CancellationToken ct)
+    {
+        var exists = await _db.Alojamientos.AnyAsync(a => a.Id == id, ct);
+        if (!exists) return NotFound();
+
+        var fotos = await _db.FotosAlojamiento
+            .Where(f => f.AlojamientoId == id)
+            .OrderBy(f => f.Orden)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return Ok(fotos);
+    }
+
+    [Authorize(Roles = "Oferente")]
+    [HttpPost("{id:int}/fotos")]
+    [RequestSizeLimit(25_000_000)]
+    public async Task<ActionResult<IEnumerable<FotoAlojamiento>>> UploadFotos(int id, [FromForm] List<IFormFile> files, CancellationToken ct)
+    {
+        var alojamiento = await _db.Alojamientos
+            .Include(a => a.Fotos)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (alojamiento is null) return NotFound();
+        if (alojamiento.OferenteId != _current.UserId) return Forbid();
+        if (files is null || files.Count == 0) return BadRequest(new { message = "Debes enviar al menos una imagen" });
+
+        var nextOrder = alojamiento.Fotos.Count == 0 ? 1 : alojamiento.Fotos.Max(f => f.Orden) + 1;
+        var created = new List<FotoAlojamiento>();
+
+        foreach (var file in files.Where(f => f.Length > 0))
+        {
+            await using var stream = file.OpenReadStream();
+            var relativePath = await _storage.SaveFileAsync(stream, file.FileName, "fotos/alojamientos", ct);
+            var foto = new FotoAlojamiento
+            {
+                AlojamientoId = id,
+                Url = _storage.GetPublicUrl(relativePath),
+                Orden = nextOrder++
+            };
+            created.Add(foto);
+            _db.FotosAlojamiento.Add(foto);
+        }
+
+        if (created.Count == 0) return BadRequest(new { message = "Los archivos enviados están vacíos" });
+
+        if (string.IsNullOrWhiteSpace(alojamiento.FotoPrincipal))
+        {
+            alojamiento.FotoPrincipal = created[0].Url;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(created);
+    }
+
+    [Authorize(Roles = "Oferente")]
+    [HttpDelete("{id:int}/fotos/{fotoId:int}")]
+    public async Task<IActionResult> DeleteFoto(int id, int fotoId, CancellationToken ct)
+    {
+        var alojamiento = await _db.Alojamientos
+            .Include(a => a.Fotos)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (alojamiento is null) return NotFound();
+        if (alojamiento.OferenteId != _current.UserId) return Forbid();
+
+        var foto = alojamiento.Fotos.FirstOrDefault(f => f.Id == fotoId);
+        if (foto is null) return NotFound();
+
+        _db.FotosAlojamiento.Remove(foto);
+
+        var relativePath = foto.Url.Replace("/comprobantes/", string.Empty).Replace('/', Path.DirectorySeparatorChar);
+        await _storage.DeleteFileAsync(relativePath, ct);
+
+        if (string.Equals(alojamiento.FotoPrincipal, foto.Url, StringComparison.OrdinalIgnoreCase))
+        {
+            alojamiento.FotoPrincipal = alojamiento.Fotos
+                .Where(f => f.Id != fotoId)
+                .OrderBy(f => f.Orden)
+                .Select(f => f.Url)
+                .FirstOrDefault();
+        }
 
         await _db.SaveChangesAsync(ct);
         return NoContent();

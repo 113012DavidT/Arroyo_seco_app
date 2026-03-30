@@ -20,6 +20,7 @@ public interface IAppDbContext
     DbSet<Notificacion> Notificaciones { get; }
     DbSet<SolicitudOferente> SolicitudesOferente { get; }
     DbSet<Establecimiento> Establecimientos { get; }
+    DbSet<FotoEstablecimiento> FotosEstablecimiento { get; }
     DbSet<Menu> Menus { get; }
     DbSet<MenuItem> MenuItems { get; }
     DbSet<Mesa> Mesas { get; }

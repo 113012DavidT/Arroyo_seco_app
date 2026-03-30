@@ -44,18 +44,33 @@
     </div>
 
     <div class="form-group">
-      <label for="foto">URL de Foto Principal</label>
-      <input 
-        type="text" 
-        id="foto" 
-        [(ngModel)]="establecimiento.fotoPrincipal" 
-        name="foto"
-        placeholder="/comprobantes/fotos/abc123.jpg" />
-      <small>Sube la imagen usando el endpoint /api/Storage/upload?folder=fotos</small>
+      <label for="foto">Galería de fotos</label>
+      <input
+        type="file"
+        id="foto"
+        accept="image/*"
+        multiple
+        (change)="onFotosSeleccionadas($event)" />
+      <small>La primera portada se asigna automáticamente, pero puedes cambiarla abajo.</small>
+    </div>
+
+    <div class="form-group" style="grid-column: span 2;" *ngIf="(establecimiento.fotosUrls || []).length > 0">
+      <label>Vista previa de galería</label>
+      <div class="galeria" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;">
+        <div class="thumb" *ngFor="let foto of establecimiento.fotosUrls; let i = index" style="border:1px solid #e5e7eb;border-radius:16px;padding:.75rem;background:#fff;">
+          <img [src]="foto" [alt]="establecimiento.nombre || 'foto'" style="width:100%;height:110px;object-fit:cover;border-radius:12px;display:block;margin-bottom:.75rem;" />
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button type="button" class="btn-submit" style="padding:.45rem .75rem;" (click)="usarComoPortada(foto)" [disabled]="establecimiento.fotoPrincipal === foto">
+              {{ establecimiento.fotoPrincipal === foto ? 'Portada actual' : 'Usar de portada' }}
+            </button>
+            <button type="button" class="btn-cancel" style="padding:.45rem .75rem;" (click)="eliminarFoto(i)">Quitar</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="form-actions">
-      <button type="submit" [disabled]="submitting" class="btn-submit">
+      <button type="submit" [disabled]="submitting || subiendoFotos" class="btn-submit">
         {{ submitting ? 'Guardando...' : (isEdit ? 'Actualizar' : 'Crear') }}
       </button>
       <a routerLink="/oferente/gastronomia/establecimientos" class="btn-cancel">

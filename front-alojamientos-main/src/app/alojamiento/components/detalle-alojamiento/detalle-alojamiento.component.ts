@@ -13,11 +13,12 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MapViewComponent } from '../../../shared/components/map-view/map-view.component';
 
 @Component({
   selector: 'app-detalle-alojamiento',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatDatepickerModule, MatNativeDateModule, MatFormFieldModule, MatInputModule],
+  imports: [CommonModule, FormsModule, RouterLink, MatDatepickerModule, MatNativeDateModule, MatFormFieldModule, MatInputModule, MapViewComponent],
   templateUrl: './detalle-alojamiento.component.html',
   styleUrl: './detalle-alojamiento.component.scss'
 })
@@ -138,7 +139,10 @@ export class DetalleAlojamientoComponent implements OnInit {
     this.alojamientosService.getById(this.alojamientoId).pipe(first()).subscribe({
       next: (a) => {
         this.alojamiento = a;
-        const fotos = a.fotosUrls || [];
+        const fotos = [
+          ...(a.fotos || []).map((foto) => foto.url),
+          ...(a.fotosUrls || [])
+        ];
         this.gallery = [a.fotoPrincipal, ...fotos].filter(Boolean) as string[];
         this.loading = false;
       },

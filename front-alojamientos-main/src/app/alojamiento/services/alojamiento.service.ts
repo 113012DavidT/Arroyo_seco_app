@@ -2,6 +2,13 @@ import { inject, Injectable } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { Observable } from 'rxjs';
 
+export interface FotoAlojamientoDto {
+  id?: number;
+  alojamientoId?: number;
+  url: string;
+  orden?: number;
+}
+
 export interface AlojamientoDto {
   id?: number;
   nombre: string;
@@ -15,6 +22,7 @@ export interface AlojamientoDto {
   banos: number;
   precioPorNoche: number;
   fotoPrincipal?: string;
+  fotos?: FotoAlojamientoDto[];
   fotosUrls?: string[];
 }
 
@@ -44,5 +52,25 @@ export class AlojamientoService {
 
   listMine(): Observable<AlojamientoDto[]> {
     return this.api.get<AlojamientoDto[]>('/alojamientos/mios');
+  }
+
+  listFotos(id: number): Observable<FotoAlojamientoDto[]> {
+    return this.api.get<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`);
+  }
+
+  uploadFotos(id: number, files: File[]): Observable<FotoAlojamientoDto[]> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return this.api.post<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`, formData);
+  }
+
+  deleteFoto(id: number, fotoId: number): Observable<void> {
+    return this.api.delete<void>(`/alojamientos/${id}/fotos/${fotoId}`);
+  }
+
+  uploadTempFoto(file: File): Observable<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.post<{ url: string }>('/Storage/upload?folder=fotos/alojamientos', formData);
   }
 }

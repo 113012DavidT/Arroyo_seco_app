@@ -7,6 +7,13 @@ interface ApiEnvelope<T> {
   data?: T;
 }
 
+export interface FotoEstablecimientoDto {
+  id?: number;
+  establecimientoId?: number;
+  url: string;
+  orden?: number;
+}
+
 // ===== Interfaces =====
 export interface EstablecimientoDto {
   id?: number;
@@ -15,6 +22,8 @@ export interface EstablecimientoDto {
   ubicacion: string;
   descripcion: string;
   fotoPrincipal?: string;
+  fotos?: FotoEstablecimientoDto[];
+  fotosUrls?: string[];
   estado?: string;
   direccion?: string;
   latitud?: number | null;
@@ -270,6 +279,28 @@ export class GastronomiaService {
   /** Eliminar establecimiento */
   delete(id: number): Observable<any> {
     return this.api.delete(`/Gastronomias/${id}`);
+  }
+
+  listFotos(id: number): Observable<FotoEstablecimientoDto[]> {
+    return this.api
+      .get<FotoEstablecimientoDto[] | ApiEnvelope<FotoEstablecimientoDto[]>>(`/Gastronomias/${id}/fotos`)
+      .pipe(map((response) => this.unwrapArray(response)));
+  }
+
+  uploadFotos(id: number, files: File[]): Observable<FotoEstablecimientoDto[]> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return this.api.post<FotoEstablecimientoDto[]>(`/Gastronomias/${id}/fotos`, formData);
+  }
+
+  deleteFoto(id: number, fotoId: number): Observable<void> {
+    return this.api.delete<void>(`/Gastronomias/${id}/fotos/${fotoId}`);
+  }
+
+  uploadTempFoto(file: File): Observable<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.api.post<{ url: string }>('/Storage/upload?folder=fotos/gastronomia', formData);
   }
 
   // ===== Cliente (autenticado) =====

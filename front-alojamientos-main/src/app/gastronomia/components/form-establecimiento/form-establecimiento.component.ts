@@ -24,6 +24,7 @@ export class FormEstablecimientoComponent implements OnInit {
   
   isEdit = false;
   submitting = false;
+  subiendoFotos = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -44,6 +45,9 @@ export class FormEstablecimientoComponent implements OnInit {
   private loadEstablecimiento(id: number) {
     this.gastronomiaService.getById(id).pipe(first()).subscribe({
       next: (data) => {
+        data.fotosUrls = [data.fotoPrincipal, ...(data.fotos || []).map((foto) => foto.url), ...(data.fotosUrls || [])]
+          .filter((value): value is string => !!value)
+          .filter((value, index, array) => array.indexOf(value) === index);
         this.establecimiento = data;
       },
       error: () => {
@@ -91,5 +95,55 @@ export class FormEstablecimientoComponent implements OnInit {
     } else {
       this.toast.success('📍 Ubicación marcada en el mapa');
     }
+  }
+
+  onFotosSeleccionadas(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (!files.length) {
+      return;
+    }
+
+    this.subiendoFotos = true;
+    let pendientes = files.length;
+
+    files.forEach((file) => {
+      this.gastronomiaService.uploadTempFoto(file).pipe(first()).subscribe({
+        next: ({ url }) => {
+          this.establecimiento.fotosUrls = [...(this.establecimiento.fotosUrls || []), url];
+          if (!this.establecimiento.fotoPrincipal) {
+            this.establecimiento.fotoPrincipal = url;
+          }
+          pendientes -= 1;
+          if (pendientes === 0) {
+            this.subiendoFotos = false;
+            this.toast.success('Fotos cargadas correctamente');
+          }
+        },
+        error: () => {
+          pendientes -= 1;
+          if (pendientes === 0) {
+            this.subiendoFotos = false;
+          }
+          this.toast.error('No se pudo subir una de las fotos');
+        }
+      });
+    });
+
+    input.value = '';
+  }
+
+  eliminarFoto(index: number) {
+    const fotos = [...(this.establecimiento.fotosUrls || [])];
+    const [removed] = fotos.splice(index, 1);
+    this.establecimiento.fotosUrls = fotos;
+
+    if (this.establecimiento.fotoPrincipal === removed) {
+      this.establecimiento.fotoPrincipal = fotos[0] || '';
+    }
+  }
+
+  usarComoPortada(url: string) {
+    this.establecimiento.fotoPrincipal = url;
   }
 }

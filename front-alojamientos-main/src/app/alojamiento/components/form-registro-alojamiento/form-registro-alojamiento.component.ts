@@ -49,6 +49,7 @@ export class FormRegistroAlojamientoComponent implements OnInit {
   
   autocomplete: any;
   busquedaDireccion = '';
+  subiendoFotos = false;
 
   constructor() {
     this.idEdicion = this.route.snapshot.paramMap.get('id');
@@ -71,7 +72,7 @@ export class FormRegistroAlojamientoComponent implements OnInit {
               habitaciones: a.habitaciones,
               banos: a.banos,
               precio: a.precioPorNoche,
-              fotos: [a.fotoPrincipal, ...(a.fotosUrls || [])].filter(Boolean) as string[]
+              fotos: [a.fotoPrincipal, ...(a.fotos || []).map((foto) => foto.url), ...(a.fotosUrls || [])].filter(Boolean) as string[]
             };
             this.busquedaDireccion = a.direccion || a.ubicacion;
           },
@@ -100,6 +101,39 @@ export class FormRegistroAlojamientoComponent implements OnInit {
   agregarFoto(url: string) {
     if (!url) return;
     this.formModel.fotos.push(url);
+  }
+
+  onFotosSeleccionadas(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (!files.length) {
+      return;
+    }
+
+    this.subiendoFotos = true;
+    let pendientes = files.length;
+
+    files.forEach((file) => {
+      this.alojamientosService.uploadTempFoto(file).pipe(first()).subscribe({
+        next: ({ url }) => {
+          this.formModel.fotos.push(url);
+          pendientes -= 1;
+          if (pendientes === 0) {
+            this.subiendoFotos = false;
+            this.toastService.success('Fotos cargadas correctamente');
+          }
+        },
+        error: () => {
+          pendientes -= 1;
+          if (pendientes === 0) {
+            this.subiendoFotos = false;
+          }
+          this.toastService.error('No se pudo subir una de las fotos');
+        }
+      });
+    });
+
+    input.value = '';
   }
 
   eliminarFoto(idx: number) {

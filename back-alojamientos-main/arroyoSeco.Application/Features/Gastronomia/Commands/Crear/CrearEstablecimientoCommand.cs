@@ -18,6 +18,7 @@ public class CrearEstablecimientoCommand
     public string? Direccion { get; set; }
     public string? Descripcion { get; set; }
     public string? FotoPrincipal { get; set; }
+    public List<string> FotosUrls { get; set; } = new();
 }
 
 public class CrearEstablecimientoCommandHandler
@@ -52,7 +53,15 @@ public class CrearEstablecimientoCommandHandler
             Longitud = request.Longitud,
             Direccion = request.Direccion?.Trim(),
             Descripcion = request.Descripcion,
-            FotoPrincipal = request.FotoPrincipal
+            FotoPrincipal = request.FotoPrincipal,
+            Fotos = request.FotosUrls
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .Select((url, index) => new FotoEstablecimiento
+                {
+                    Url = url.Trim(),
+                    Orden = index + 1
+                })
+                .ToList()
         };
 
         _context.Establecimientos.Add(e);

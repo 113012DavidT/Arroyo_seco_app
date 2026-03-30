@@ -65,10 +65,10 @@
 	</div>
 
 	<section class="grid">
-		<article class="card" *ngFor="let e of filtered" (click)="navigateToDetail(e.id)">
+		<article class="card" *ngFor="let e of filtered; let i = index" (click)="navigateToDetail(e.id)">
 			<div class="card-image-wrapper">
 					<div class="card-image">
-						<img [src]="e.imagen" loading="lazy" [alt]="e.nombre" class="card-img"
+						<img [src]="e.imagen" [attr.loading]="i < 2 ? 'eager' : 'lazy'" [attr.fetchpriority]="i < 2 ? 'high' : 'low'" decoding="async" width="640" height="440" [alt]="e.nombre" class="card-img"
 						     onerror="this.src='assets/images/hero-login.svg'" />
 					<span class="card-badge">Restaurante</span>
 					<span class="card-type">{{ getTipoLabel(e.tipoEstablecimiento) }}</span>

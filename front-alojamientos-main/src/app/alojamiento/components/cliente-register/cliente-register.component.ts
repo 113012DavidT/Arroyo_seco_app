@@ -28,8 +28,8 @@ export class ClienteRegisterComponent {
       this.toast.show('Correo inválido', 'error');
       return;
     }
-    if (this.model.password.length < 6) {
-      this.toast.show('Contraseña demasiado corta (mínimo 6 caracteres)', 'error');
+    if (!this.cumplePoliticaPassword(this.model.password)) {
+      this.toast.show('La contraseña debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo.', 'error');
       return;
     }
     if (this.model.password !== this.model.confirm) {
@@ -64,10 +64,39 @@ export class ClienteRegisterComponent {
         this.loading = false;
         this.router.navigate(['/cliente/login']);
       },
-      error: () => {
-        this.toast.show('No se pudo registrar. Intenta más tarde.', 'error');
+      error: (err) => {
+        const message = this.getRegisterErrorMessage(err);
+        this.toast.show(message, 'error');
         this.loading = false;
       }
     });
+  }
+
+  private cumplePoliticaPassword(password: string): boolean {
+    const hasMinLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSymbol = /[^A-Za-z0-9]/.test(password);
+    return hasMinLength && hasUpper && hasLower && hasDigit && hasSymbol;
+  }
+
+  private getRegisterErrorMessage(err: any): string {
+    const payload = err?.error;
+
+    if (typeof payload?.message === 'string' && payload.message.trim()) {
+      return payload.message;
+    }
+
+    if (Array.isArray(payload) && payload.length > 0) {
+      const desc = payload.map((e: any) => e?.description || e?.code).filter(Boolean).join(' ');
+      if (desc) return desc;
+    }
+
+    if (typeof payload === 'string' && payload.trim()) {
+      return payload;
+    }
+
+    return 'No se pudo registrar. Revisa los datos e intenta de nuevo.';
   }
 }

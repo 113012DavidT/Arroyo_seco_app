@@ -48,6 +48,7 @@
 		<div class="toolbar-actions">
 			<div class="sort-wrapper">
 				<select [(ngModel)]="sortMode" class="sort-select">
+					<option *ngIf="isLoggedIn" value="neurona">Ordenar por neurona</option>
 					<option value="cercania">Ordenar por cercanía</option>
 					<option value="nombre">Ordenar por nombre</option>
 					<option value="ubicacion">Ordenar por ubicación</option>
@@ -71,7 +72,7 @@
 						     onerror="this.src='assets/images/hero-login.svg'" />
 					<span class="card-badge">Restaurante</span>
 					<span class="card-type">{{ getTipoLabel(e.tipoEstablecimiento) }}</span>
-					<span class="card-distance" *ngIf="e.distanciaKm !== null">{{ formatDistance(e.distanciaKm) }}</span>
+					<span class="card-distance" *ngIf="!isLoggedIn && e.distanciaKm !== null">{{ formatDistance(e.distanciaKm) }}</span>
 					<span class="card-rating" *ngIf="e.totalReviews > 0">
 						★ {{ e.ratingPromedio | number:'1.1-1' }}
 					</span>

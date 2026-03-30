@@ -33,13 +33,14 @@ interface Establecimiento {
 })
 export class ListaGastronomiaComponent implements OnInit {
   search = '';
-  sortMode: 'nombre' | 'ubicacion' | 'cercania' = 'cercania';
+  sortMode: 'nombre' | 'ubicacion' | 'cercania' | 'neurona' = 'cercania';
   selectedTipo = 'todos';
   rankingMode = false;
   establecimientos: Establecimiento[] = [];
   loading = false;
   error: string | null = null;
   isPublic = false;
+  isLoggedIn = false;
   locationStatus = 'Detectando tu ubicacion...';
   hasOfflineFallback = false;
   private userCoords: { lat: number; lng: number } | null = null;
@@ -81,6 +82,12 @@ export class ListaGastronomiaComponent implements OnInit {
   ngOnInit(): void {
     // Detectar si estamos en ruta pública
     this.isPublic = this.router.url.includes('/publica/');
+    this.isLoggedIn = this.auth.isAuthenticated();
+
+    if (this.isLoggedIn) {
+      this.sortMode = 'neurona';
+      this.locationStatus = 'Mostrando recomendaciones personalizadas con neurona';
+    }
 
     const tipo = this.route.snapshot.queryParamMap.get('tipo');
     if (tipo) {
@@ -92,6 +99,11 @@ export class ListaGastronomiaComponent implements OnInit {
   }
 
   private detectUserLocation() {
+    if (this.isLoggedIn) {
+      // Con sesión iniciada priorizamos ranking de neurona, sin pedir geolocalización.
+      return;
+    }
+
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       this.locationStatus = 'Tu navegador no permite geolocalizacion';
       this.sortMode = 'nombre';
@@ -142,7 +154,11 @@ export class ListaGastronomiaComponent implements OnInit {
         this.loading = false; // Mostrar contenido YA, sin esperar ratings
 
         // 2. Enriquecer con ranking en background (no bloquea el render)
-        this.loadRankingAsync();
+        if (this.isLoggedIn) {
+          this.loadRankingAsync();
+        } else {
+          this.loadRatingsResumen();
+        }
       },
       error: () => {
         const cached = this.offlineCache.get<EstablecimientoDto[]>(this.listCacheKey) || [];
@@ -178,6 +194,7 @@ export class ListaGastronomiaComponent implements OnInit {
       next: (ranking: RankingGastronomiaDto[]) => {
         if (!(ranking || []).length) return;
         this.rankingMode = true;
+        this.locationStatus = 'Mostrando recomendaciones personalizadas con neurona';
         const rankMap = new Map(ranking.map(r => [r.id!, r]));
         this.establecimientos = this.establecimientos.map(e => {
           const r = rankMap.get(e.id);
@@ -193,6 +210,10 @@ export class ListaGastronomiaComponent implements OnInit {
       },
       error: () => {
         // Si ranking falla, cargar reseñas individuales como fallback
+        this.rankingMode = false;
+        if (this.isLoggedIn) {
+          this.toast.info('No fue posible usar neurona en este momento, mostramos listado estándar');
+        }
         if (this.establecimientos.length) this.loadRatingsResumen();
       }
     });
@@ -254,6 +275,11 @@ export class ListaGastronomiaComponent implements OnInit {
 
     if (this.selectedTipo !== 'todos') {
       result = result.filter((e) => e.tipoEstablecimiento === this.selectedTipo);
+    }
+
+    if (this.sortMode === 'neurona' && this.rankingMode) {
+      // Conserva el orden de /ranking (neurona) ya aplicado en loadRankingAsync.
+      return result;
     }
 
     if (this.sortMode === 'cercania') {

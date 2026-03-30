@@ -50,6 +50,8 @@
                 type="email"
                 name="email"
                 [(ngModel)]="model.email"
+                (ngModelChange)="onEmailChange()"
+                (blur)="onEmailBlur()"
                 placeholder="tu&#64;correo.com"
                 required
                 autocomplete="email"
@@ -68,6 +70,7 @@
                 [type]="showPassword ? 'text' : 'password'"
                 name="password"
                 [(ngModel)]="model.password"
+                (focus)="onPasswordFocus()"
                 placeholder="Ingresa tu contraseña"
                 required
                 autocomplete="current-password"
@@ -95,11 +98,19 @@
           <button
             type="button"
             class="btn-biometric"
-            [disabled]="biometricLoading || !model.email"
+            [disabled]="biometricLoading || checkingBiometric || !model.email"
             (click)="loginWithBiometric()">
             <span *ngIf="!biometricLoading">Entrar con huella / Face ID</span>
             <span *ngIf="biometricLoading" class="spinner-dark"></span>
           </button>
+
+          <p class="biometric-hint" *ngIf="checkingBiometric">Verificando biometría disponible...</p>
+          <p class="biometric-hint biometric-hint--ok" *ngIf="!checkingBiometric && biometricReady">
+            Este dispositivo tiene biometría lista para este correo.
+          </p>
+          <p class="biometric-hint biometric-hint--warn" *ngIf="!checkingBiometric && !biometricReady && biometricUnavailableReason">
+            {{ biometricUnavailableReason }}
+          </p>
 
           <button
             type="button"

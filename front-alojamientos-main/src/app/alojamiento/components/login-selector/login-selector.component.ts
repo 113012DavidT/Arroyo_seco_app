@@ -17,6 +17,10 @@ export class LoginSelectorComponent implements OnInit {
   model = { email: '', password: '' };
   loading = false;
   biometricLoading = false;
+  checkingBiometric = false;
+  biometricReady = false;
+  biometricUnavailableReason = '';
+  private autoBiometricAttempted = false;
   showPassword = false;
   rememberMe = false;
   private returnUrl: string | null = null;
@@ -36,6 +40,22 @@ export class LoginSelectorComponent implements OnInit {
     if (this.auth.isAuthenticated()) {
       this.redirectByRole();
     }
+
+    this.refreshBiometricAvailability(false);
+  }
+
+  onEmailBlur(): void {
+    this.refreshBiometricAvailability(false);
+  }
+
+  onEmailChange(): void {
+    this.autoBiometricAttempted = false;
+    this.biometricReady = false;
+    this.biometricUnavailableReason = '';
+  }
+
+  onPasswordFocus(): void {
+    this.tryAutoBiometricLogin();
   }
 
   submit(form: NgForm) {
@@ -94,6 +114,64 @@ export class LoginSelectorComponent implements OnInit {
       this.toast.show('No fue posible iniciar con biometria', 'error');
     } finally {
       this.biometricLoading = false;
+    }
+  }
+
+  private async refreshBiometricAvailability(showFeedback: boolean): Promise<void> {
+    if (this.biometricLoading || this.loading) return;
+
+    this.biometricReady = false;
+    this.biometricUnavailableReason = '';
+
+    const email = this.model.email?.trim() || '';
+    if (!email) return;
+
+    this.checkingBiometric = true;
+    try {
+      const availability = await this.auth.checkPasskeyAvailability(email);
+      this.biometricReady = availability.supported && availability.hasCredential;
+      if (!this.biometricReady) {
+        this.biometricUnavailableReason = this.getBiometricReasonMessage(availability.reason);
+        if (showFeedback && this.biometricUnavailableReason) {
+          this.toast.info(this.biometricUnavailableReason);
+        }
+      } else {
+        this.biometricUnavailableReason = '';
+      }
+    } finally {
+      this.checkingBiometric = false;
+    }
+  }
+
+  private async tryAutoBiometricLogin(): Promise<void> {
+    if (this.autoBiometricAttempted || this.biometricLoading || this.loading) return;
+    const email = this.model.email?.trim();
+    if (!email) return;
+
+    this.autoBiometricAttempted = true;
+    await this.refreshBiometricAvailability(false);
+
+    if (!this.biometricReady) {
+      return;
+    }
+
+    try {
+      await this.loginWithBiometric();
+    } catch {
+      // loginWithBiometric already handles user feedback
+    }
+  }
+
+  private getBiometricReasonMessage(reason?: string): string {
+    switch (reason) {
+      case 'PLATFORM_AUTHENTICATOR_NOT_AVAILABLE':
+        return 'Este equipo o navegador no tiene autenticacion biometrica disponible. Puedes continuar con contraseña.';
+      case 'NO_REGISTERED_PASSKEY':
+        return 'No encontramos una llave biometrica para este correo en este dispositivo.';
+      case 'WEB_AUTHN_NOT_SUPPORTED':
+        return 'Tu navegador no soporta biometria web. Usa contraseña o cambia a un navegador compatible.';
+      default:
+        return '';
     }
   }
 

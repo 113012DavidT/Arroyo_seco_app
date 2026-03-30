@@ -94,14 +94,20 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.45rem;
+      gap: 0.45rem;
+      padding: 0.45rem 0.8rem;
       background: #fff;
       border: 2px solid #e0e0e0;
-      border-radius: 50%;
+      border-radius: 999px;
       cursor: pointer;
       transition: all 0.2s ease;
-      width: 42px;
-      height: 42px;
+      min-height: 42px;
+
+      .btn-login__label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #374151;
+      }
 
       .user-icon {
         width: 22px;

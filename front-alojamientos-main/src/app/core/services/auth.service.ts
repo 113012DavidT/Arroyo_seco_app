@@ -26,6 +26,12 @@ interface PasskeyCredentialResponse {
   jwt?: string;
 }
 
+export interface PasskeyAvailability {
+  supported: boolean;
+  hasCredential: boolean;
+  reason?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly api = inject(ApiService);
@@ -186,6 +192,71 @@ export class AuthService {
     return typeof window !== 'undefined' &&
       typeof PublicKeyCredential !== 'undefined' &&
       !!navigator.credentials;
+  }
+
+  async canUsePlatformAuthenticator(): Promise<boolean> {
+    if (!this.supportsPasskeys()) return false;
+
+    const checker = (PublicKeyCredential as any).isUserVerifyingPlatformAuthenticatorAvailable;
+    if (typeof checker !== 'function') {
+      return true;
+    }
+
+    try {
+      return await checker.call(PublicKeyCredential);
+    } catch {
+      return false;
+    }
+  }
+
+  async checkPasskeyAvailability(email: string): Promise<PasskeyAvailability> {
+    const trimmedEmail = (email || '').trim();
+    if (!trimmedEmail) {
+      return {
+        supported: this.supportsPasskeys(),
+        hasCredential: false,
+        reason: 'EMAIL_REQUIRED'
+      };
+    }
+
+    if (!this.supportsPasskeys()) {
+      return {
+        supported: false,
+        hasCredential: false,
+        reason: 'WEB_AUTHN_NOT_SUPPORTED'
+      };
+    }
+
+    const canUsePlatform = await this.canUsePlatformAuthenticator();
+    if (!canUsePlatform) {
+      return {
+        supported: false,
+        hasCredential: false,
+        reason: 'PLATFORM_AUTHENTICATOR_NOT_AVAILABLE'
+      };
+    }
+
+    try {
+      const options = await firstValueFrom(
+        this.api.post<any>('/auth/passkey/login/options', { email: trimmedEmail })
+      );
+
+      const allowCredentials = Array.isArray(options?.allowCredentials)
+        ? options.allowCredentials.length
+        : 0;
+
+      return {
+        supported: true,
+        hasCredential: allowCredentials > 0,
+        reason: allowCredentials > 0 ? undefined : 'NO_REGISTERED_PASSKEY'
+      };
+    } catch {
+      return {
+        supported: true,
+        hasCredential: false,
+        reason: 'PASSKEY_LOOKUP_FAILED'
+      };
+    }
   }
 
   async loginWithPasskey(email: string): Promise<PasskeyCredentialResponse> {

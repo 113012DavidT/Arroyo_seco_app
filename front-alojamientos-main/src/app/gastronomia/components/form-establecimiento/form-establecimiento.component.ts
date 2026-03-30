@@ -34,7 +34,6 @@ export class FormEstablecimientoComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Ya no cargamos Google Maps - usamos campos simples
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEdit = true;
@@ -145,5 +144,15 @@ export class FormEstablecimientoComponent implements OnInit {
 
   usarComoPortada(url: string) {
     this.establecimiento.fotoPrincipal = url;
+  }
+
+  get previewImagen(): string {
+    return this.establecimiento.fotoPrincipal
+      || this.establecimiento.fotosUrls?.[0]
+      || 'assets/images/hero-oferentes.svg';
+  }
+
+  get previewUbicacion(): string {
+    return this.establecimiento.direccion || this.establecimiento.ubicacion || 'Ubicacion por definir';
   }
 }

@@ -1,7 +1,7 @@
 <div class="form-container">
   <h2>{{ isEdit ? 'Editar' : 'Nuevo' }} Restaurante</h2>
 
-  <form (ngSubmit)="submit()">
+  <form (ngSubmit)="submit()" class="restaurant-form">
     <div class="form-group">
       <label for="nombre">Nombre *</label>
       <input 
@@ -24,7 +24,17 @@
         placeholder="Ej: Centro Histórico" />
     </div>
 
-    <div class="form-group" style="grid-column: span 2;">
+    <div class="form-group">
+      <label for="direccion">Dirección</label>
+      <input
+        type="text"
+        id="direccion"
+        [(ngModel)]="establecimiento.direccion"
+        name="direccion"
+        placeholder="Ej: Calle Principal 120, Arroyo Seco" />
+    </div>
+
+    <div class="form-group full-width">
       <label>📍 Marcar en el mapa (opcional pero recomendado)</label>
       <app-map-picker 
         [latitud]="establecimiento.latitud ?? null" 
@@ -33,7 +43,7 @@
       </app-map-picker>
     </div>
 
-    <div class="form-group">
+    <div class="form-group full-width">
       <label for="descripcion">Descripción</label>
       <textarea 
         id="descripcion" 
@@ -43,7 +53,7 @@
         placeholder="Describe tu restaurante..."></textarea>
     </div>
 
-    <div class="form-group">
+    <div class="form-group full-width">
       <label for="foto">Galería de fotos</label>
       <input
         type="file"
@@ -54,20 +64,34 @@
       <small>La primera portada se asigna automáticamente, pero puedes cambiarla abajo.</small>
     </div>
 
-    <div class="form-group" style="grid-column: span 2;" *ngIf="(establecimiento.fotosUrls || []).length > 0">
+    <div class="form-group full-width" *ngIf="(establecimiento.fotosUrls || []).length > 0">
       <label>Vista previa de galería</label>
-      <div class="galeria" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1rem;">
-        <div class="thumb" *ngFor="let foto of establecimiento.fotosUrls; let i = index" style="border:1px solid #e5e7eb;border-radius:16px;padding:.75rem;background:#fff;">
-          <img [src]="foto" [alt]="establecimiento.nombre || 'foto'" style="width:100%;height:110px;object-fit:cover;border-radius:12px;display:block;margin-bottom:.75rem;" />
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-            <button type="button" class="btn-submit" style="padding:.45rem .75rem;" (click)="usarComoPortada(foto)" [disabled]="establecimiento.fotoPrincipal === foto">
+      <div class="galeria">
+        <div class="thumb" *ngFor="let foto of establecimiento.fotosUrls; let i = index">
+          <img [src]="foto" [alt]="establecimiento.nombre || 'foto'" />
+          <div class="thumb-actions">
+            <button type="button" class="btn-submit btn-mini" (click)="usarComoPortada(foto)" [disabled]="establecimiento.fotoPrincipal === foto">
               {{ establecimiento.fotoPrincipal === foto ? 'Portada actual' : 'Usar de portada' }}
             </button>
-            <button type="button" class="btn-cancel" style="padding:.45rem .75rem;" (click)="eliminarFoto(i)">Quitar</button>
+            <button type="button" class="btn-cancel btn-mini" (click)="eliminarFoto(i)">Quitar</button>
           </div>
         </div>
       </div>
     </div>
+
+    <section class="preview-card full-width">
+      <h3>Así se verá tu restaurante</h3>
+      <div class="preview-card__hero">
+        <img [src]="previewImagen" [alt]="establecimiento.nombre || 'Vista previa restaurante'" />
+      </div>
+      <div class="preview-card__body">
+        <h4>{{ establecimiento.nombre || 'Nombre de tu restaurante' }}</h4>
+        <p class="preview-location">{{ previewUbicacion }}</p>
+        <p class="preview-description">
+          {{ establecimiento.descripcion || 'Agrega una descripcion para mostrar una vista previa mas atractiva de tu restaurante.' }}
+        </p>
+      </div>
+    </section>
 
     <div class="form-actions">
       <button type="submit" [disabled]="submitting || subiendoFotos" class="btn-submit">

@@ -16,6 +16,11 @@
 </div>
 
 <div class="listing-container" *ngIf="!loading && !error">
+	<div class="status-row">
+		<p class="location-status">{{ locationStatus }}</p>
+		<span class="offline-badge" *ngIf="hasOfflineFallback">Modo sin internet</span>
+	</div>
+
 	<div class="toolbar">
 		<div class="search-wrapper">
 			<svg class="search-icon" viewBox="0 0 24 24">
@@ -32,6 +37,7 @@
 		<div class="toolbar-actions">
 			<div class="sort-wrapper">
 				<select [(ngModel)]="sortMode" class="sort-select">
+					<option value="cercania">Ordenar por cercanía</option>
 					<option value="nombre">Ordenar por nombre</option>
 					<option value="ubicacion">Ordenar por ubicación</option>
 				</select>
@@ -53,6 +59,7 @@
 						<img [src]="e.imagen" loading="lazy" [alt]="e.nombre" class="card-img"
 						     onerror="this.src='assets/images/hero-login.svg'" />
 					<span class="card-badge">Restaurante</span>
+					<span class="card-distance" *ngIf="e.distanciaKm !== null">{{ formatDistance(e.distanciaKm) }}</span>
 					<span class="card-rating" *ngIf="e.totalReviews > 0">
 						★ {{ e.ratingPromedio | number:'1.1-1' }}
 					</span>

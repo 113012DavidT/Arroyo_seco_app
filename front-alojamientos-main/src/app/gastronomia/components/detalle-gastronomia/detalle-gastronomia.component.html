@@ -33,6 +33,25 @@
     </div>
   </div>
 
+  <section class="info-strip">
+    <div class="info-pill" *ngIf="establecimiento.direccion">
+      <span class="info-pill__label">Dirección</span>
+      <strong>{{ establecimiento.direccion }}</strong>
+    </div>
+    <div class="info-pill">
+      <span class="info-pill__label">Menús</span>
+      <strong>{{ menus.length }}</strong>
+    </div>
+    <div class="info-pill" *ngIf="establecimiento.mesas && establecimiento.mesas.length > 0">
+      <span class="info-pill__label">Mesas</span>
+      <strong>{{ establecimiento.mesas.length }}</strong>
+    </div>
+    <div class="info-pill" *ngIf="reviews.length > 0">
+      <span class="info-pill__label">Calificación</span>
+      <strong>{{ promedioReviews | number:'1.1-1' }}/5</strong>
+    </div>
+  </section>
+
   <section class="gallery-strip" *ngIf="galleryImages.length > 1">
     <button class="gallery-card gallery-card--main" type="button" (click)="openLightbox(0)">
       <img [src]="galleryImages[0]" [alt]="establecimiento.nombre" />

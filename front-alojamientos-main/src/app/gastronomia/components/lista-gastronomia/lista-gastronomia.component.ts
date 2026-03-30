@@ -5,8 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../shared/services/toast.service';
 import { GastronomiaService, EstablecimientoDto, RankingGastronomiaDto } from '../../services/gastronomia.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { OfflineCacheService } from '../../../core/services/offline-cache.service';
 import { first } from 'rxjs/operators';
-import { catchError, forkJoin, map, of, from, mergeMap } from 'rxjs';
+import { catchError, map, of, from, mergeMap } from 'rxjs';
 
 interface Establecimiento {
   id: number;
@@ -14,6 +15,9 @@ interface Establecimiento {
   ubicacion: string;
   descripcion: string;
   imagen: string;
+  latitud: number | null;
+  longitud: number | null;
+  distanciaKm: number | null;
   ratingPromedio: number;
   totalReviews: number;
 }
@@ -27,29 +31,60 @@ interface Establecimiento {
 })
 export class ListaGastronomiaComponent implements OnInit {
   search = '';
-  sortMode: 'nombre' | 'ubicacion' = 'nombre';
+  sortMode: 'nombre' | 'ubicacion' | 'cercania' = 'cercania';
   rankingMode = false;
   establecimientos: Establecimiento[] = [];
   loading = false;
   error: string | null = null;
   isPublic = false;
+  locationStatus = 'Detectando tu ubicacion...';
+  hasOfflineFallback = false;
+  private userCoords: { lat: number; lng: number } | null = null;
+  private readonly listCacheKey = 'gastronomia:list';
 
   constructor(
     private toast: ToastService,
     private gastronomiaService: GastronomiaService,
     private auth: AuthService,
-    private router: Router
+    private router: Router,
+    private offlineCache: OfflineCacheService
   ) {}
 
   ngOnInit(): void {
     // Detectar si estamos en ruta pública
     this.isPublic = this.router.url.includes('/publica/');
+    this.detectUserLocation();
     this.fetchEstablecimientos();
+  }
+
+  private detectUserLocation() {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      this.locationStatus = 'Tu navegador no permite geolocalizacion';
+      this.sortMode = 'nombre';
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        this.userCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        this.locationStatus = 'Mostrando restaurantes mas cercanos a tu ubicacion';
+        this.recalculateDistances();
+      },
+      () => {
+        this.locationStatus = 'No pudimos acceder a tu ubicacion. Ordenamos por nombre';
+        this.sortMode = 'nombre';
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   private fetchEstablecimientos() {
     this.loading = true;
     this.error = null;
+    this.hasOfflineFallback = false;
 
     // 1. Carga la lista base inmediatamente → el usuario ve las tarjetas rápido
     this.gastronomiaService.listAll().pipe(first()).subscribe({
@@ -60,17 +95,41 @@ export class ListaGastronomiaComponent implements OnInit {
           ubicacion: d.ubicacion,
           descripcion: d.descripcion,
           imagen: d.fotoPrincipal || 'assets/images/hero-oferentes.svg',
+          latitud: d.latitud ?? null,
+          longitud: d.longitud ?? null,
+          distanciaKm: null,
           ratingPromedio: 0,
           totalReviews: 0
         }));
+        this.offlineCache.set<EstablecimientoDto[]>(this.listCacheKey, data || [], 1000 * 60 * 60 * 24 * 7);
+        this.recalculateDistances();
         this.loading = false; // Mostrar contenido YA, sin esperar ratings
 
         // 2. Enriquecer con ranking en background (no bloquea el render)
         this.loadRankingAsync();
       },
       error: () => {
-        this.establecimientos = [];
-        this.error = 'No se pudieron cargar los restaurantes';
+        const cached = this.offlineCache.get<EstablecimientoDto[]>(this.listCacheKey) || [];
+        if (cached.length > 0) {
+          this.establecimientos = cached.map(d => ({
+            id: d.id!,
+            nombre: d.nombre,
+            ubicacion: d.ubicacion,
+            descripcion: d.descripcion,
+            imagen: d.fotoPrincipal || 'assets/images/hero-oferentes.svg',
+            latitud: d.latitud ?? null,
+            longitud: d.longitud ?? null,
+            distanciaKm: null,
+            ratingPromedio: 0,
+            totalReviews: 0
+          }));
+          this.hasOfflineFallback = true;
+          this.locationStatus = 'Mostrando restaurantes guardados localmente';
+          this.recalculateDistances();
+        } else {
+          this.establecimientos = [];
+          this.error = 'No se pudieron cargar los restaurantes';
+        }
         this.loading = false;
       }
     });
@@ -154,6 +213,14 @@ export class ListaGastronomiaComponent implements OnInit {
       e.ubicacion.toLowerCase().includes(this.search.toLowerCase())
     );
 
+    if (this.sortMode === 'cercania') {
+      return [...result].sort((a, b) => {
+        const d1 = a.distanciaKm ?? Number.MAX_SAFE_INTEGER;
+        const d2 = b.distanciaKm ?? Number.MAX_SAFE_INTEGER;
+        return d1 - d2;
+      });
+    }
+
     if (this.rankingMode) {
       // Importante: conservar el orden entregado por /ranking
       return result;
@@ -183,5 +250,36 @@ export class ListaGastronomiaComponent implements OnInit {
 
   retry() {
     this.fetchEstablecimientos();
+  }
+
+  formatDistance(km: number | null): string {
+    if (km == null || !Number.isFinite(km)) return 'Sin distancia';
+    if (km < 1) return `${Math.round(km * 1000)} m`;
+    return `${km.toFixed(1)} km`;
+  }
+
+  private recalculateDistances() {
+    if (!this.userCoords) {
+      this.establecimientos = this.establecimientos.map((e) => ({ ...e, distanciaKm: null }));
+      return;
+    }
+
+    this.establecimientos = this.establecimientos.map((e) => ({
+      ...e,
+      distanciaKm: this.distanceBetween(this.userCoords!.lat, this.userCoords!.lng, e.latitud, e.longitud)
+    }));
+  }
+
+  private distanceBetween(lat1: number, lng1: number, lat2: number | null, lng2: number | null): number | null {
+    if (lat2 == null || lng2 == null) return null;
+    const rad = (value: number) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = rad(lat2 - lat1);
+    const dLng = rad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
   }
 }

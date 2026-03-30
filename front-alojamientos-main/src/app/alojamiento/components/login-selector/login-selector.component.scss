@@ -352,6 +352,20 @@
   cursor: not-allowed;
 }
 
+.biometric-hint {
+  margin: 0.1rem 0 0;
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.biometric-hint--ok {
+  color: #0f766e;
+}
+
+.biometric-hint--warn {
+  color: #92400e;
+}
+
 /* Spinner */
 .spinner {
   display: inline-block;

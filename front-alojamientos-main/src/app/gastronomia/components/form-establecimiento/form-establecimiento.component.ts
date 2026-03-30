@@ -26,6 +26,30 @@ export class FormEstablecimientoComponent implements OnInit {
   submitting = false;
   subiendoFotos = false;
 
+  readonly tiposEstablecimiento = [
+    { key: 'restaurante', label: 'Restaurante' },
+    { key: 'bar', label: 'Bar' },
+    { key: 'antro', label: 'Antro' },
+    { key: 'cafe', label: 'Cafe' },
+    { key: 'desayunos', label: 'Desayunos' },
+    { key: 'comida-corrida', label: 'Comida corrida' },
+    { key: 'cena', label: 'Cena' },
+    { key: 'antojitos', label: 'Antojitos' }
+  ];
+
+  readonly amenidadesDisponibles = [
+    { key: 'wifi', label: 'WiFi' },
+    { key: 'terraza', label: 'Terraza' },
+    { key: 'estacionamiento', label: 'Estacionamiento' },
+    { key: 'pet-friendly', label: 'Pet friendly' },
+    { key: 'reservas', label: 'Acepta reservas' },
+    { key: 'musica-en-vivo', label: 'Musica en vivo' },
+    { key: 'accesible', label: 'Acceso para silla de ruedas' },
+    { key: 'entrega-a-domicilio', label: 'Entrega a domicilio' },
+    { key: 'para-llevar', label: 'Para llevar' },
+    { key: 'tarjeta', label: 'Pago con tarjeta' }
+  ];
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -144,6 +168,20 @@ export class FormEstablecimientoComponent implements OnInit {
 
   usarComoPortada(url: string) {
     this.establecimiento.fotoPrincipal = url;
+  }
+
+  toggleAmenidad(key: string) {
+    const set = new Set(this.establecimiento.amenidades || []);
+    if (set.has(key)) {
+      set.delete(key);
+    } else {
+      set.add(key);
+    }
+    this.establecimiento.amenidades = Array.from(set);
+  }
+
+  tieneAmenidad(key: string): boolean {
+    return (this.establecimiento.amenidades || []).includes(key);
   }
 
   get previewImagen(): string {

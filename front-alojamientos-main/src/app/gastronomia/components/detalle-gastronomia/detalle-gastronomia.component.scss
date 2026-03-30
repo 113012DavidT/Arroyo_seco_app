@@ -98,6 +98,26 @@ $transition: 0.25s ease;
   font-weight: 700;
 }
 
+.chips-row {
+  max-width: 1100px;
+  margin: 10px auto 0;
+  padding: 0 24px;
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.service-chip {
+  display: inline-flex;
+  padding: 0.26rem 0.68rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .gallery-card {
   border: 0;
   background: transparent;
@@ -786,6 +806,10 @@ $transition: 0.25s ease;
 
 // ── Responsive ───────────────────────────────
 @media (max-width: 900px) {
+  .chips-row {
+    padding: 0 16px;
+  }
+
   .info-strip {
     padding: 0 16px;
   }

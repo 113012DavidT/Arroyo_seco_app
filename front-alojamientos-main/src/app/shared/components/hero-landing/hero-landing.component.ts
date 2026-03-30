@@ -1,7 +1,9 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { GastronomiaService, EstablecimientoDto } from '../../../gastronomia/services/gastronomia.service';
+import { first } from 'rxjs/operators';
 
 @Component({
   selector: 'app-hero-landing',
@@ -10,12 +12,14 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './hero-landing.component.html',
   styleUrl: './hero-landing.component.scss'
 })
-export class HeroLandingComponent {
+export class HeroLandingComponent implements OnInit {
   scrollOffset = 0;
   searchQuery = '';
   checkIn = '';
   checkOut = '';
   guests = 1;
+  isGastronomiaLanding = false;
+  selectedGastroTipo = 'todos';
 
   readonly categories = [
     { svg: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z', label: 'Cabañas' },
@@ -65,14 +69,23 @@ export class HeroLandingComponent {
     }
   ];
 
-  readonly featuredRestaurantes = [
+  featuredRestaurantes: Array<{
+    id: number;
+    nombre: string;
+    ubicacion: string;
+    descripcion: string;
+    imagen: string;
+    badge: string;
+    tipo: string;
+  }> = [
     {
       id: 1,
       nombre: 'Restaurante El Mirador',
       ubicacion: 'Centro de Arroyo Seco',
       descripcion: 'Cocina tradicional queretana con vista panorámica al valle.',
       imagen: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop',
-      badge: 'Recomendado'
+      badge: 'Recomendado',
+      tipo: 'restaurante'
     },
     {
       id: 2,
@@ -80,7 +93,8 @@ export class HeroLandingComponent {
       ubicacion: 'Camino al Río Escanela',
       descripcion: 'Trucha fresca del río, preparada al estilo serrano.',
       imagen: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
-      badge: 'Favorito local'
+      badge: 'Favorito local',
+      tipo: 'restaurante'
     },
     {
       id: 3,
@@ -88,7 +102,8 @@ export class HeroLandingComponent {
       ubicacion: 'Calle Hidalgo 12',
       descripcion: 'Café de altura y postres artesanales de la región.',
       imagen: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop',
-      badge: ''
+      badge: '',
+      tipo: 'cafe'
     },
     {
       id: 4,
@@ -96,11 +111,35 @@ export class HeroLandingComponent {
       ubicacion: 'Plaza Principal',
       descripcion: 'Comida casera de la Sierra Gorda. Gorditas y tamales.',
       imagen: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop',
-      badge: 'Tradicional'
+      badge: 'Tradicional',
+      tipo: 'comida-corrida'
     }
   ];
 
-  constructor(private router: Router) {}
+  readonly gastroCategorias = [
+    { key: 'todos', label: 'Todos' },
+    { key: 'restaurante', label: 'Restaurantes' },
+    { key: 'bar', label: 'Bar' },
+    { key: 'antro', label: 'Antro' },
+    { key: 'cafe', label: 'Cafe' },
+    { key: 'desayunos', label: 'Desayunos' },
+    { key: 'comida-corrida', label: 'Comida corrida' },
+    { key: 'cena', label: 'Cena' },
+    { key: 'antojitos', label: 'Antojitos' }
+  ];
+
+  constructor(private router: Router, private gastronomiaService: GastronomiaService) {}
+
+  ngOnInit(): void {
+    this.syncExperienceByRoute(this.router.url);
+    this.router.events.subscribe((event) => {
+      if (event instanceof NavigationEnd) {
+        this.syncExperienceByRoute(event.urlAfterRedirects);
+      }
+    });
+
+    this.loadFeaturedRestaurantes();
+  }
 
   @HostListener('window:scroll')
   onScroll() {
@@ -108,21 +147,70 @@ export class HeroLandingComponent {
   }
 
   search() {
-    this.router.navigate(['/publica/alojamientos'], {
+    const baseRoute = this.isGastronomiaLanding ? '/publica/gastronomia' : '/publica/alojamientos';
+    this.router.navigate([baseRoute], {
       queryParams: {
         q: this.searchQuery || undefined,
-        guests: this.guests > 1 ? this.guests : undefined
+        guests: !this.isGastronomiaLanding && this.guests > 1 ? this.guests : undefined,
+        tipo: this.isGastronomiaLanding && this.selectedGastroTipo !== 'todos' ? this.selectedGastroTipo : undefined
       }
     });
   }
 
   filterByCategory(label: string) {
-    this.router.navigate(['/publica/alojamientos'], {
-      queryParams: { category: label }
-    });
+    if (this.isGastronomiaLanding) {
+      this.selectedGastroTipo = label;
+      return;
+    }
+
+    this.router.navigate(['/publica/alojamientos'], { queryParams: { category: label } });
   }
 
   navigateTo(path: string) {
     this.router.navigateByUrl(path);
+  }
+
+  get heroSubtitleText(): string {
+    return this.isGastronomiaLanding
+      ? 'Encuentra restaurantes, bares y cafes reales de Arroyo Seco en segundos'
+      : 'Hospedajes únicos, gastronomía local y experiencias inolvidables en el corazón de Querétaro';
+  }
+
+  get featuredGastronomia(): Array<{ id: number; nombre: string; ubicacion: string; descripcion: string; imagen: string; badge: string; tipo: string }> {
+    if (this.selectedGastroTipo === 'todos') {
+      return this.featuredRestaurantes;
+    }
+
+    return this.featuredRestaurantes.filter((item) => item.tipo === this.selectedGastroTipo);
+  }
+
+  getTipoLabel(tipo: string): string {
+    const found = this.gastroCategorias.find((item) => item.key === tipo);
+    return found?.label || 'Restaurante';
+  }
+
+  private syncExperienceByRoute(url: string): void {
+    this.isGastronomiaLanding = url.includes('/publica/gastronomia');
+  }
+
+  private loadFeaturedRestaurantes(): void {
+    this.gastronomiaService.listAll().pipe(first()).subscribe({
+      next: (restaurantes: EstablecimientoDto[]) => {
+        if (!restaurantes?.length) return;
+
+        this.featuredRestaurantes = restaurantes.slice(0, 8).map((item) => ({
+          id: item.id || 0,
+          nombre: item.nombre,
+          ubicacion: item.ubicacion,
+          descripcion: item.descripcion || 'Conoce este establecimiento en Arroyo Seco.',
+          imagen: item.fotoPrincipal || 'assets/images/hero-oferentes.svg',
+          badge: item.tipoEstablecimiento ? this.getTipoLabel(item.tipoEstablecimiento) : 'Recomendado',
+          tipo: item.tipoEstablecimiento || 'restaurante'
+        }));
+      },
+      error: () => {
+        // Fallback already present with static data
+      }
+    });
   }
 }

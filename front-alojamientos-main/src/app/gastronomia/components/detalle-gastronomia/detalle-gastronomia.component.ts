@@ -45,6 +45,30 @@ export class DetalleGastronomiaComponent implements OnInit {
     '21:00', '21:30', '22:00'
   ];
 
+  private readonly tipoLabels: Record<string, string> = {
+    'restaurante': 'Restaurante',
+    'bar': 'Bar',
+    'antro': 'Antro',
+    'cafe': 'Cafe',
+    'desayunos': 'Desayunos',
+    'comida-corrida': 'Comida corrida',
+    'cena': 'Cena',
+    'antojitos': 'Antojitos'
+  };
+
+  private readonly amenidadLabels: Record<string, string> = {
+    'wifi': 'WiFi',
+    'terraza': 'Terraza',
+    'estacionamiento': 'Estacionamiento',
+    'pet-friendly': 'Pet friendly',
+    'reservas': 'Acepta reservas',
+    'musica-en-vivo': 'Musica en vivo',
+    'accesible': 'Acceso para silla de ruedas',
+    'entrega-a-domicilio': 'Entrega a domicilio',
+    'para-llevar': 'Para llevar',
+    'tarjeta': 'Pago con tarjeta'
+  };
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -282,6 +306,16 @@ export class DetalleGastronomiaComponent implements OnInit {
   get galleryImages(): string[] {
     const urls = this.extractGalleryUrls(this.establecimiento);
     return urls.length ? urls : ['assets/images/hero-oferentes.svg'];
+  }
+
+  get tipoEstablecimientoLabel(): string {
+    const key = this.establecimiento?.tipoEstablecimiento || 'restaurante';
+    return this.tipoLabels[key] || 'Restaurante';
+  }
+
+  get amenidadesVisibles(): string[] {
+    return (this.establecimiento?.amenidades?.slice(0, 8) || [])
+      .map((item) => this.amenidadLabels[item] || item);
   }
 
   get heroImage(): string {

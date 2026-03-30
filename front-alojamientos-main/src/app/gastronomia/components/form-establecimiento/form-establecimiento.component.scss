@@ -42,6 +42,21 @@
     }
   }
 
+  select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: #fff;
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary, #E31B23);
+    }
+  }
+
   small {
     display: block;
     margin-top: 0.5rem;
@@ -58,6 +73,30 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 0.85rem;
+}
+
+.amenidades-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.amenidad-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 999px;
+  padding: 0.42rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.amenidad-btn.active {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .thumb {

@@ -20,6 +20,8 @@ export interface EstablecimientoDto {
   oferenteId?: string;
   nombre: string;
   ubicacion: string;
+  tipoEstablecimiento?: string;
+  amenidades?: string[];
   descripcion: string;
   fotoPrincipal?: string;
   fotos?: FotoEstablecimientoDto[];

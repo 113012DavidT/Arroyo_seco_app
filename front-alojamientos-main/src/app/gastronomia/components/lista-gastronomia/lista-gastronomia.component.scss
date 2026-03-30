@@ -120,6 +120,31 @@
   font-weight: 700;
 }
 
+.tipo-filters {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0.4rem 0 0.9rem;
+}
+
+.tipo-chip {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 999px;
+  padding: 0.38rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.79rem;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.tipo-chip.active {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -263,6 +288,18 @@
   letter-spacing: 0.02em;
 }
 
+.card-type {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  padding: 0.32rem 0.62rem;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #fef3c7;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .card-rating {
   position: absolute;
   right: 14px;
@@ -362,6 +399,23 @@
   color: var(--color-primary, #E31B23);
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.amenidades-mini {
+  margin-top: 0.15rem;
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+
+  span {
+    display: inline-flex;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
 }
 
 @media (max-width: 768px) {

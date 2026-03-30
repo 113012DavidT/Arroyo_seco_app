@@ -1,21 +1,18 @@
 <section class="hero" [style.--scroll]="scrollOffset + 'px'">
-  <!-- Static Background with Parallax -->
   <div class="hero-bg">
     <div class="hero-overlay"></div>
   </div>
 
-  <!-- Hero Content -->
   <div class="hero-content">
     <div class="hero-text">
       <h1 class="hero-title">
         Descubre <span class="highlight">Arroyo Seco</span>
       </h1>
       <p class="hero-subtitle">
-        Hospedajes únicos, gastronomía local y experiencias inolvidables en el corazón de Querétaro
+        {{ heroSubtitleText }}
       </p>
     </div>
 
-    <!-- Floating Search Card -->
     <div class="search-card">
       <div class="search-row">
         <div class="search-field search-field--location">
@@ -29,21 +26,30 @@
 
         <div class="search-divider"></div>
 
-        <div class="search-field">
+        <div class="search-field" *ngIf="isGastronomiaLanding">
+          <label>Tipo</label>
+          <select [(ngModel)]="selectedGastroTipo">
+            <option *ngFor="let tipo of gastroCategorias" [ngValue]="tipo.key">{{ tipo.label }}</option>
+          </select>
+        </div>
+
+        <div class="search-divider" *ngIf="isGastronomiaLanding"></div>
+
+        <div class="search-field" *ngIf="!isGastronomiaLanding">
           <label>Llegada</label>
           <input type="date" [(ngModel)]="checkIn" />
         </div>
 
-        <div class="search-divider"></div>
+        <div class="search-divider" *ngIf="!isGastronomiaLanding"></div>
 
-        <div class="search-field">
+        <div class="search-field" *ngIf="!isGastronomiaLanding">
           <label>Salida</label>
           <input type="date" [(ngModel)]="checkOut" />
         </div>
 
-        <div class="search-divider"></div>
+        <div class="search-divider" *ngIf="!isGastronomiaLanding"></div>
 
-        <div class="search-field search-field--guests">
+        <div class="search-field search-field--guests" *ngIf="!isGastronomiaLanding">
           <label>Huéspedes</label>
           <select [(ngModel)]="guests">
             <option [value]="1">1 huésped</option>
@@ -65,7 +71,6 @@
     </div>
   </div>
 
-  <!-- Stats Bar -->
   <div class="stats-bar">
     <div class="stat">
       <span class="stat-number">50+</span>
@@ -86,8 +91,7 @@
   </div>
 </section>
 
-<!-- Category Chips -->
-<div class="categories-section">
+<div class="categories-section" *ngIf="!isGastronomiaLanding">
   <div class="categories-scroll">
     <button
       *ngFor="let cat of categories"
@@ -100,8 +104,20 @@
   </div>
 </div>
 
-<!-- Alojamientos Destacados -->
-<section class="featured-section">
+<div class="categories-section" *ngIf="isGastronomiaLanding">
+  <div class="categories-scroll">
+    <button
+      *ngFor="let cat of gastroCategorias"
+      class="category-chip"
+      [class.active]="selectedGastroTipo === cat.key"
+      (click)="selectedGastroTipo = cat.key"
+    >
+      <span>{{ cat.label }}</span>
+    </button>
+  </div>
+</div>
+
+<section class="featured-section" *ngIf="!isGastronomiaLanding">
   <div class="featured-header">
     <div>
       <h2 class="featured-title">Alojamientos Destacados</h2>
@@ -137,12 +153,11 @@
   </div>
 </section>
 
-<!-- Restaurantes Destacados -->
 <section class="featured-section featured-section--gastro">
   <div class="featured-header">
     <div>
       <h2 class="featured-title">Gastronomía Local</h2>
-      <p class="featured-subtitle">Descubre los sabores auténticos de la Sierra Gorda</p>
+      <p class="featured-subtitle">{{ isGastronomiaLanding ? 'Lugares reales para comer cerca de ti' : 'Descubre los sabores auténticos de la Sierra Gorda' }}</p>
     </div>
     <a class="ver-todos" (click)="navigateTo('/publica/gastronomia')">
       Ver todos
@@ -150,11 +165,12 @@
     </a>
   </div>
   <div class="featured-grid">
-    <div class="featured-card" *ngFor="let r of featuredRestaurantes" (click)="navigateTo('/publica/gastronomia/' + r.id)">
+    <div class="featured-card" *ngFor="let r of featuredGastronomia" (click)="navigateTo('/publica/gastronomia/' + r.id)">
       <div class="featured-img" [style.background-image]="'url(' + r.imagen + ')'">
         <span class="featured-badge gastro-badge" *ngIf="r.badge">{{ r.badge }}</span>
       </div>
       <div class="featured-body">
+        <span class="gastro-type-pill">{{ getTipoLabel(r.tipo) }}</span>
         <h3>{{ r.nombre }}</h3>
         <p class="featured-location">
           <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
@@ -166,19 +182,18 @@
   </div>
 </section>
 
-<!-- CTA Final -->
 <section class="cta-section">
   <div class="cta-content">
-    <h2>¿Listo para vivir la experiencia?</h2>
-    <p>Reserva tu alojamiento o restaurante favorito en Arroyo Seco</p>
+    <h2>{{ isGastronomiaLanding ? '¿Antojo de algo rico?' : '¿Listo para vivir la experiencia?' }}</h2>
+    <p>{{ isGastronomiaLanding ? 'Reserva tu mesa en minutos y descubre nuevos sabores cerca de ti.' : 'Reserva tu alojamiento o restaurante favorito en Arroyo Seco' }}</p>
     <div class="cta-buttons">
-      <button class="cta-btn cta-btn--primary" (click)="navigateTo('/publica/alojamientos')">
+      <button class="cta-btn cta-btn--primary" (click)="navigateTo(isGastronomiaLanding ? '/publica/gastronomia' : '/publica/alojamientos')">
         <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-        Explorar Alojamientos
+        {{ isGastronomiaLanding ? 'Ver restaurantes' : 'Explorar Alojamientos' }}
       </button>
-      <button class="cta-btn cta-btn--secondary" (click)="navigateTo('/publica/gastronomia')">
+      <button class="cta-btn cta-btn--secondary" (click)="navigateTo(isGastronomiaLanding ? '/publica/alojamientos' : '/publica/gastronomia')">
         <svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
-        Ver Restaurantes
+        {{ isGastronomiaLanding ? 'Ir a alojamientos' : 'Ver Restaurantes' }}
       </button>
     </div>
   </div>

@@ -284,6 +284,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+.category-chip.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
 .chip-icon {
   width: 20px;
   height: 20px;
@@ -488,6 +494,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.gastro-type-pill {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #fff4f4;
+  border: 1px solid #fecaca;
+  color: #9f1239;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .featured-card-header {

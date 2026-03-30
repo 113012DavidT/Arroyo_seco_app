@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../shared/services/toast.service';
 import { GastronomiaService, EstablecimientoDto, RankingGastronomiaDto } from '../../services/gastronomia.service';
@@ -13,6 +13,8 @@ interface Establecimiento {
   id: number;
   nombre: string;
   ubicacion: string;
+  tipoEstablecimiento: string;
+  amenidades: string[];
   descripcion: string;
   imagen: string;
   latitud: number | null;
@@ -32,6 +34,7 @@ interface Establecimiento {
 export class ListaGastronomiaComponent implements OnInit {
   search = '';
   sortMode: 'nombre' | 'ubicacion' | 'cercania' = 'cercania';
+  selectedTipo = 'todos';
   rankingMode = false;
   establecimientos: Establecimiento[] = [];
   loading = false;
@@ -41,18 +44,49 @@ export class ListaGastronomiaComponent implements OnInit {
   hasOfflineFallback = false;
   private userCoords: { lat: number; lng: number } | null = null;
   private readonly listCacheKey = 'gastronomia:list';
+  readonly tiposDisponibles = [
+    { key: 'todos', label: 'Todos' },
+    { key: 'restaurante', label: 'Restaurantes' },
+    { key: 'bar', label: 'Bar' },
+    { key: 'antro', label: 'Antro' },
+    { key: 'cafe', label: 'Cafe' },
+    { key: 'desayunos', label: 'Desayunos' },
+    { key: 'comida-corrida', label: 'Comida corrida' },
+    { key: 'cena', label: 'Cena' },
+    { key: 'antojitos', label: 'Antojitos' }
+  ];
+
+  private readonly amenidadLabels: Record<string, string> = {
+    'wifi': 'WiFi',
+    'terraza': 'Terraza',
+    'estacionamiento': 'Estacionamiento',
+    'pet-friendly': 'Pet friendly',
+    'reservas': 'Acepta reservas',
+    'musica-en-vivo': 'Musica en vivo',
+    'accesible': 'Acceso para silla de ruedas',
+    'entrega-a-domicilio': 'Entrega a domicilio',
+    'para-llevar': 'Para llevar',
+    'tarjeta': 'Pago con tarjeta'
+  };
 
   constructor(
     private toast: ToastService,
     private gastronomiaService: GastronomiaService,
     private auth: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private offlineCache: OfflineCacheService
   ) {}
 
   ngOnInit(): void {
     // Detectar si estamos en ruta pública
     this.isPublic = this.router.url.includes('/publica/');
+
+    const tipo = this.route.snapshot.queryParamMap.get('tipo');
+    if (tipo) {
+      this.selectedTipo = tipo;
+    }
+
     this.detectUserLocation();
     this.fetchEstablecimientos();
   }
@@ -93,6 +127,8 @@ export class ListaGastronomiaComponent implements OnInit {
           id: d.id!,
           nombre: d.nombre,
           ubicacion: d.ubicacion,
+          tipoEstablecimiento: d.tipoEstablecimiento || 'restaurante',
+          amenidades: d.amenidades || [],
           descripcion: d.descripcion,
           imagen: d.fotoPrincipal || 'assets/images/hero-oferentes.svg',
           latitud: d.latitud ?? null,
@@ -115,6 +151,8 @@ export class ListaGastronomiaComponent implements OnInit {
             id: d.id!,
             nombre: d.nombre,
             ubicacion: d.ubicacion,
+            tipoEstablecimiento: d.tipoEstablecimiento || 'restaurante',
+            amenidades: d.amenidades || [],
             descripcion: d.descripcion,
             imagen: d.fotoPrincipal || 'assets/images/hero-oferentes.svg',
             latitud: d.latitud ?? null,
@@ -210,8 +248,13 @@ export class ListaGastronomiaComponent implements OnInit {
     if (this.loading || this.error) return this.establecimientos;
     let result = this.establecimientos.filter(e =>
       e.nombre.toLowerCase().includes(this.search.toLowerCase()) ||
-      e.ubicacion.toLowerCase().includes(this.search.toLowerCase())
+      e.ubicacion.toLowerCase().includes(this.search.toLowerCase()) ||
+      (e.tipoEstablecimiento || '').toLowerCase().includes(this.search.toLowerCase())
     );
+
+    if (this.selectedTipo !== 'todos') {
+      result = result.filter((e) => e.tipoEstablecimiento === this.selectedTipo);
+    }
 
     if (this.sortMode === 'cercania') {
       return [...result].sort((a, b) => {
@@ -256,6 +299,15 @@ export class ListaGastronomiaComponent implements OnInit {
     if (km == null || !Number.isFinite(km)) return 'Sin distancia';
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(1)} km`;
+  }
+
+  getTipoLabel(tipo: string): string {
+    const found = this.tiposDisponibles.find((item) => item.key === tipo);
+    return found?.label || 'Restaurante';
+  }
+
+  getAmenidadLabel(value: string): string {
+    return this.amenidadLabels[value] || value;
   }
 
   private recalculateDistances() {

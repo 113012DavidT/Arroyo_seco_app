@@ -16,6 +16,8 @@ public class CrearEstablecimientoCommand
     public double? Latitud { get; set; }
     public double? Longitud { get; set; }
     public string? Direccion { get; set; }
+    public string? TipoEstablecimiento { get; set; }
+    public List<string> Amenidades { get; set; } = new();
     public string? Descripcion { get; set; }
     public string? FotoPrincipal { get; set; }
     public List<string> FotosUrls { get; set; } = new();
@@ -52,6 +54,8 @@ public class CrearEstablecimientoCommandHandler
             Latitud = request.Latitud,
             Longitud = request.Longitud,
             Direccion = request.Direccion?.Trim(),
+            TipoEstablecimiento = request.TipoEstablecimiento?.Trim(),
+            Amenidades = request.Amenidades,
             Descripcion = request.Descripcion,
             FotoPrincipal = request.FotoPrincipal,
             Fotos = request.FotosUrls

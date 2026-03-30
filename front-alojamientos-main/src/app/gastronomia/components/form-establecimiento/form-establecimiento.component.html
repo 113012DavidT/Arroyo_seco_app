@@ -34,6 +34,17 @@
         placeholder="Ej: Calle Principal 120, Arroyo Seco" />
     </div>
 
+    <div class="form-group">
+      <label for="tipoEstablecimiento">Tipo de establecimiento</label>
+      <select
+        id="tipoEstablecimiento"
+        [(ngModel)]="establecimiento.tipoEstablecimiento"
+        name="tipoEstablecimiento">
+        <option [ngValue]="undefined">Selecciona una categoría</option>
+        <option *ngFor="let tipo of tiposEstablecimiento" [ngValue]="tipo.key">{{ tipo.label }}</option>
+      </select>
+    </div>
+
     <div class="form-group full-width">
       <label>📍 Marcar en el mapa (opcional pero recomendado)</label>
       <app-map-picker 
@@ -51,6 +62,21 @@
         name="descripcion"
         rows="4"
         placeholder="Describe tu restaurante..."></textarea>
+    </div>
+
+    <div class="form-group full-width">
+      <label>Amenidades y servicios</label>
+      <div class="amenidades-grid">
+        <button
+          type="button"
+          class="amenidad-btn"
+          *ngFor="let amenidad of amenidadesDisponibles"
+          [class.active]="tieneAmenidad(amenidad.key)"
+          (click)="toggleAmenidad(amenidad.key)">
+          {{ amenidad.label }}
+        </button>
+      </div>
+      <small>Estas opciones se mostrarán al cliente al abrir el restaurante.</small>
     </div>
 
     <div class="form-group full-width">

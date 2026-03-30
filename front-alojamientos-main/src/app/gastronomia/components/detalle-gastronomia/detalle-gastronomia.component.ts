@@ -56,17 +56,17 @@ export class DetalleGastronomiaComponent implements OnInit {
     'antojitos': 'Antojitos'
   };
 
-  private readonly amenidadLabels: Record<string, string> = {
-    'wifi': 'WiFi',
-    'terraza': 'Terraza',
-    'estacionamiento': 'Estacionamiento',
-    'pet-friendly': 'Pet friendly',
-    'reservas': 'Acepta reservas',
-    'musica-en-vivo': 'Musica en vivo',
-    'accesible': 'Acceso para silla de ruedas',
-    'entrega-a-domicilio': 'Entrega a domicilio',
-    'para-llevar': 'Para llevar',
-    'tarjeta': 'Pago con tarjeta'
+  private readonly amenidadCatalog: Record<string, { label: string; icon: string }> = {
+    'wifi':               { label: 'WiFi', icon: 'M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z' },
+    'terraza':            { label: 'Terraza', icon: 'M12 3L2 12h3v9h6v-5h2v5h6v-9h3L12 3z' },
+    'estacionamiento':    { label: 'Estacionamiento', icon: 'M13 3H6v18h4v-6h3c3.31 0 6-2.69 6-6s-2.69-6-6-6zm.2 8H10V7h3.2c1.1 0 2 .9 2 2s-.9 2-2 2z' },
+    'pet-friendly':       { label: 'Pet friendly', icon: 'M4.5 9A2.5 2.5 0 1 0 4.5 4a2.5 2.5 0 0 0 0 5zm15 0A2.5 2.5 0 1 0 19.5 4a2.5 2.5 0 0 0 0 5zM8 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-4 1c-3.5 0-6 2.2-6 5 0 2.2 1.8 4 4 4 .9 0 1.7-.3 2.4-.8.6.5 1.5.8 2.6.8 2.2 0 4-1.8 4-4 0-2.8-2.5-5-6-5z' },
+    'reservas':           { label: 'Acepta reservas', icon: 'M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V9h14v10zm0-12H5V5h14v2z' },
+    'musica-en-vivo':     { label: 'Música en vivo', icon: 'M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z' },
+    'accesible':          { label: 'Acceso para sillas de ruedas', icon: 'M12 2c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm9 7h-6v13h-2v-6h-2v6H9V9H3V7h18v2z' },
+    'entrega-a-domicilio':{ label: 'Entrega a domicilio', icon: 'M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zm-.5 1.5l1.96 2.5H17V9.5h2.5zM6 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm2.22-3c-.55-.61-1.35-1-2.22-1s-1.67.39-2.22 1H3V6h12v9H8.22zm9.78 3c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z' },
+    'para-llevar':        { label: 'Para llevar', icon: 'M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8 4c0 .55-.45 1-1 1s-1-.45-1-1V8h2v2zm2-4c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm4 4c0 .55-.45 1-1 1s-1-.45-1-1V8h2v2z' },
+    'tarjeta':            { label: 'Pago con tarjeta', icon: 'M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' }
   };
 
   constructor(
@@ -313,9 +313,9 @@ export class DetalleGastronomiaComponent implements OnInit {
     return this.tipoLabels[key] || 'Restaurante';
   }
 
-  get amenidadesVisibles(): string[] {
+  get amenidadesVisibles(): { icon: string; label: string }[] {
     return (this.establecimiento?.amenidades?.slice(0, 8) || [])
-      .map((item) => this.amenidadLabels[item] || item);
+      .map((key) => this.amenidadCatalog[key] ?? { icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z', label: key });
   }
 
   get heroImage(): string {

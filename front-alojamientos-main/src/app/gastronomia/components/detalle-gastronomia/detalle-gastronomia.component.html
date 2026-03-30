@@ -56,8 +56,14 @@
     </div>
   </section>
 
-  <section class="chips-row" *ngIf="amenidadesVisibles.length > 0">
-    <span class="service-chip" *ngFor="let amenidad of amenidadesVisibles">{{ amenidad }}</span>
+  <section class="amenidades-section" *ngIf="amenidadesVisibles.length > 0">
+    <h2 class="amenidades-section__title">Lo que este lugar ofrece</h2>
+    <div class="amenidades-grid">
+      <div class="amenidad-item" *ngFor="let a of amenidadesVisibles">
+        <svg viewBox="0 0 24 24"><path [attr.d]="a.icon"/></svg>
+        <span>{{ a.label }}</span>
+      </div>
+    </div>
   </section>
 
   <section class="gallery-strip" *ngIf="galleryImages.length > 1">

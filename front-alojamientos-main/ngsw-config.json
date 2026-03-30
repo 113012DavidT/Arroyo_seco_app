@@ -13,7 +13,7 @@
           "/favicon.ico",
           "/index.html",
           "/env.js",
-          "/manifest.webmanifest",
+          "/manifest-v2.webmanifest",
           "/*.css",
           "/*.js"
         ]

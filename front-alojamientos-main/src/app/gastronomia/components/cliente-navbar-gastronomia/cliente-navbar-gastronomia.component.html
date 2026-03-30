@@ -4,13 +4,13 @@
       <img src="assets/images/logo-arroyo-seco.svg" alt="Arroyo Seco" class="brand__logo" />
     </a>
 
-    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu">
+    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu" [attr.aria-expanded]="menuOpen" aria-controls="cliente-gastro-menu">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
-    <div class="nav-links" [class.active]="menuOpen">
+    <div class="nav-links" id="cliente-gastro-menu" [class.active]="menuOpen">
       <a routerLink="/cliente/gastronomia" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Restaurantes</a>
       <a routerLink="/cliente/gastronomia/reservas" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Mis Reservas</a>
       <a routerLink="/cliente/gastronomia/notificaciones" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Notificaciones</a>
@@ -28,4 +28,5 @@
       <a (click)="logout()" class="logout logout-desktop">Cerrar sesión</a>
     </div>
   </div>
+  <button class="menu-backdrop" *ngIf="menuOpen" (click)="closeMenu()" aria-label="Cerrar menú"></button>
 </nav>

@@ -551,6 +551,19 @@
   .content { grid-template-columns: 1fr; gap: 2rem; }
   .booking { position: static; }
   .amenities-grid { grid-template-columns: 1fr; }
+  .title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+  .btn-share {
+    padding: 0;
+  }
+  .reviews-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
 }
 
 @media (max-width: 600px) {
@@ -558,4 +571,31 @@
   .gallery-side { display: none; }
   .gallery-main img { min-height: 240px; }
   .booking-form-row { grid-template-columns: 1fr; }
+  .gallery-show-all {
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.78rem;
+    padding: 0.45rem 0.75rem;
+  }
+  .menu-item {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .menu-item__dots {
+    display: none;
+  }
+  .review-form__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .review-form__hint {
+    text-align: right;
+  }
+  .lightbox-nav {
+    width: 42px;
+    height: 42px;
+  }
+  .lightbox-prev { left: 0.65rem; }
+  .lightbox-next { right: 0.65rem; }
 }

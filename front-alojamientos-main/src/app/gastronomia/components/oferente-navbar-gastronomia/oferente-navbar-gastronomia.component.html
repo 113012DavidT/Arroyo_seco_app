@@ -5,13 +5,13 @@
       <span class="brand__text">Gastronomía</span>
     </a>
 
-    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu">
+    <button class="hamburger" [class.active]="menuOpen" (click)="toggleMenu()" aria-label="Toggle menu" [attr.aria-expanded]="menuOpen" aria-controls="oferente-gastro-menu">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
-    <div class="nav-links" [class.active]="menuOpen">
+    <div class="nav-links" id="oferente-gastro-menu" [class.active]="menuOpen">
       <a routerLink="/oferente/gastronomia/dashboard" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Dashboard</a>
       <a routerLink="/oferente/gastronomia/establecimientos" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Mis Restaurantes</a>
       <a routerLink="/oferente/gastronomia/reservas" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Reservas</a>
@@ -27,4 +27,5 @@
       <a (click)="logout()" class="logout desktop-logout">Cerrar sesión</a>
     </div>
   </div>
+  <button class="menu-backdrop" *ngIf="menuOpen" (click)="closeMenu()" aria-label="Cerrar menú"></button>
 </nav>

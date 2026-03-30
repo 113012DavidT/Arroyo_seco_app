@@ -41,11 +41,39 @@
 }
 
 @media (max-width: 768px) {
+  .hero {
+    padding: 1.5rem 1rem;
+  }
+
   .hero-inner {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+  }
+
+  .hero-text p {
+    font-size: 0.95rem;
   }
 
   .hero img {
     max-height: 120px;
+  }
+
+  .content {
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-text h1 {
+    font-size: 1.28rem;
+  }
+
+  .hero img {
+    max-height: 96px;
   }
 }

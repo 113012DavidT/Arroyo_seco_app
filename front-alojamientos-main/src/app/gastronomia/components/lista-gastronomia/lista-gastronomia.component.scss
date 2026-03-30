@@ -419,8 +419,22 @@
 }
 
 @media (max-width: 768px) {
+  .tipo-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.25rem;
+    scrollbar-width: thin;
+  }
+
+  .tipo-chip {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
   .toolbar {
     align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.9rem 0;
   }
 
   .search-wrapper {
@@ -428,15 +442,35 @@
   }
 
   .toolbar-actions {
-    justify-content: space-between;
+    width: 100%;
+    justify-content: stretch;
     flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .sort-wrapper {
+    width: 100%;
+  }
+
+  .sort-select {
+    width: 100%;
   }
 
   .results-count {
     width: 100%;
+    text-align: left;
   }
 
   .grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .card-image {
+    height: 200px;
+  }
+
+  .card-body {
+    padding: 0.85rem 0.1rem;
   }
 }

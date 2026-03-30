@@ -243,13 +243,44 @@
 }
 
 @media (max-width: 768px) {
+  .tabs h2 {
+    font-size: 1.3rem;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
 
-  .card-header,
-  .info-row {
+  .card-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .info-row {
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+  }
+
+  .card-actions,
+  .card-actions--historial {
+    justify-content: stretch;
+  }
+
+  .btn-cancel,
+  .btn-review {
+    width: 100%;
+    text-align: center;
+  }
+
+  .review-panel__actions {
+    flex-direction: column;
+  }
+
+  .btn-submit-review,
+  .btn-cancel-review {
+    width: 100%;
   }
 }

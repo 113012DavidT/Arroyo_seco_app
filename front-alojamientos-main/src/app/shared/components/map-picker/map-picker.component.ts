@@ -1,11 +1,18 @@
-import { Component, EventEmitter, Input, OnInit, Output, AfterViewInit } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import * as L from 'leaflet';
+import { GOOGLE_MAPS_CONFIG } from '../../../config/maps.config';
 
 interface LocationData {
   lat: number;
   lng: number;
   address?: string;
+}
+
+declare global {
+  interface Window {
+    google?: any;
+    __asGoogleMapsPromise?: Promise<any>;
+  }
 }
 
 @Component({
@@ -25,8 +32,10 @@ interface LocationData {
           </p>
         </div>
         <p *ngIf="buscandoDireccion" class="loading">🔍 Buscando dirección...</p>
+        <p *ngIf="cargandoMapa" class="loading">🗺️ Cargando Google Maps...</p>
+        <p *ngIf="errorMapa" class="loading">⚠️ {{ errorMapa }}</p>
       </div>
-      <div id="map" style="height: 400px; width: 100%; border-radius: 8px;"></div>
+      <div [id]="mapId" style="height: 400px; width: 100%; border-radius: 8px;"></div>
     </div>
   `,
   styles: [`
@@ -69,49 +78,71 @@ export class MapPickerComponent implements AfterViewInit {
   @Input() longitud: number | null = null;
   @Output() locationSelected = new EventEmitter<LocationData>();
 
-  private map!: L.Map;
-  private marker?: L.Marker;
-  
+  readonly mapId = `map-picker-${Math.random().toString(36).slice(2, 10)}`;
+
+  private map?: any;
+  private marker?: any;
+  private geocoder?: any;
+
+  cargandoMapa = false;
+  errorMapa = '';
   direccionCapturada = '';
   buscandoDireccion = false;
 
   ngAfterViewInit(): void {
-    this.initMap();
-  }
-
-  private initMap(): void {
-    // Centro predeterminado: Arroyo Seco, Querétaro
-    const defaultLat = this.latitud || 21.2569;
-    const defaultLng = this.longitud || -99.9897;
-
-    this.map = L.map('map').setView([defaultLat, defaultLng], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(this.map);
-
-    // Si ya hay coordenadas, agregar marcador
-    if (this.latitud && this.longitud) {
-      this.addMarker(this.latitud, this.longitud);
-      this.getDireccion(this.latitud, this.longitud);
-    }
-
-    // Click en el mapa para agregar/mover marcador
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      this.addMarker(lat, lng);
-      this.getDireccion(lat, lng);
+    this.initMap().catch((error) => {
+      console.error('Error inicializando Google Maps:', error);
+      this.errorMapa = 'No se pudo cargar Google Maps. Verifica la API key.';
     });
   }
 
-  private addMarker(lat: number, lng: number): void {
-    // Remover marcador anterior si existe
-    if (this.marker) {
-      this.map.removeLayer(this.marker);
+  private async initMap(): Promise<void> {
+    this.cargandoMapa = true;
+    await this.loadGoogleMaps();
+
+    const defaultLat = this.latitud || 21.2569;
+    const defaultLng = this.longitud || -99.9897;
+
+    this.map = new window.google.maps.Map(document.getElementById(this.mapId), {
+      center: { lat: defaultLat, lng: defaultLng },
+      zoom: 14,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      gestureHandling: 'greedy'
+    });
+
+    this.geocoder = new window.google.maps.Geocoder();
+
+    if (this.latitud && this.longitud) {
+      this.addMarker(this.latitud, this.longitud);
+      await this.getDireccion(this.latitud, this.longitud);
     }
 
-    // Agregar nuevo marcador
-    this.marker = L.marker([lat, lng]).addTo(this.map);
+    this.map.addListener('click', async (event: any) => {
+      const lat = event?.latLng?.lat?.();
+      const lng = event?.latLng?.lng?.();
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
+      }
+
+      this.addMarker(lat, lng);
+      await this.getDireccion(lat, lng);
+    });
+
+    this.cargandoMapa = false;
+  }
+
+  private addMarker(lat: number, lng: number): void {
+    if (this.marker) {
+      this.marker.setMap(null);
+    }
+
+    this.marker = new window.google.maps.Marker({
+      position: { lat, lng },
+      map: this.map
+    });
+
     this.latitud = lat;
     this.longitud = lng;
   }
@@ -121,49 +152,55 @@ export class MapPickerComponent implements AfterViewInit {
     this.direccionCapturada = '';
 
     try {
-      // Geocodificación inversa con Nominatim (OpenStreetMap)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'Accept-Language': 'es'
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Error al obtener dirección');
+      if (!this.geocoder) {
+        throw new Error('Geocoder no disponible');
       }
 
-      const data = await response.json();
-      
-      // Construir dirección legible
-      const address = data.address;
-      const partes = [];
-      
-      if (address.road) partes.push(address.road);
-      if (address.house_number) partes[0] = `${address.road} ${address.house_number}`;
-      if (address.suburb || address.neighbourhood) partes.push(address.suburb || address.neighbourhood);
-      if (address.city || address.town || address.village) partes.push(address.city || address.town || address.village);
-      if (address.state) partes.push(address.state);
+      const result = await this.geocoder.geocode({ location: { lat, lng } });
+      this.direccionCapturada = result?.results?.[0]?.formatted_address || '';
 
-      this.direccionCapturada = partes.join(', ') || data.display_name;
-
-      // Emitir evento con coordenadas y dirección
       this.locationSelected.emit({
         lat,
         lng,
         address: this.direccionCapturada
       });
-
     } catch (error) {
       console.error('Error al obtener dirección:', error);
       this.direccionCapturada = 'No se pudo obtener la dirección';
-      
-      // Emitir solo con coordenadas
       this.locationSelected.emit({ lat, lng });
     } finally {
       this.buscandoDireccion = false;
     }
+  }
+
+  private async loadGoogleMaps(): Promise<any> {
+    if (window.google?.maps) {
+      return window.google.maps;
+    }
+
+    if (window.__asGoogleMapsPromise) {
+      return window.__asGoogleMapsPromise;
+    }
+
+    const apiKey = GOOGLE_MAPS_CONFIG.apiKey;
+    if (!apiKey || apiKey === 'TU_API_KEY_AQUI') {
+      throw new Error('GOOGLE_MAPS_API_KEY no configurada');
+    }
+
+    const libraries = (GOOGLE_MAPS_CONFIG.libraries || []).join(',');
+    const language = GOOGLE_MAPS_CONFIG.language || 'es';
+    const src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=${libraries}&language=${language}&v=weekly`;
+
+    window.__asGoogleMapsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(window.google?.maps);
+      script.onerror = () => reject(new Error('No se pudo cargar el script de Google Maps'));
+      document.head.appendChild(script);
+    });
+
+    return window.__asGoogleMapsPromise;
   }
 }

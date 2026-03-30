@@ -233,16 +233,21 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection("Storage"));
 var storage = builder.Configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
-if (string.IsNullOrWhiteSpace(storage.ComprobantesPath))
+var configuredStoragePath = storage.ComprobantesPath?.Trim() ?? string.Empty;
+var looksLikeWindowsPath = configuredStoragePath.Contains(":\\", StringComparison.Ordinal);
+
+if (string.IsNullOrWhiteSpace(configuredStoragePath)
+    || !Path.IsPathRooted(configuredStoragePath)
+    || (!OperatingSystem.IsWindows() && looksLikeWindowsPath))
 {
-    storage.ComprobantesPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "arroyoSeco", "comprobantes");
+    configuredStoragePath = Path.Combine(Path.GetTempPath(), "arroyoseco-comprobantes");
 }
+
+storage.ComprobantesPath = configuredStoragePath;
+
 builder.Services.PostConfigure<StorageOptions>(o =>
 {
-    if (string.IsNullOrWhiteSpace(o.ComprobantesPath))
-        o.ComprobantesPath = storage.ComprobantesPath;
+    o.ComprobantesPath = storage.ComprobantesPath;
 });
 
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
@@ -308,9 +313,6 @@ app.Use(async (ctx, next) =>
 
 var storageOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<StorageOptions>>().Value;
 var comprobantesPath = storageOptions.ComprobantesPath;
-
-if (string.IsNullOrEmpty(comprobantesPath) || !Path.IsPathRooted(comprobantesPath))
-    comprobantesPath = Path.Combine(Path.GetTempPath(), "arroyoseco-comprobantes");
 
 var contentTypeProvider = new FileExtensionContentTypeProvider();
 contentTypeProvider.Mappings[".webmanifest"] = "application/manifest+json";

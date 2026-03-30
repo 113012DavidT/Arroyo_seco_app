@@ -87,7 +87,7 @@ public class AlojamientosController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id }, id);
     }
 
-    public record ActualizarAlojamientoDto(string Nombre, string Ubicacion, double? Latitud, double? Longitud, string? Direccion, int MaxHuespedes, int Habitaciones, int Banos, decimal PrecioPorNoche, string? FotoPrincipal, List<string>? FotosUrls);
+    public record ActualizarAlojamientoDto(string Nombre, string Ubicacion, double? Latitud, double? Longitud, string? Direccion, int MaxHuespedes, int Habitaciones, int Banos, decimal PrecioPorNoche, List<string>? Amenidades, string? FotoPrincipal, List<string>? FotosUrls);
 
     // Solo Oferente
     [Authorize(Roles = "Oferente")]
@@ -108,6 +108,7 @@ public class AlojamientosController : ControllerBase
         a.Habitaciones = dto.Habitaciones;
         a.Banos = dto.Banos;
         a.PrecioPorNoche = dto.PrecioPorNoche;
+        a.Amenidades = dto.Amenidades ?? new List<string>();
         a.FotoPrincipal = dto.FotoPrincipal;
 
         if (dto.FotosUrls is not null)

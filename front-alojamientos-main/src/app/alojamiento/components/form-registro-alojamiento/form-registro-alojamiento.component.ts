@@ -17,6 +17,7 @@ interface AlojamientoForm {
   habitaciones: number;
   banos: number;
   precio: number;
+  amenidades: string[];
   fotos: string[];
 }
 
@@ -44,8 +45,22 @@ export class FormRegistroAlojamientoComponent implements OnInit {
     habitaciones: 1,
     banos: 1,
     precio: 0,
+    amenidades: [],
     fotos: []
   };
+
+  readonly amenidadesDisponibles = [
+    { key: 'wifi', label: 'WiFi' },
+    { key: 'estacionamiento', label: 'Estacionamiento' },
+    { key: 'alberca', label: 'Alberca' },
+    { key: 'aire-acondicionado', label: 'Aire acondicionado' },
+    { key: 'cocina-equipada', label: 'Cocina equipada' },
+    { key: 'tv', label: 'TV' },
+    { key: 'mascotas', label: 'Acepta mascotas' },
+    { key: 'asador', label: 'Asador' },
+    { key: 'chimenea', label: 'Chimenea' },
+    { key: 'internet-trabajo', label: 'Espacio para trabajar' }
+  ];
   
   autocomplete: any;
   busquedaDireccion = '';
@@ -72,6 +87,7 @@ export class FormRegistroAlojamientoComponent implements OnInit {
               habitaciones: a.habitaciones,
               banos: a.banos,
               precio: a.precioPorNoche,
+              amenidades: a.amenidades || [],
               fotos: [a.fotoPrincipal, ...(a.fotos || []).map((foto) => foto.url), ...(a.fotosUrls || [])].filter(Boolean) as string[]
             };
             this.busquedaDireccion = a.direccion || a.ubicacion;
@@ -140,6 +156,20 @@ export class FormRegistroAlojamientoComponent implements OnInit {
     this.formModel.fotos.splice(idx, 1);
   }
 
+  toggleAmenidad(key: string) {
+    const set = new Set(this.formModel.amenidades);
+    if (set.has(key)) {
+      set.delete(key);
+    } else {
+      set.add(key);
+    }
+    this.formModel.amenidades = Array.from(set);
+  }
+
+  tieneAmenidad(key: string): boolean {
+    return this.formModel.amenidades.includes(key);
+  }
+
   onSubmit(form: NgForm) {
     if (form.invalid) return;
     
@@ -158,6 +188,7 @@ export class FormRegistroAlojamientoComponent implements OnInit {
       habitaciones: this.formModel.habitaciones,
       banos: this.formModel.banos,
       precioPorNoche: this.formModel.precio,
+      amenidades: this.formModel.amenidades,
       fotoPrincipal: this.formModel.fotos[0] || '',
       fotosUrls: this.formModel.fotos.slice(1)
     };

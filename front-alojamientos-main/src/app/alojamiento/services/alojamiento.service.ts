@@ -21,6 +21,7 @@ export interface AlojamientoDto {
   habitaciones: number;
   banos: number;
   precioPorNoche: number;
+  amenidades?: string[];
   fotoPrincipal?: string;
   fotos?: FotoAlojamientoDto[];
   fotosUrls?: string[];

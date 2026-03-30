@@ -50,15 +50,20 @@ export class DetalleAlojamientoComponent implements OnInit {
   lightboxOpen = false;
   lightboxIndex = 0;
 
-  // Amenities list
-  readonly amenities = [
-    { icon: 'M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z', label: 'WiFi' },
-    { icon: 'M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z', label: 'Estacionamiento' },
-    { icon: 'M21 18H3v2h18v-2zM17.12 5.56A3.07 3.07 0 0 0 12 2.68 3.07 3.07 0 0 0 6.88 5.56L3 16h18l-3.88-10.44z', label: 'Alberca' },
-    { icon: 'M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z', label: 'Aire acondicionado' },
-    { icon: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z', label: 'Cocina equipada' },
-    { icon: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z', label: 'TV' },
-  ];
+  private readonly amenityCatalog: Record<string, { icon: string; label: string }> = {
+    'wifi': { icon: 'M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z', label: 'WiFi' },
+    'estacionamiento': { icon: 'M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z', label: 'Estacionamiento' },
+    'alberca': { icon: 'M21 18H3v2h18v-2zM17.12 5.56A3.07 3.07 0 0 0 12 2.68 3.07 3.07 0 0 0 6.88 5.56L3 16h18l-3.88-10.44z', label: 'Alberca' },
+    'aire-acondicionado': { icon: 'M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z', label: 'Aire acondicionado' },
+    'cocina-equipada': { icon: 'M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z', label: 'Cocina equipada' },
+    'tv': { icon: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z', label: 'TV' },
+    'mascotas': { icon: 'M4.5 9A2.5 2.5 0 1 0 4.5 4a2.5 2.5 0 0 0 0 5zm15 0A2.5 2.5 0 1 0 19.5 4a2.5 2.5 0 0 0 0 5zM8 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-4 1c-3.5 0-6 2.2-6 5 0 2.2 1.8 4 4 4 .9 0 1.7-.3 2.4-.8.6.5 1.5.8 2.6.8 2.2 0 4-1.8 4-4 0-2.8-2.5-5-6-5z', label: 'Acepta mascotas' },
+    'asador': { icon: 'M5 21h14v-2H5v2zm7-19c-3.31 0-6 2.69-6 6 0 2.38 1.39 4.43 3.4 5.4L8 17h8l-1.4-3.6C16.61 12.43 18 10.38 18 8c0-3.31-2.69-6-6-6z', label: 'Asador' },
+    'chimenea': { icon: 'M12 2c1 2 1.5 3.5 1.5 5.1 0 1.5-.6 2.9-1.7 4-1.1 1.1-1.8 2.6-1.8 4.2 0 2.5 2 4.5 4.5 4.5s4.5-2 4.5-4.5c0-3.7-2.2-6.8-5.5-8.2V2h-2zM6 14c-1.2 1.4-2 3.3-2 5 0 2.8 2.2 5 5 5h6c2.8 0 5-2.2 5-5 0-1.7-.8-3.6-2-5-.3 3.4-2.9 6-6.5 6s-6.2-2.6-6.5-6z', label: 'Chimenea' },
+    'internet-trabajo': { icon: 'M4 5h16v10H4V5zm0 12h6v2h4v-2h6v2H4v-2z', label: 'Espacio para trabajar' }
+  };
+
+  private readonly defaultAmenityKeys = ['wifi', 'estacionamiento', 'cocina-equipada', 'tv'];
 
   // Gallery fallback images
   readonly defaultGalleryImages = [
@@ -79,6 +84,16 @@ export class DetalleAlojamientoComponent implements OnInit {
       return padded;
     }
     return this.defaultGalleryImages;
+  }
+
+  get displayedAmenities(): Array<{ icon: string; label: string }> {
+    const keys = this.alojamiento?.amenidades?.length
+      ? this.alojamiento.amenidades
+      : this.defaultAmenityKeys;
+
+    return keys
+      .map((key) => this.amenityCatalog[key])
+      .filter((item): item is { icon: string; label: string } => !!item);
   }
 
   get nights(): number {

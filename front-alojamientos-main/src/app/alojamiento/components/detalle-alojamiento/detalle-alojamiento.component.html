@@ -101,7 +101,7 @@
       <div class="amenities-section">
         <h2>Lo que este lugar ofrece</h2>
         <div class="amenities-grid">
-          <div class="amenity" *ngFor="let a of amenities">
+          <div class="amenity" *ngFor="let a of displayedAmenities">
             <svg viewBox="0 0 24 24"><path [attr.d]="a.icon"/></svg>
             <span>{{ a.label }}</span>
           </div>

@@ -51,6 +51,21 @@
     </label>
 
     <div class="col-span-2">
+      <label>Amenidades del alojamiento</label>
+      <div class="amenidades-grid">
+        <button
+          type="button"
+          class="amenidad-btn"
+          *ngFor="let amenidad of amenidadesDisponibles"
+          [class.active]="tieneAmenidad(amenidad.key)"
+          (click)="toggleAmenidad(amenidad.key)">
+          {{ amenidad.label }}
+        </button>
+      </div>
+      <small>Estas amenidades se mostrarán al cliente en el detalle del alojamiento.</small>
+    </div>
+
+    <div class="col-span-2">
       <label>Fotos del alojamiento</label>
       <div class="fotos">
         <input type="file" accept="image/*" multiple (change)="onFotosSeleccionadas($event)" />

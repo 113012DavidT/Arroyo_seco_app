@@ -62,7 +62,7 @@ jobs:
             cd ~/back-alojamientos
             git pull origin main
             cd front-alojamientos-main
-            export FRONT_IMAGE=ghcr.io/113012davidt/arroyo-seco-front:latest
+            export FRONT_IMAGE=ghcr.io/113012davidt/arroyo-seco-front:${{ github.sha }}
             docker compose pull front
-            docker compose up -d --remove-orphans
+            docker compose up -d --force-recreate --remove-orphans front
             docker image prune -f

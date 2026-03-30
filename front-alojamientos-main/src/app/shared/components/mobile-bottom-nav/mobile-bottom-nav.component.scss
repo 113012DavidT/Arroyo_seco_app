@@ -25,9 +25,10 @@
 		height: 100%;
 		transition: color .2s, background .2s;
 
-		.material-icons {
-			font-size: 24px;
-			line-height: 24px;
+		.nav-icon {
+			width: 22px;
+			height: 22px;
+			fill: currentColor;
 		}
 
 		&.active {

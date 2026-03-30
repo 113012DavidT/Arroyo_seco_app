@@ -4,7 +4,9 @@
      routerLinkActive="active"
      class="nav-item"
      [attr.aria-label]="item.label">
-    <span class="material-icons">{{ item.icon }}</span>
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path [attr.d]="iconPath(item.icon)"></path>
+    </svg>
     <span class="label">{{ item.label }}</span>
   </a>
 </nav>

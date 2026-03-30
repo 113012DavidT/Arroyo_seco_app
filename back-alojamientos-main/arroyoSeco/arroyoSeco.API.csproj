@@ -16,6 +16,7 @@
     <!-- JWT + Identity (necesario en el proyecto de inicio para las extensiones AddJwtBearer / AddEntityFrameworkStores) -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.7" />
+    <PackageReference Include="Fido2" Version="4.0.0" />
 
     <!-- Swagger -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />

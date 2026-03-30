@@ -91,6 +91,23 @@
             <span *ngIf="!loading">Iniciar Sesión</span>
             <span *ngIf="loading" class="spinner"></span>
           </button>
+
+          <button
+            type="button"
+            class="btn-biometric"
+            [disabled]="biometricLoading || !model.email"
+            (click)="loginWithBiometric()">
+            <span *ngIf="!biometricLoading">Entrar con huella / Face ID</span>
+            <span *ngIf="biometricLoading" class="spinner-dark"></span>
+          </button>
+
+          <button
+            type="button"
+            class="btn-biometric-secondary"
+            [disabled]="biometricLoading || loading"
+            (click)="activateBiometric(f)">
+            Activar biometría en este dispositivo
+          </button>
         </form>
 
         <div class="divider">

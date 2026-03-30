@@ -307,12 +307,67 @@
   cursor: not-allowed;
 }
 
+.btn-biometric {
+  width: 100%;
+  padding: 0.85rem;
+  background: #111827;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-biometric:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.btn-biometric:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-biometric-secondary {
+  width: 100%;
+  padding: 0.7rem;
+  background: transparent;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-biometric-secondary:hover:not(:disabled) {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.btn-biometric-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Spinner */
 .spinner {
   display: inline-block;
   width: 20px;
   height: 20px;
   border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.spinner-dark {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;

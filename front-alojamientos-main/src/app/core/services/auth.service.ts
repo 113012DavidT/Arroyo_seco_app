@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Observable, tap } from 'rxjs';
+import { Observable, firstValueFrom, tap } from 'rxjs';
 
 export interface LoginPayload {
   email: string;
@@ -18,6 +18,12 @@ export interface RegisterPayload {
 export interface CompletarPerfilPayload {
   direccion: string;
   sexo: string;
+}
+
+interface PasskeyCredentialResponse {
+  token?: string;
+  accessToken?: string;
+  jwt?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -176,6 +182,63 @@ export class AuthService {
     return this.api.post<any>('/auth/register', payload);
   }
 
+  supportsPasskeys(): boolean {
+    return typeof window !== 'undefined' &&
+      typeof PublicKeyCredential !== 'undefined' &&
+      !!navigator.credentials;
+  }
+
+  async loginWithPasskey(email: string): Promise<PasskeyCredentialResponse> {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) throw new Error('El email es obligatorio para iniciar con biometria');
+
+    const options = await firstValueFrom(
+      this.api.post<any>('/auth/passkey/login/options', { email: trimmedEmail })
+    );
+
+    const credential = await navigator.credentials.get({
+      publicKey: this.toPublicKeyRequestOptions(options)
+    }) as PublicKeyCredential | null;
+
+    if (!credential) throw new Error('No se pudo obtener la credencial biometrica');
+
+    const assertionPayload = this.serializeAssertionCredential(credential);
+    const response = await firstValueFrom(
+      this.api.post<PasskeyCredentialResponse>('/auth/passkey/login/verify', {
+        email: trimmedEmail,
+        credential: assertionPayload
+      })
+    );
+
+    const token = response?.token || response?.accessToken || response?.jwt;
+    if (token) this.saveToken(token);
+
+    return response;
+  }
+
+  async registerCurrentDevicePasskey(deviceName: string): Promise<any> {
+    const name = (deviceName || 'Dispositivo biometrico').trim();
+
+    const options = await firstValueFrom(
+      this.api.post<any>('/auth/passkey/register/options', { deviceName: name })
+    );
+
+    const credential = await navigator.credentials.create({
+      publicKey: this.toPublicKeyCreationOptions(options)
+    }) as PublicKeyCredential | null;
+
+    if (!credential) throw new Error('No se pudo registrar la credencial biometrica');
+
+    const attestationPayload = this.serializeAttestationCredential(credential);
+
+    return await firstValueFrom(
+      this.api.post<any>('/auth/passkey/register/verify', {
+        deviceName: name,
+        credential: attestationPayload
+      })
+    );
+  }
+
   completarPerfil(payload: CompletarPerfilPayload): Observable<any> {
     return this.api.put<any>('/auth/perfil', payload);
   }
@@ -202,5 +265,77 @@ export class AuthService {
 
   me(): Observable<any> {
     return this.api.get<any>('/Auth/me');
+  }
+
+  private toPublicKeyCreationOptions(options: any): PublicKeyCredentialCreationOptions {
+    return {
+      ...options,
+      challenge: this.base64UrlToArrayBuffer(options.challenge),
+      user: {
+        ...options.user,
+        id: this.base64UrlToArrayBuffer(options.user.id)
+      },
+      excludeCredentials: (options.excludeCredentials || []).map((cred: any) => ({
+        ...cred,
+        id: this.base64UrlToArrayBuffer(cred.id)
+      }))
+    };
+  }
+
+  private toPublicKeyRequestOptions(options: any): PublicKeyCredentialRequestOptions {
+    return {
+      ...options,
+      challenge: this.base64UrlToArrayBuffer(options.challenge),
+      allowCredentials: (options.allowCredentials || []).map((cred: any) => ({
+        ...cred,
+        id: this.base64UrlToArrayBuffer(cred.id)
+      }))
+    };
+  }
+
+  private serializeAttestationCredential(credential: PublicKeyCredential): any {
+    const response = credential.response as AuthenticatorAttestationResponse;
+    return {
+      id: credential.id,
+      rawId: this.arrayBufferToBase64Url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: this.arrayBufferToBase64Url(response.clientDataJSON),
+        attestationObject: this.arrayBufferToBase64Url(response.attestationObject)
+      }
+    };
+  }
+
+  private serializeAssertionCredential(credential: PublicKeyCredential): any {
+    const response = credential.response as AuthenticatorAssertionResponse;
+    return {
+      id: credential.id,
+      rawId: this.arrayBufferToBase64Url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: this.arrayBufferToBase64Url(response.clientDataJSON),
+        authenticatorData: this.arrayBufferToBase64Url(response.authenticatorData),
+        signature: this.arrayBufferToBase64Url(response.signature),
+        userHandle: response.userHandle ? this.arrayBufferToBase64Url(response.userHandle) : null
+      }
+    };
+  }
+
+  private arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    bytes.forEach((b) => binary += String.fromCharCode(b));
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  private base64UrlToArrayBuffer(base64url: string): ArrayBuffer {
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '==='.slice((base64.length + 3) % 4);
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
   }
 }

@@ -16,6 +16,7 @@ import { first } from 'rxjs/operators';
 export class LoginSelectorComponent implements OnInit {
   model = { email: '', password: '' };
   loading = false;
+  biometricLoading = false;
   showPassword = false;
   rememberMe = false;
   private returnUrl: string | null = null;
@@ -68,6 +69,66 @@ export class LoginSelectorComponent implements OnInit {
 
           this.toast.show('Credenciales inválidas', 'error');
           this.loading = false;
+        }
+      });
+  }
+
+  async loginWithBiometric(): Promise<void> {
+    if (this.biometricLoading || !this.auth.supportsPasskeys()) return;
+    if (!this.model.email?.trim()) {
+      this.toast.info('Ingresa tu email para iniciar con huella o Face ID');
+      return;
+    }
+
+    this.biometricLoading = true;
+    try {
+      await this.auth.loginWithPasskey(this.model.email);
+      this.toast.show('Autenticacion biometrica exitosa', 'success');
+
+      if (this.returnUrl) {
+        await this.router.navigateByUrl(this.returnUrl);
+      } else {
+        this.redirectByRole();
+      }
+    } catch {
+      this.toast.show('No fue posible iniciar con biometria', 'error');
+    } finally {
+      this.biometricLoading = false;
+    }
+  }
+
+  async activateBiometric(form: NgForm): Promise<void> {
+    if (this.biometricLoading || this.loading) return;
+    if (form.invalid) {
+      this.toast.info('Para activar biometria primero inicia sesion con email y contraseña');
+      return;
+    }
+
+    this.loading = true;
+    this.auth.login({ email: this.model.email, password: this.model.password })
+      .pipe(first())
+      .subscribe({
+        next: async () => {
+          this.loading = false;
+          this.biometricLoading = true;
+          try {
+            await this.auth.registerCurrentDevicePasskey('Mi telefono');
+            this.toast.show('Biometria activada correctamente en este dispositivo', 'success');
+
+            if (this.returnUrl) {
+              await this.router.navigateByUrl(this.returnUrl);
+            } else {
+              this.redirectByRole();
+            }
+          } catch {
+            this.toast.show('No se pudo activar la biometria', 'error');
+          } finally {
+            this.biometricLoading = false;
+          }
+        },
+        error: () => {
+          this.loading = false;
+          this.toast.show('Credenciales invalidas', 'error');
         }
       });
   }

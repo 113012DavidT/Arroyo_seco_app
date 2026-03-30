@@ -44,6 +44,7 @@ else
 }
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddResponseCompression(options =>
 {

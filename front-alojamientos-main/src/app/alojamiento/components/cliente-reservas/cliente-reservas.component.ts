@@ -2,8 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ReservasService } from '../../services/reservas.service';
-import { first, switchMap } from 'rxjs/operators';
-import { forkJoin, of } from 'rxjs';
+import { catchError, first, switchMap } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { ApiService } from '../../../core/services/api.service';
 
@@ -42,12 +42,19 @@ export class ClienteReservasComponent implements OnInit {
   }
 
   private cargar() {
-    // Obtengo el usuario autenticado y le pido al backend el historial completo
-    // del cliente: GET /reservas/cliente/{clienteId}/historial
-    this.auth.me().pipe(
+    const tokenClienteId = this.auth.getUserId();
+
+    // Si no hay internet, usamos el ID del token para leer desde cache local.
+    const userSource$ = (typeof navigator !== 'undefined' && !navigator.onLine)
+      ? of({ id: tokenClienteId })
+      : this.auth.me().pipe(
+          catchError(() => of({ id: tokenClienteId }))
+        );
+
+    userSource$.pipe(
       first(),
       switchMap((user: any) => {
-        const clienteId = String(user?.id || user?.sub || user?.userId || user?.clienteId || '');
+        const clienteId = String(user?.id || user?.sub || user?.userId || user?.clienteId || tokenClienteId || '');
         if (!clienteId) return of([] as any[]);
         return this.reservasService.historialByCliente(clienteId).pipe(first());
       })
@@ -76,6 +83,9 @@ export class ClienteReservasComponent implements OnInit {
         };
 
         this.reservas = (items || []).map(mapItem);
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          this.toast.info('Sin internet: mostrando reservas guardadas localmente', 3500);
+        }
       },
       error: () => {
         this.toast.error('No se pudieron cargar tus reservas');

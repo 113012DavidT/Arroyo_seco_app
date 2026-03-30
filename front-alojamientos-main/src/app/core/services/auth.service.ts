@@ -118,14 +118,36 @@ export class AuthService {
     if (!token) return null;
     const payload = this.decodeJwt(token);
     if (!payload) return null;
-    
+
     // Buscar en diferentes posibles nombres de claim
-    const tipo = payload['TipoOferente'] || 
-                 payload['tipoOferente'] || 
+    const tipo = payload['TipoOferente'] ||
+                 payload['tipoOferente'] ||
                  payload['tipo_oferente'] ||
                  payload['Tipo'];
-    
+
     return tipo ? Number(tipo) : null;
+  }
+
+  getUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    const payload = this.decodeJwt(token);
+    if (!payload) return null;
+
+    const keys = [
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+      'nameidentifier',
+      'sub',
+      'userId',
+      'UsuarioId',
+      'id'
+    ];
+
+    for (const key of keys) {
+      if (payload[key]) return String(payload[key]);
+    }
+
+    return null;
   }
 
   requiereCambioPassword(): boolean {

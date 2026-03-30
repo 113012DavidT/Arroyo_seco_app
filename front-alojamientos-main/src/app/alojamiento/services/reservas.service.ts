@@ -1,8 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { OfflineSyncService } from '../../core/services/offline-sync.service';
 import { Observable, throwError } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 export interface CrearReservaDto {
   alojamientoId: number;
@@ -36,6 +37,7 @@ export interface ReservaRangoDto {
 export class ReservasService {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
+  private readonly offline = inject(OfflineSyncService);
 
   crear(payload: CrearReservaDto): Observable<any> {
     // Intento 1: endpoint/lowercase con camelCase
@@ -104,13 +106,17 @@ export class ReservasService {
 
   // Lista de reservas de un cliente específico
   listByCliente(clienteId: string): Observable<ReservaDto[]> {
-    return this.api.get<ReservaDto[]>(`/reservas/cliente/${clienteId}`);
+    return this.api
+      .get<ReservaDto[]>(`/reservas/cliente/${clienteId}`)
+      .pipe(map((data) => this.applyQueuedMutations(data || [])));
   }
 
   // Historial completo de reservas de un cliente (ordenadas de más reciente a más antigua)
   // Backend: GET /reservas/cliente/{clienteId}/historial
   historialByCliente(clienteId: string): Observable<ReservaDto[]> {
-    return this.api.get<ReservaDto[]>(`/reservas/cliente/${clienteId}/historial`);
+    return this.api
+      .get<ReservaDto[]>(`/reservas/cliente/${clienteId}/historial`)
+      .pipe(map((data) => this.applyQueuedMutations(data || [])));
   }
 
   // Rango de fechas ocupadas (estado Confirmada) para pintar calendario
@@ -124,7 +130,7 @@ export class ReservasService {
     const q: any = {};
     if (params?.alojamientoId) q.alojamientoId = params.alojamientoId;
     if (params?.clienteId) q.clienteId = params.clienteId;
-    return this.api.get<any[]>(`/reservas/activas`, q);
+    return this.api.get<any[]>(`/reservas/activas`, q).pipe(map((data) => this.applyQueuedMutations(data || [])));
   }
 
   // Historial de reservas para el rol autenticado (Admin/Oferente/Cliente)
@@ -133,7 +139,7 @@ export class ReservasService {
     const q: any = {};
     if (params?.alojamientoId) q.alojamientoId = params.alojamientoId;
     if (params?.clienteId) q.clienteId = params.clienteId;
-    return this.api.get<any[]>(`/reservas/historial`, q);
+    return this.api.get<any[]>(`/reservas/historial`, q).pipe(map((data) => this.applyQueuedMutations(data || [])));
   }
 
   // Subir comprobante de pago (multipart/form-data con campo 'archivo')
@@ -195,5 +201,43 @@ export class ReservasService {
         return throwError(() => err);
       })
     );
+  }
+
+  private applyQueuedMutations(serverData: any[]): any[] {
+    const queue = this.offline.getQueuedRequests();
+    const result = [...serverData];
+
+    for (const item of queue) {
+      const url = item.url.toLowerCase();
+      if (!/\/reservas(\/|$)/i.test(url)) continue;
+
+      if (item.method === 'POST') {
+        const body = item.body || {};
+        const localId = Number(`${item.createdAt}`.slice(-9));
+        const exists = result.some((r) => Number(r?.id) === localId);
+        if (exists) continue;
+
+        result.unshift({
+          id: localId,
+          alojamientoId: body.alojamientoId || body.AlojamientoId,
+          fechaEntrada: body.fechaEntrada || body.FechaEntrada,
+          fechaSalida: body.fechaSalida || body.FechaSalida,
+          huespedes: body.huespedes || body.Huespedes || 1,
+          estado: 'Pendiente'
+        });
+      }
+
+      if (item.method === 'PATCH' && /\/reservas\/\d+\/estado$/i.test(url)) {
+        const idMatch = url.match(/\/reservas\/(\d+)\/estado/i);
+        const id = idMatch ? Number(idMatch[1]) : NaN;
+        const nuevoEstado = item.body?.estado;
+        if (!id || !nuevoEstado) continue;
+
+        const current = result.find((r) => Number(r?.id) === id);
+        if (current) current.estado = nuevoEstado;
+      }
+    }
+
+    return result;
   }
 }

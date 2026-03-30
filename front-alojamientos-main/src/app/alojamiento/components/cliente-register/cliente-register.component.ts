@@ -40,10 +40,12 @@ export class ClienteRegisterComponent {
     // El backend asigna rol CLIENTE por defecto; no enviamos role
     if (!this.model.direccion.trim()) {
       this.toast.show('La direccion es obligatoria', 'error');
+      this.loading = false;
       return;
     }
     if (!this.model.sexo) {
       this.toast.show('El sexo es obligatorio', 'error');
+      this.loading = false;
       return;
     }
 
@@ -53,8 +55,12 @@ export class ClienteRegisterComponent {
       direccion: this.model.direccion.trim(),
       sexo: this.model.sexo
     }).pipe(first()).subscribe({
-      next: () => {
-        this.toast.show('Registro exitoso. Inicia sesión.', 'success');
+      next: (res: any) => {
+        if (res?.queuedOffline) {
+          this.toast.show('Sin internet: registro guardado y pendiente de sincronizacion', 'success');
+        } else {
+          this.toast.show('Registro exitoso. Inicia sesión.', 'success');
+        }
         this.loading = false;
         this.router.navigate(['/cliente/login']);
       },

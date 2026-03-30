@@ -2,21 +2,68 @@ import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/com
 import { inject } from '@angular/core';
 import { ApiService } from '../services/api.service';
 import { OfflineSyncService } from '../services/offline-sync.service';
+import { OfflineCacheService } from '../services/offline-cache.service';
 import { ToastService } from '../../shared/services/toast.service';
 import { of, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const CACHEABLE_GET_DENY = [/\/auth\//i, /\/login$/i, /\/register$/i, /\/me$/i];
+
+function canCacheGet(url: string): boolean {
+  return !CACHEABLE_GET_DENY.some((pattern) => pattern.test(url));
+}
 
 export const offlineQueueInterceptor: HttpInterceptorFn = (req, next) => {
   const api = inject(ApiService);
   const offline = inject(OfflineSyncService);
+  const cache = inject(OfflineCacheService);
   const toast = inject(ToastService);
 
-  const isMutation = MUTATION_METHODS.has(req.method.toUpperCase());
   const isApiRequest = req.url.startsWith(api.baseUrl);
+  if (!isApiRequest) {
+    return next(req);
+  }
 
-  if (!isMutation || !isApiRequest) {
+  const method = req.method.toUpperCase();
+  const isMutation = MUTATION_METHODS.has(method);
+  const isGet = method === 'GET';
+
+  if (isGet && canCacheGet(req.url)) {
+    const cacheKey = cache.keyFromUrl(req.urlWithParams);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const cached = cache.get<any>(cacheKey);
+      if (cached !== null) {
+        return of(new HttpResponse({ status: 200, body: cached }));
+      }
+      return throwError(() => new HttpErrorResponse({
+        status: 0,
+        url: req.url,
+        error: { message: 'Sin conexion y sin datos en cache local' }
+      }));
+    }
+
+    return next(req).pipe(
+      tap((event) => {
+        if (event instanceof HttpResponse && event.ok) {
+          cache.set(cacheKey, event.body, 1000 * 60 * 60 * 6);
+        }
+      }),
+      catchError((error: HttpErrorResponse) => {
+        if (error.status !== 0) return throwError(() => error);
+
+        const cached = cache.get<any>(cacheKey);
+        if (cached !== null) {
+          return of(new HttpResponse({ status: 200, body: cached }));
+        }
+
+        return throwError(() => error);
+      })
+    );
+  }
+
+  if (!isMutation) {
     return next(req);
   }
 

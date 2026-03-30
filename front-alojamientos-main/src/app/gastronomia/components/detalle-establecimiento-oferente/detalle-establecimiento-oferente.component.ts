@@ -189,27 +189,35 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
 
     console.log('Agregando mesa:', this.nuevaMesa, 'al establecimiento:', this.establecimiento.id);
     this.gastronomiaService.createMesa(this.establecimiento.id, this.nuevaMesa).pipe(first()).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         console.log('Mesa creada exitosamente:', response);
-        
-        // Agregar la mesa localmente
+
+        // Agregar la mesa localmente tambien cuando queda en cola offline.
         if (this.establecimiento) {
           if (!this.establecimiento.mesas) {
             this.establecimiento.mesas = [];
           }
+          const isQueuedOffline = !!response?.queuedOffline;
           const nuevaMesaConId: MesaDto = {
             ...this.nuevaMesa,
-            id: typeof response === 'number' ? response : response?.id,
+            id: isQueuedOffline ? Date.now() : (typeof response === 'number' ? response : response?.id),
             establecimientoId: this.establecimiento.id
           };
           this.establecimiento.mesas.push(nuevaMesaConId);
         }
-        
-        this.toast.success('Mesa agregada exitosamente');
+
+        if (response?.queuedOffline) {
+          this.toast.info('Sin internet: mesa agregada localmente y pendiente de sincronizacion');
+        } else {
+          this.toast.success('Mesa agregada exitosamente');
+        }
+
         this.cerrarModalMesa();
-        
-        // Recargar para sincronizar
-        this.loadEstablecimiento(this.establecimiento!.id!);
+
+        if (!response?.queuedOffline) {
+          // Recargar solo cuando la API confirmo guardado real.
+          this.loadEstablecimiento(this.establecimiento!.id!);
+        }
       },
       error: (err) => {
         console.error('Error al agregar mesa:', err);

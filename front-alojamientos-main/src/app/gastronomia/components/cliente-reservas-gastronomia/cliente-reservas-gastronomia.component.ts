@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { GastronomiaService } from '../../services/gastronomia.service';
-import { first } from 'rxjs/operators';
+import { first, catchError } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
 
 @Component({
   selector: 'app-cliente-reservas-gastronomia',
@@ -37,25 +38,22 @@ export class ClienteReservasGastronomiaComponent implements OnInit {
 
   private loadReservas() {
     this.loading = true;
-    
-    // Cargar reservas activas
-    this.reservasService.activas().pipe(first()).subscribe({
-      next: (data) => {
-        this.reservasActivas = data || [];
-      },
-      error: () => {
-        this.toast.error('Error al cargar reservas activas');
-      }
-    });
 
-    // Cargar historial
-    this.reservasService.historial().pipe(first()).subscribe({
-      next: (data) => {
-        this.reservasHistorial = data || [];
+    forkJoin({
+      activas: this.reservasService.activas().pipe(catchError(() => of([]))),
+      historial: this.reservasService.historial().pipe(catchError(() => of([])))
+    }).pipe(first()).subscribe({
+      next: ({ activas, historial }) => {
+        this.reservasActivas = activas || [];
+        this.reservasHistorial = historial || [];
         this.loading = false;
+
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          this.toast.info('Sin internet: mostrando reservas desde cache local', 3500);
+        }
       },
       error: () => {
-        this.toast.error('Error al cargar historial');
+        this.toast.error('No se pudieron cargar reservas');
         this.loading = false;
       }
     });

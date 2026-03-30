@@ -56,6 +56,15 @@ export class OfflineSyncService {
     return this.readQueue().length;
   }
 
+  getQueuedRequests(): Array<Pick<QueuedRequest, 'method' | 'url' | 'body' | 'createdAt'>> {
+    return this.readQueue().map((r) => ({
+      method: r.method,
+      url: r.url,
+      body: r.body,
+      createdAt: r.createdAt
+    }));
+  }
+
   flushQueue(): Observable<number> {
     if (this.syncing || typeof navigator === 'undefined' || !navigator.onLine) {
       return of(0);
@@ -120,8 +129,9 @@ export class OfflineSyncService {
     if (idx < 0) return;
 
     queue[idx].retries += 1;
+    // No eliminar automaticamente: mantenemos la cola para reintentar al reconectar.
     if (queue[idx].retries > this.maxRetries) {
-      queue.splice(idx, 1);
+      queue[idx].retries = this.maxRetries;
     }
     this.writeQueue(queue);
   }

@@ -268,6 +268,7 @@ export class DetalleAlojamientoComponent implements OnInit {
       this.toast.error('Fechas y comprobante requeridos');
       return;
     }
+
     this.creando = true;
     const payload = {
       alojamientoId: this.alojamientoId,
@@ -275,7 +276,27 @@ export class DetalleAlojamientoComponent implements OnInit {
       fechaSalida: this.formatDateLocal(this.booking.salida),
       huespedes: this.booking.huespedes
     };
-    // Crear primero y subir comprobante; la notificación al oferente es opcional (si falla no afecta el éxito de la reserva)
+
+    const offlineMode = typeof navigator !== 'undefined' && !navigator.onLine;
+
+    // Offline: encolar reserva (sin comprobante) para no bloquear al usuario.
+    if (offlineMode) {
+      this.reservasService.crear(payload).pipe(first()).subscribe({
+        next: () => {
+          this.toast.info('Sin internet: reserva guardada localmente y pendiente de sincronizacion');
+          this.creando = false;
+          this.cerrarModalPago();
+          this.booking = { entrada: null, salida: null, huespedes: 1 };
+        },
+        error: () => {
+          this.toast.error('No se pudo guardar la reserva offline');
+          this.creando = false;
+        }
+      });
+      return;
+    }
+
+    // Online: crear y subir comprobante en el momento.
     this.reservasService.crear(payload).pipe(
       switchMap((r: any) => this.reservasService.subirComprobante(Number(r.id || r.Id), this.comprobanteFile!).pipe(map(() => r))),
       first()

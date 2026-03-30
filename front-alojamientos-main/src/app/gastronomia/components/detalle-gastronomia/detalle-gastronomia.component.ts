@@ -180,9 +180,13 @@ export class DetalleGastronomiaComponent implements OnInit {
     this.reservasService.crear(payload)
       .pipe(first())
       .subscribe({
-        next: (result) => {
+        next: (result: any) => {
           console.log('Reserva de gastronomía creada exitosamente:', result);
-          this.toast.success('¡Reserva creada exitosamente!');
+          if (result?.queuedOffline) {
+            this.toast.info('Sin internet: reserva guardada localmente y pendiente de sincronizacion');
+          } else {
+            this.toast.success('Reserva creada exitosamente');
+          }
           this.showReservaForm = false;
           this.resetForm();
           this.submitting = false;

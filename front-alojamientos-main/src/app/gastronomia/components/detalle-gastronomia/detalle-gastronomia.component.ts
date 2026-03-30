@@ -6,6 +6,7 @@ import { GastronomiaService, EstablecimientoDto, MenuDto, ReviewGastronomiaDto }
 import { ReservasGastronomiaService } from '../../services/reservas-gastronomia.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApiService } from '../../../core/services/api.service';
 import { first } from 'rxjs/operators';
 import { MapViewComponent } from '../../../shared/components/map-view/map-view.component';
 
@@ -69,13 +70,22 @@ export class DetalleGastronomiaComponent implements OnInit {
     'tarjeta':            { label: 'Pago con tarjeta', icon: 'M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' }
   };
 
+  readonly defaultGalleryImages = [
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600&h=400&fit=crop',
+    'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=400&fit=crop'
+  ];
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private gastronomiaService: GastronomiaService,
     private reservasService: ReservasGastronomiaService,
     private toast: ToastService,
-    private auth: AuthService
+    private auth: AuthService,
+    private api: ApiService
   ) {}
 
   ngOnInit(): void {
@@ -304,8 +314,13 @@ export class DetalleGastronomiaComponent implements OnInit {
   }
 
   get galleryImages(): string[] {
-    const urls = this.extractGalleryUrls(this.establecimiento);
-    return urls.length ? urls : ['assets/images/hero-oferentes.svg'];
+    const raw = this.extractGalleryUrls(this.establecimiento);
+    if (!raw.length) return this.defaultGalleryImages;
+    const padded = [...raw];
+    while (padded.length < 5) {
+      padded.push(this.defaultGalleryImages[padded.length % this.defaultGalleryImages.length]);
+    }
+    return padded;
   }
 
   get tipoEstablecimientoLabel(): string {
@@ -341,17 +356,31 @@ export class DetalleGastronomiaComponent implements OnInit {
     this.lightboxIndex = (this.lightboxIndex + 1) % this.galleryImages.length;
   }
 
-  private extractGalleryUrls(establecimiento: EstablecimientoDto | null): string[] {
-    if (!establecimiento) {
-      return [];
+  shareProperty() {
+    if (navigator.share) {
+      navigator.share({ title: this.establecimiento?.nombre ?? '', url: window.location.href });
+    } else {
+      navigator.clipboard?.writeText(window.location.href);
+      this.toast.info('Enlace copiado al portapapeles');
     }
+  }
 
+  private resolveUrl(url: string): string {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const root = this.api.baseUrl.replace(/\/api$/i, '');
+    return `${root}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+
+  private extractGalleryUrls(establecimiento: EstablecimientoDto | null): string[] {
+    if (!establecimiento) return [];
     const urls = [
       establecimiento.fotoPrincipal,
       ...(establecimiento.fotos || []).map((foto) => foto.url),
       ...(establecimiento.fotosUrls || [])
-    ].filter((value): value is string => !!value);
-
+    ]
+      .filter((value): value is string => !!value)
+      .map((u) => this.resolveUrl(u));
     return [...new Set(urls)];
   }
 

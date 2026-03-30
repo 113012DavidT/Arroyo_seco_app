@@ -235,6 +235,13 @@
   }
 }
 
+.logout-btn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .logout-mobile {
   display: block;
   margin-top: 1rem;

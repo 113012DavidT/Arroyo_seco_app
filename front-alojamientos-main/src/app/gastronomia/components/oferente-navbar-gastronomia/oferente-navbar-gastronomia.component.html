@@ -19,12 +19,12 @@
       <a routerLink="/oferente/gastronomia/notificaciones" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Notificaciones</a>
       <a routerLink="/oferente/gastronomia/configuracion" routerLinkActive="active" class="nav-link" (click)="closeMenu()">Configuración</a>
       <a routerLink="/oferente/home" class="cambiar-experiencia mobile-cambiar" (click)="closeMenu()">🔄 Cambiar Experiencia</a>
-      <a (click)="logout()" class="logout mobile-logout">Cerrar sesión</a>
+      <button type="button" (click)="logout()" class="logout mobile-logout logout-btn">Cerrar sesión</button>
     </div>
 
     <div class="navbar-actions">
       <a routerLink="/oferente/home" class="cambiar-experiencia desktop-cambiar" title="Cambiar de módulo">🔄 Cambiar Experiencia</a>
-      <a (click)="logout()" class="logout desktop-logout">Cerrar sesión</a>
+      <button type="button" (click)="logout()" class="logout desktop-logout logout-btn">Cerrar sesión</button>
     </div>
   </div>
   <button class="menu-backdrop" *ngIf="menuOpen" (click)="closeMenu()" aria-label="Cerrar menú"></button>

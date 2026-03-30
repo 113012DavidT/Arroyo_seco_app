@@ -18,14 +18,14 @@
       <a routerLink="/cliente/alojamientos" class="ir-alojamientos mobile-link" (click)="closeMenu()">
         🏠 Ir a Alojamientos
       </a>
-      <a (click)="logout()" class="logout logout-mobile">Cerrar sesión</a>
+      <button type="button" (click)="logout()" class="logout logout-mobile logout-btn">Cerrar sesión</button>
     </div>
 
     <div class="navbar-actions">
       <a routerLink="/cliente/alojamientos" class="ir-alojamientos desktop-link" title="Ver alojamientos">
         🏠 Ir a Alojamientos
       </a>
-      <a (click)="logout()" class="logout logout-desktop">Cerrar sesión</a>
+      <button type="button" (click)="logout()" class="logout logout-desktop logout-btn">Cerrar sesión</button>
     </div>
   </div>
   <button class="menu-backdrop" *ngIf="menuOpen" (click)="closeMenu()" aria-label="Cerrar menú"></button>

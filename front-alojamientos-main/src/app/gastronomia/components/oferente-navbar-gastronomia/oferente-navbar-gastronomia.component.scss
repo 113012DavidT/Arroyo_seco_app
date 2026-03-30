@@ -196,6 +196,13 @@
   }
 }
 
+.logout-btn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .cambiar-experiencia {
   text-decoration: none;
   color: var(--color-primary, #E31B23);

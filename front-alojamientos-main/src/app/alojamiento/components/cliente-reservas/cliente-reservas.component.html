@@ -82,7 +82,9 @@
     <p>¿Estás seguro de que deseas cancelar la reserva de <strong>{{ selectedReserva?.alojamiento }}</strong>?</p>
     <div class="modal-actions">
       <button class="btn-secondary" (click)="closeCancelModal()">No, mantener</button>
-      <button class="btn-danger" (click)="cancelReserva()">Sí, cancelar</button>
+      <button class="btn-danger" (click)="cancelReserva()" [disabled]="cancelLoading">
+        {{ cancelLoading ? 'Cancelando...' : 'Sí, cancelar' }}
+      </button>
     </div>
   </div>
 </div>

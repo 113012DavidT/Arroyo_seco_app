@@ -34,6 +34,7 @@ export class ClienteReservasComponent implements OnInit {
 
   selectedReserva: Reserva | null = null;
   showCancelModal = false;
+  cancelLoading = false;
 
   constructor() {}
 
@@ -104,11 +105,22 @@ export class ClienteReservasComponent implements OnInit {
   }
 
   cancelReserva() {
-    if (this.selectedReserva) {
-      this.selectedReserva.estado = 'cancelada';
-      this.toast.success('Reserva cancelada exitosamente');
-      this.closeCancelModal();
-    }
+    if (!this.selectedReserva || this.cancelLoading) return;
+
+    this.cancelLoading = true;
+    this.reservasService.cambiarEstado(this.selectedReserva.id, 'Cancelada').pipe(first()).subscribe({
+      next: () => {
+        this.toast.success('Reserva cancelada exitosamente');
+        this.cancelLoading = false;
+        this.closeCancelModal();
+        this.cargar();
+      },
+      error: (err) => {
+        const msg = err?.error?.message || 'No se pudo cancelar la reserva';
+        this.toast.error(msg);
+        this.cancelLoading = false;
+      }
+    });
   }
 
   get reservasActivas() {

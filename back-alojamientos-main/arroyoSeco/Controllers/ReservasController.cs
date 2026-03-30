@@ -297,20 +297,39 @@ public class ReservasController : ControllerBase
 
     public record CambiarEstadoReservaDto(string Estado);
 
-    [Authorize(Roles = "Admin,Oferente")]
+    [Authorize(Roles = "Admin,Oferente,Cliente")]
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoReservaDto dto, CancellationToken ct)
     {
+        var nuevoEstado = dto.Estado?.Trim();
+        if (string.IsNullOrWhiteSpace(nuevoEstado))
+            return BadRequest(new { message = "Estado requerido" });
+
         var r = await _db.Reservas
             .Include(x => x.Alojamiento)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         
         if (r is null) return NotFound(new { message = "Reserva no encontrada" });
 
-        var estadoAnterior = r.Estado;
-        var cambio = $"{estadoAnterior} → {dto.Estado}";
+        if (User.IsInRole("Cliente"))
+        {
+            if (!string.Equals(r.ClienteId, _current.UserId, StringComparison.OrdinalIgnoreCase))
+                return Forbid();
 
-        await _cambiarEstado.Handle(new CambiarEstadoReservaCommand { ReservaId = id, NuevoEstado = dto.Estado }, ct);
+            if (!string.Equals(nuevoEstado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "El cliente solo puede cancelar su propia reserva" });
+        }
+
+        if (User.IsInRole("Oferente") && !User.IsInRole("Admin"))
+        {
+            if (r.Alojamiento is null || !string.Equals(r.Alojamiento.OferenteId, _current.UserId, StringComparison.OrdinalIgnoreCase))
+                return Forbid();
+        }
+
+        var estadoAnterior = r.Estado;
+        var cambio = $"{estadoAnterior} → {nuevoEstado}";
+
+        await _cambiarEstado.Handle(new CambiarEstadoReservaCommand { ReservaId = id, NuevoEstado = nuevoEstado }, ct);
 
         // Obtener datos actualizados
         r = await _db.Reservas
@@ -327,19 +346,19 @@ public class ReservasController : ControllerBase
             var mensaje = "";
             var color = "";
 
-            if (dto.Estado == "Confirmada")
+            if (nuevoEstado == "Confirmada")
             {
                 asunto = "Tu reserva ha sido confirmada";
                 mensaje = $"La reserva en {r.Alojamiento?.Nombre} desde {r.FechaEntrada:dd/MM/yyyy} hasta {r.FechaSalida:dd/MM/yyyy} ha sido confirmada.";
                 color = "#27ae60";
             }
-            else if (dto.Estado == "Cancelada")
+            else if (nuevoEstado == "Cancelada")
             {
                 asunto = "Tu reserva ha sido cancelada";
                 mensaje = $"La reserva en {r.Alojamiento?.Nombre} ha sido cancelada.";
                 color = "#e74c3c";
             }
-            else if (dto.Estado == "Completada")
+            else if (nuevoEstado == "Completada")
             {
                 asunto = "Tu reserva ha sido completada";
                 mensaje = $"Tu estadía en {r.Alojamiento?.Nombre} ha finalizado. ¡Gracias por visitarnos!";

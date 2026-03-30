@@ -235,10 +235,14 @@ public class ReservasGastronomiaController : ControllerBase
     }
 
     // PATCH /api/ReservasGastronomia/{id}/estado
-    [Authorize(Roles = "Admin,Oferente")]
+    [Authorize(Roles = "Admin,Oferente,Cliente")]
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoReservaGastronomiaDto dto, CancellationToken ct)
     {
+        var nuevoEstado = dto.Estado?.Trim();
+        if (string.IsNullOrWhiteSpace(nuevoEstado))
+            return BadRequest(new { message = "Estado requerido" });
+
         var reserva = await _db.ReservasGastronomia
             .Include(r => r.Establecimiento)
             .FirstOrDefaultAsync(r => r.Id == id, ct);
@@ -251,7 +255,17 @@ public class ReservasGastronomiaController : ControllerBase
             return Forbid();
         }
 
-        reserva.Estado = dto.Estado;
+        // El cliente solo puede cancelar su propia reserva
+        if (User.IsInRole("Cliente"))
+        {
+            if (!string.Equals(reserva.UsuarioId, _current.UserId, StringComparison.OrdinalIgnoreCase))
+                return Forbid();
+
+            if (!string.Equals(nuevoEstado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "El cliente solo puede cancelar su propia reserva" });
+        }
+
+        reserva.Estado = nuevoEstado;
         await _db.SaveChangesAsync(ct);
 
         // Enviar correo al cliente
@@ -262,19 +276,19 @@ public class ReservasGastronomiaController : ControllerBase
             var mensaje = "";
             var color = "";
 
-            if (dto.Estado == "Confirmada")
+            if (nuevoEstado == "Confirmada")
             {
                 asunto = "Tu reserva en gastronomía ha sido confirmada";
                 mensaje = $"Tu reserva en {reserva.Establecimiento?.Nombre} para {reserva.NumeroPersonas} personas el {reserva.Fecha:dd/MM/yyyy HH:mm} ha sido confirmada.";
                 color = "#27ae60";
             }
-            else if (dto.Estado == "Cancelada")
+            else if (nuevoEstado == "Cancelada")
             {
                 asunto = "Tu reserva en gastronomía ha sido cancelada";
                 mensaje = $"Tu reserva en {reserva.Establecimiento?.Nombre} ha sido cancelada.";
                 color = "#e74c3c";
             }
-            else if (dto.Estado == "Completada")
+            else if (nuevoEstado == "Completada")
             {
                 asunto = "Tu reserva en gastronomía ha sido completada";
                 mensaje = $"¡Gracias por visitarnos en {reserva.Establecimiento?.Nombre}! Esperamos verte pronto.";

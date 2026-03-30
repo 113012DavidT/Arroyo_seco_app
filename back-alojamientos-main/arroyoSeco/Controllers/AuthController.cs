@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using System.Text;
+using System.Net;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Usuarios;
 using arroyoSeco.Infrastructure.Auth;
@@ -32,6 +33,7 @@ public class AuthController : ControllerBase
     private readonly AuthDbContext _authDb;
     private readonly IConfiguration _configuration;
     private readonly IMemoryCache _cache;
+    private readonly IEmailService _email;
 
     private static string RegisterCacheKey(string userId) => $"webauthn:register:{userId}";
     private static string LoginCacheKey(string email) => $"webauthn:login:{email.ToLowerInvariant()}";
@@ -43,7 +45,8 @@ public class AuthController : ControllerBase
         IAppDbContext db,
         AuthDbContext authDb,
         IConfiguration configuration,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IEmailService email)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -52,12 +55,15 @@ public class AuthController : ControllerBase
         _authDb = authDb;
         _configuration = configuration;
         _cache = cache;
+        _email = email;
     }
 
     public record RegisterDto(string Email, string Password, string Direccion, string Sexo, string? Role, int? TipoOferente);
     public record LoginDto(string Email, string Password);
     public record CambiarPasswordDto(string PasswordActual, string PasswordNueva);
-    public record UpdatePerfilDto(string Direccion, string Sexo);
+    public record UpdatePerfilDto(string? Nombre, string? Email, string? Telefono, string? Direccion, string? Sexo);
+    public record ForgotPasswordDto(string Email);
+    public record ResetPasswordDto(string Email, string Token, string NewPassword);
 
     public record PasskeyRegisterOptionsDto(string? DeviceName);
     public record PasskeyRegisterVerifyDto(string? DeviceName, PasskeyCredentialDto Credential);
@@ -394,7 +400,9 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             id = user.Id,
+            nombre = user.UserName,
             email = user.Email,
+            telefono = user.PhoneNumber,
             direccion = user.Direccion,
             sexo = user.Sexo,
             perfilCompleto = user.PerfilBasicoCompleto,
@@ -403,20 +411,104 @@ public class AuthController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        // Respuesta neutral para no filtrar si el correo existe o no.
+        var generic = Ok(new { message = "Si el correo existe, enviaremos instrucciones para recuperar tu contraseña" });
+
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            return generic;
+
+        var email = dto.Email.Trim();
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            return generic;
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var baseUrl = _configuration["App:FrontendBaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+        var resetUrl = $"{baseUrl!.TrimEnd('/')}/login?mode=reset&email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
+
+        var html = $@"
+<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:20px'>
+  <h2 style='color:#111827'>Recuperación de contraseña</h2>
+  <p>Recibimos una solicitud para restablecer tu contraseña.</p>
+  <p>Haz clic en el siguiente botón para continuar:</p>
+  <p>
+    <a href='{resetUrl}' style='display:inline-block;background:#E31B23;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600'>Restablecer contraseña</a>
+  </p>
+  <p style='color:#6b7280'>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+  <hr style='border:none;border-top:1px solid #e5e7eb;margin:20px 0' />
+  <p style='font-size:12px;color:#9ca3af'>Arroyo Seco</p>
+</div>";
+
+        var sent = await _email.SendEmailAsync(user.Email!, "Recuperación de contraseña", html);
+        if (!sent)
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo enviar el correo de recuperación" });
+
+        return generic;
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.NewPassword))
+            return BadRequest(new { message = "Email, token y nueva contraseña son obligatorios" });
+
+        var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+        if (user is null)
+            return BadRequest(new { message = "Solicitud inválida" });
+
+        var decodedToken = WebUtility.UrlDecode(dto.Token.Trim());
+        var result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
+        if (!result.Succeeded)
+            return BadRequest(new { message = "No se pudo restablecer la contraseña", errors = result.Errors });
+
+        if (user.RequiereCambioPassword)
+        {
+            user.RequiereCambioPassword = false;
+            await _userManager.UpdateAsync(user);
+        }
+
+        return Ok(new { message = "Contraseña actualizada correctamente" });
+    }
+
     [Authorize]
     [HttpPut("perfil")]
     public async Task<IActionResult> UpdatePerfil([FromBody] UpdatePerfilDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Direccion) || string.IsNullOrWhiteSpace(dto.Sexo))
-            return BadRequest(new { message = "Direccion y sexo son obligatorios" });
-        if (!SexosPermitidos.Contains(dto.Sexo.Trim()))
+        if (!string.IsNullOrWhiteSpace(dto.Sexo) && !SexosPermitidos.Contains(dto.Sexo.Trim()))
             return BadRequest(new { message = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir" });
 
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Unauthorized();
 
-        user.Direccion = dto.Direccion.Trim();
-        user.Sexo = dto.Sexo.Trim();
+        if (!string.IsNullOrWhiteSpace(dto.Nombre))
+            user.UserName = dto.Nombre.Trim();
+
+        if (!string.IsNullOrWhiteSpace(dto.Telefono))
+            user.PhoneNumber = dto.Telefono.Trim();
+
+        if (!string.IsNullOrWhiteSpace(dto.Direccion))
+            user.Direccion = dto.Direccion.Trim();
+
+        if (!string.IsNullOrWhiteSpace(dto.Sexo))
+            user.Sexo = dto.Sexo.Trim();
+
+        if (!string.IsNullOrWhiteSpace(dto.Email) && !string.Equals(user.Email, dto.Email.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            var exists = await _userManager.FindByEmailAsync(dto.Email.Trim());
+            if (exists is not null && exists.Id != user.Id)
+                return BadRequest(new { message = "El correo ya está en uso" });
+
+            user.Email = dto.Email.Trim();
+            user.NormalizedEmail = _userManager.NormalizeEmail(user.Email);
+        }
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)
@@ -425,6 +517,9 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             message = "Perfil actualizado",
+            nombre = user.UserName,
+            email = user.Email,
+            telefono = user.PhoneNumber,
             direccion = user.Direccion,
             sexo = user.Sexo,
             perfilCompleto = user.PerfilBasicoCompleto

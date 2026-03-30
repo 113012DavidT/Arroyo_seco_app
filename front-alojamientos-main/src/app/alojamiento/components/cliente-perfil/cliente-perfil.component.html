@@ -4,13 +4,45 @@
   </div>
 
   <div class="profile-card">
-    <form (ngSubmit)="guardarPerfil()">
+    <div class="profile-header">
+      <p class="profile-subtitle">Administra tus datos personales desde aquí.</p>
+      <button *ngIf="!editando" type="button" class="btn-secondary" (click)="iniciarEdicion()">Editar perfil</button>
+    </div>
+
+    <div *ngIf="cargando" class="profile-loading">Cargando datos del perfil...</div>
+
+    <div *ngIf="!cargando && !editando" class="profile-readonly">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Nombre completo</span>
+          <span class="info-value">{{ perfil.nombre || 'Sin capturar' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Correo electrónico</span>
+          <span class="info-value">{{ perfil.email || 'Sin capturar' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Teléfono</span>
+          <span class="info-value">{{ perfil.telefono || 'Sin capturar' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Dirección</span>
+          <span class="info-value">{{ perfil.direccion || 'Sin capturar' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Sexo</span>
+          <span class="info-value">{{ perfil.sexo || 'Sin capturar' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <form *ngIf="!cargando && editando" (ngSubmit)="guardarPerfil()">
       <div class="form-group">
         <label for="nombre">Nombre completo</label>
         <input
           type="text"
           id="nombre"
-          [(ngModel)]="perfil().nombre"
+          [(ngModel)]="editPerfil.nombre"
           name="nombre"
           required
         />
@@ -21,7 +53,7 @@
         <input
           type="email"
           id="email"
-          [(ngModel)]="perfil().email"
+          [(ngModel)]="editPerfil.email"
           name="email"
           required
         />
@@ -32,7 +64,7 @@
         <input
           type="tel"
           id="telefono"
-          [(ngModel)]="perfil().telefono"
+          [(ngModel)]="editPerfil.telefono"
           name="telefono"
           required
         />
@@ -43,23 +75,27 @@
         <input
           type="text"
           id="direccion"
-          [(ngModel)]="perfil().direccion"
+          [(ngModel)]="editPerfil.direccion"
           name="direccion"
         />
       </div>
 
       <div class="form-group">
-        <label for="ciudad">Ciudad</label>
+        <label for="sexo">Sexo</label>
         <input
           type="text"
-          id="ciudad"
-          [(ngModel)]="perfil().ciudad"
-          name="ciudad"
+          id="sexo"
+          [(ngModel)]="editPerfil.sexo"
+          name="sexo"
         />
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn-primary">Guardar cambios</button>
+        <button type="button" class="btn-secondary" (click)="cancelarEdicion()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="guardando">
+          <span *ngIf="!guardando">Guardar cambios</span>
+          <span *ngIf="guardando">Guardando...</span>
+        </button>
       </div>
     </form>
   </div>
@@ -69,7 +105,7 @@
     <div class="security-card">
       <h4>Cambiar contraseña</h4>
       <p>Actualiza tu contraseña regularmente para mantener tu cuenta segura.</p>
-      <button type="button" class="btn-secondary">Cambiar contraseña</button>
+      <button type="button" class="btn-secondary" (click)="irRecuperarPassword()">Recuperar o cambiar contraseña</button>
     </div>
   </div>
 </section>

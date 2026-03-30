@@ -20,6 +20,16 @@ export interface CompletarPerfilPayload {
   sexo: string;
 }
 
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
 interface PasskeyCredentialResponse {
   token?: string;
   accessToken?: string;
@@ -312,6 +322,14 @@ export class AuthService {
 
   completarPerfil(payload: CompletarPerfilPayload): Observable<any> {
     return this.api.put<any>('/auth/perfil', payload);
+  }
+
+  forgotPassword(payload: ForgotPasswordPayload): Observable<any> {
+    return this.api.post<any>('/auth/forgot-password', payload);
+  }
+
+  resetPassword(payload: ResetPasswordPayload): Observable<any> {
+    return this.api.post<any>('/auth/reset-password', payload);
   }
 
   savePendingLogin(email: string): void {

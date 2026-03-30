@@ -1,6 +1,8 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { first } from 'rxjs/operators';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UsuarioService } from '../../../core/services/usuario.service';
@@ -11,7 +13,7 @@ interface Perfil {
   email: string;
   telefono: string;
   direccion: string;
-  ciudad: string;
+  sexo: string;
 }
 
 @Component({
@@ -26,27 +28,65 @@ export class ClientePerfilComponent implements OnInit {
   private authService = inject(AuthService);
   private usuarioService = inject(UsuarioService);
   private modalService = inject(ConfirmModalService);
+  private router = inject(Router);
 
-  perfil = signal<Perfil>({
+  perfil: Perfil = {
     nombre: '',
     email: '',
     telefono: '',
     direccion: '',
-    ciudad: ''
-  });
+    sexo: ''
+  };
+
+  editPerfil: Perfil = {
+    nombre: '',
+    email: '',
+    telefono: '',
+    direccion: '',
+    sexo: ''
+  };
+
+  cargando = false;
+  guardando = false;
+  editando = false;
 
   ngOnInit() {
-    // Obtener datos del token JWT
+    this.cargarPerfil();
+  }
+
+  private cargarPerfil() {
+    this.cargando = true;
+    this.authService.me().pipe(first()).subscribe({
+      next: (resp) => {
+        this.perfil = {
+          nombre: resp?.nombre || '',
+          email: resp?.email || '',
+          telefono: resp?.telefono || '',
+          direccion: resp?.direccion || '',
+          sexo: resp?.sexo || ''
+        };
+        this.editPerfil = { ...this.perfil };
+        this.cargando = false;
+      },
+      error: () => {
+        this.cargando = false;
+        this.cargarDesdeToken();
+      }
+    });
+  }
+
+  private cargarDesdeToken() {
     const token = this.authService.getToken();
     if (token) {
       const payload = this.decodeToken(token);
-      this.perfil.set({
+      this.perfil = {
         nombre: payload['name'] || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || 'Usuario',
         email: payload['email'] || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || '',
         telefono: payload['phone'] || '',
         direccion: '',
-        ciudad: ''
-      });
+        sexo: ''
+      };
+      this.editPerfil = { ...this.perfil };
     }
   }
 
@@ -59,15 +99,48 @@ export class ClientePerfilComponent implements OnInit {
     }
   }
 
+  iniciarEdicion() {
+    this.editPerfil = { ...this.perfil };
+    this.editando = true;
+  }
+
+  cancelarEdicion() {
+    this.editPerfil = { ...this.perfil };
+    this.editando = false;
+  }
+
   guardarPerfil() {
-    const { nombre, email, telefono } = this.perfil();
-    this.usuarioService.updatePerfil({ nombre, email, telefono }).subscribe({
+    if (this.guardando) return;
+
+    const payload = {
+      nombre: this.editPerfil.nombre?.trim(),
+      email: this.editPerfil.email?.trim(),
+      telefono: this.editPerfil.telefono?.trim(),
+      direccion: this.editPerfil.direccion?.trim(),
+      sexo: this.editPerfil.sexo?.trim()
+    };
+
+    this.guardando = true;
+    this.usuarioService.updatePerfil(payload).pipe(first()).subscribe({
       next: async () => {
+        this.perfil = { ...this.editPerfil };
+        this.editando = false;
+        this.guardando = false;
         await this.modalService.confirm({ title: 'Perfil actualizado', message: 'Tus datos han sido guardados correctamente.', confirmText: 'Aceptar' });
       },
       error: (err) => {
         console.error('Error al actualizar perfil:', err);
+        this.guardando = false;
         this.toastService.error('No fue posible actualizar tu perfil');
+      }
+    });
+  }
+
+  irRecuperarPassword() {
+    this.router.navigate(['/login'], {
+      queryParams: {
+        mode: 'forgot',
+        email: this.perfil.email || null
       }
     });
   }

@@ -14,14 +14,21 @@ import { first } from 'rxjs/operators';
   styleUrl: './login-selector.component.scss'
 })
 export class LoginSelectorComponent implements OnInit {
+  viewMode: 'login' | 'forgot' | 'reset' = 'login';
   model = { email: '', password: '' };
+  forgotModel = { email: '' };
+  resetModel = { email: '', token: '', newPassword: '', confirmPassword: '' };
   loading = false;
+  forgotLoading = false;
+  resetLoading = false;
   biometricLoading = false;
   checkingBiometric = false;
   biometricReady = false;
   biometricUnavailableReason = '';
   private autoBiometricAttempted = false;
   showPassword = false;
+  showResetPassword = false;
+  showResetPasswordConfirm = false;
   rememberMe = false;
   private returnUrl: string | null = null;
 
@@ -35,13 +42,91 @@ export class LoginSelectorComponent implements OnInit {
   ngOnInit(): void {
     const ru = this.route.snapshot.queryParamMap.get('returnUrl');
     this.returnUrl = ru && ru.trim().length > 0 ? ru : null;
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    const resetEmail = this.route.snapshot.queryParamMap.get('email');
+    const resetToken = this.route.snapshot.queryParamMap.get('token');
+
+    if (resetEmail) {
+      this.model.email = resetEmail;
+      this.forgotModel.email = resetEmail;
+      this.resetModel.email = resetEmail;
+    }
+
+    if (mode === 'reset' && resetEmail && resetToken) {
+      this.viewMode = 'reset';
+      this.resetModel.token = decodeURIComponent(resetToken);
+    } else if (mode === 'forgot') {
+      this.viewMode = 'forgot';
+    }
 
     // Si ya está autenticado, redirigir
-    if (this.auth.isAuthenticated()) {
+    if (this.auth.isAuthenticated() && this.viewMode === 'login') {
       this.redirectByRole();
     }
 
     this.refreshBiometricAvailability(false);
+  }
+
+  goToForgotPassword(): void {
+    this.forgotModel.email = this.model.email?.trim() || this.forgotModel.email;
+    this.viewMode = 'forgot';
+  }
+
+  goToLogin(): void {
+    this.viewMode = 'login';
+    this.resetModel.token = '';
+    this.resetModel.newPassword = '';
+    this.resetModel.confirmPassword = '';
+  }
+
+  submitForgot(form: NgForm): void {
+    if (form.invalid || this.forgotLoading) return;
+
+    this.forgotLoading = true;
+    this.auth.forgotPassword({ email: this.forgotModel.email.trim() })
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.forgotLoading = false;
+          this.toast.show('Si el correo existe, enviamos instrucciones para restablecer contraseña.', 'success');
+          this.goToLogin();
+        },
+        error: () => {
+          this.forgotLoading = false;
+          this.toast.show('No fue posible procesar la solicitud en este momento.', 'error');
+        }
+      });
+  }
+
+  submitReset(form: NgForm): void {
+    if (form.invalid || this.resetLoading) return;
+    if (this.resetModel.newPassword.length < 6) {
+      this.toast.info('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (this.resetModel.newPassword !== this.resetModel.confirmPassword) {
+      this.toast.info('Las contraseñas no coinciden.');
+      return;
+    }
+
+    this.resetLoading = true;
+    this.auth.resetPassword({
+      email: this.resetModel.email.trim(),
+      token: this.resetModel.token,
+      newPassword: this.resetModel.newPassword
+    })
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.resetLoading = false;
+          this.toast.show('Contraseña restablecida correctamente. Ya puedes iniciar sesión.', 'success');
+          this.goToLogin();
+        },
+        error: () => {
+          this.resetLoading = false;
+          this.toast.show('El enlace de recuperación no es válido o expiró.', 'error');
+        }
+      });
   }
 
   onEmailBlur(): void {

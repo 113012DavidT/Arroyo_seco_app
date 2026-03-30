@@ -7,6 +7,8 @@ export interface PerfilUpdateDto {
   nombre?: string;
   email?: string;
   telefono?: string;
+  direccion?: string;
+  sexo?: string;
 }
 
 export interface PasswordUpdateDto {
@@ -19,15 +21,13 @@ export class UsuarioService {
   private readonly api = inject(ApiService);
 
   updatePerfil(payload: PerfilUpdateDto): Observable<any> {
-    // Endpoint tentativo; ajustar según backend
-    return this.api.put('/usuarios/perfil', payload).pipe(
+    return this.api.put('/auth/perfil', payload).pipe(
       catchError((err) => throwError(() => err))
     );
   }
 
   cambiarPassword(payload: PasswordUpdateDto): Observable<any> {
-    // Endpoint tentativo; ajustar según backend
-    return this.api.put('/usuarios/password', payload).pipe(
+    return this.api.post('/auth/cambiar-password', payload).pipe(
       catchError((err) => throwError(() => err))
     );
   }

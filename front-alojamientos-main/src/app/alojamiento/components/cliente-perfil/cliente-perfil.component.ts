@@ -49,7 +49,7 @@ export class ClientePerfilComponent implements OnInit {
   cargando = false;
   guardando = false;
   editando = false;
-  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{2,80}$";
+  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{3,80}$";
   readonly correoPattern = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$';
   readonly telefonoPattern = '^\\d{10}$';
   readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';

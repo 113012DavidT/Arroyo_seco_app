@@ -13,6 +13,15 @@ namespace arroyoSeco.Controllers;
 public class GastronomiasController : ControllerBase
 {
     private const string NeuronaBaseUrl = "http://34.51.58.191:5000";
+    private const int MinNombreEstablecimiento = 3;
+    private const int MaxNombreEstablecimiento = 120;
+    private const int MinDescripcionEstablecimiento = 15;
+    private const int MaxDescripcionEstablecimiento = 1000;
+
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".gif"
+    };
 
     private readonly IAppDbContext _db;
     private readonly CrearEstablecimientoCommandHandler _crear;
@@ -417,7 +426,13 @@ public class GastronomiasController : ControllerBase
         if (est.OferenteId != _current.UserId) return Forbid();
 
         if (!string.IsNullOrWhiteSpace(request.Nombre))
-            est.Nombre = request.Nombre;
+        {
+            var nombre = request.Nombre.Trim();
+            if (nombre.Length < MinNombreEstablecimiento || nombre.Length > MaxNombreEstablecimiento)
+                return BadRequest(new { message = $"El nombre del establecimiento debe tener entre {MinNombreEstablecimiento} y {MaxNombreEstablecimiento} caracteres" });
+
+            est.Nombre = nombre;
+        }
         if (!string.IsNullOrWhiteSpace(request.Ubicacion))
             est.Ubicacion = request.Ubicacion;
         if (request.Latitud.HasValue)
@@ -431,7 +446,16 @@ public class GastronomiasController : ControllerBase
         if (request.Amenidades != null)
             est.Amenidades = request.Amenidades;
         if (request.Descripcion != null)
-            est.Descripcion = request.Descripcion;
+        {
+            var descripcion = request.Descripcion.Trim();
+            if (!string.IsNullOrWhiteSpace(descripcion)
+                && (descripcion.Length < MinDescripcionEstablecimiento || descripcion.Length > MaxDescripcionEstablecimiento))
+            {
+                return BadRequest(new { message = $"La descripcion debe tener entre {MinDescripcionEstablecimiento} y {MaxDescripcionEstablecimiento} caracteres" });
+            }
+
+            est.Descripcion = descripcion;
+        }
         if (!string.IsNullOrWhiteSpace(request.FotoPrincipal))
             est.FotoPrincipal = request.FotoPrincipal;
         if (request.FotosUrls != null)
@@ -484,6 +508,9 @@ public class GastronomiasController : ControllerBase
 
         foreach (var file in files.Where(f => f.Length > 0))
         {
+            if (!IsImageFile(file))
+                return BadRequest(new { message = $"El archivo '{file.FileName}' no es una imagen valida" });
+
             await using var stream = file.OpenReadStream();
             var relativePath = await _storage.SaveFileAsync(stream, file.FileName, "fotos/gastronomia", ct);
             var foto = new FotoEstablecimiento
@@ -549,6 +576,18 @@ public class GastronomiasController : ControllerBase
         _db.Establecimientos.Remove(est);
         await _db.SaveChangesAsync(ct);
         return Ok(new { message = "Establecimiento eliminado correctamente" });
+    }
+
+    private static bool IsImageFile(IFormFile file)
+    {
+        if (file is null || string.IsNullOrWhiteSpace(file.ContentType))
+            return false;
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var ext = Path.GetExtension(file.FileName);
+        return !string.IsNullOrWhiteSpace(ext) && AllowedImageExtensions.Contains(ext);
     }
 }
 

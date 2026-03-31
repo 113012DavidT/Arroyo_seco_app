@@ -22,7 +22,7 @@ interface SolicitudModel {
   styleUrls: ['./oferente-solicitud.component.scss']
 })
 export class OferenteSolicitudComponent {
-  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{2,80}$";
+  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{3,80}$";
   readonly telefonoPattern = '^\\d{10}$';
   readonly correoPattern = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$';
   readonly negocioPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#()\\-]{2,120}$';

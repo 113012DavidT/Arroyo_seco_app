@@ -15,6 +15,10 @@ import { MapPickerComponent } from '../../../shared/components/map-picker/map-pi
   styleUrl: './form-establecimiento.component.scss'
 })
 export class FormEstablecimientoComponent implements OnInit {
+  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.'-]{3,120}$";
+  readonly minDescripcionLength = 15;
+  readonly maxDescripcionLength = 1000;
+
   establecimiento: EstablecimientoDto = {
     nombre: '',
     ubicacion: '',
@@ -86,6 +90,21 @@ export class FormEstablecimientoComponent implements OnInit {
       return;
     }
 
+    const nombre = (this.establecimiento.nombre || '').trim();
+    if (!new RegExp(this.nombrePattern).test(nombre)) {
+      this.toast.error('El nombre del establecimiento debe tener entre 3 y 120 caracteres válidos');
+      return;
+    }
+
+    const descripcion = (this.establecimiento.descripcion || '').trim();
+    if (descripcion.length < this.minDescripcionLength || descripcion.length > this.maxDescripcionLength) {
+      this.toast.error(`La descripcion debe tener entre ${this.minDescripcionLength} y ${this.maxDescripcionLength} caracteres`);
+      return;
+    }
+
+    this.establecimiento.nombre = nombre;
+    this.establecimiento.descripcion = descripcion;
+
     // Las coordenadas son opcionales ahora
     if (!this.establecimiento.latitud || !this.establecimiento.longitud) {
       console.warn('Sin coordenadas, guardando solo con ubicación de texto');
@@ -124,6 +143,13 @@ export class FormEstablecimientoComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files || []);
     if (!files.length) {
+      return;
+    }
+
+    const invalidFiles = files.filter((file) => !file.type.startsWith('image/'));
+    if (invalidFiles.length) {
+      this.toast.error('Solo se permiten archivos de imagen');
+      input.value = '';
       return;
     }
 

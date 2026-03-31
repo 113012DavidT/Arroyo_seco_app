@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
     private const int SegundosBloqueoBase = 30;
 
     private static readonly EmailAddressAttribute EmailValidator = new();
-    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{2,80}$", RegexOptions.Compiled);
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{3,80}$", RegexOptions.Compiled);
     private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
     private static readonly Regex DireccionRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,#-]{5,200}$", RegexOptions.Compiled);
 

@@ -126,6 +126,13 @@ export class FormRegistroAlojamientoComponent implements OnInit {
       return;
     }
 
+    const invalidFiles = files.filter((file) => !file.type.startsWith('image/'));
+    if (invalidFiles.length) {
+      this.toastService.error('Solo se permiten archivos de imagen');
+      input.value = '';
+      return;
+    }
+
     this.subiendoFotos = true;
     let pendientes = files.length;
 

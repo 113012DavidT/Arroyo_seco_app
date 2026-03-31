@@ -14,7 +14,7 @@ namespace arroyoSeco.Controllers;
 public class SolicitudesOferenteController : ControllerBase
 {
     private static readonly EmailAddressAttribute EmailValidator = new();
-    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{2,80}$", RegexOptions.Compiled);
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{3,80}$", RegexOptions.Compiled);
     private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
     private static readonly Regex TextoLibreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,#()\-]{2,120}$", RegexOptions.Compiled);
 

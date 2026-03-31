@@ -10,6 +10,9 @@
         [(ngModel)]="establecimiento.nombre" 
         name="nombre"
         required
+        minlength="3"
+        maxlength="120"
+        [pattern]="nombrePattern"
         placeholder="Ej: La Trattoria" />
     </div>
 
@@ -61,6 +64,9 @@
         [(ngModel)]="establecimiento.descripcion" 
         name="descripcion"
         rows="4"
+        required
+        [minlength]="minDescripcionLength"
+        [maxlength]="maxDescripcionLength"
         placeholder="Describe tu restaurante..."></textarea>
     </div>
 

@@ -257,6 +257,13 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
       return;
     }
 
+    const invalidFiles = files.filter((file) => !file.type.startsWith('image/'));
+    if (invalidFiles.length) {
+      this.toast.error('Solo se permiten archivos de imagen');
+      input.value = '';
+      return;
+    }
+
     this.subiendoFotos = true;
     this.gastronomiaService.uploadFotos(this.establecimiento.id, files).pipe(first()).subscribe({
       next: (fotos) => {

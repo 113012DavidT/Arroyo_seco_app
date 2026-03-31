@@ -6,6 +6,7 @@ using arroyoSeco.Domain.Entities.Enums;
 using Microsoft.AspNetCore.Identity;
 using arroyoSeco.Infrastructure.Auth;
 using arroyoSeco.Domain.Entities.Usuarios;
+using System.Text.RegularExpressions;
 
 namespace arroyoSeco.Controllers;
 
@@ -13,6 +14,9 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class OferentesController : ControllerBase
 {
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{3,80}$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
+
     private readonly IAppDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ICurrentUserService _current;
@@ -190,13 +194,21 @@ public class OferentesController : ControllerBase
         // Actualizar nombre del negocio
         if (!string.IsNullOrWhiteSpace(request.Nombre))
         {
-            oferente.Nombre = request.Nombre;
+            var nombre = request.Nombre.Trim();
+            if (!NombreRegex.IsMatch(nombre))
+                return BadRequest(new { message = "Nombre invalido. Debe tener entre 3 y 80 caracteres (solo letras y espacios)" });
+
+            oferente.Nombre = nombre;
         }
 
         // Actualizar teléfono en Identity
         if (request.Telefono != null)
         {
-            user.PhoneNumber = request.Telefono;
+            var telefono = request.Telefono.Trim();
+            if (!TelefonoRegex.IsMatch(telefono))
+                return BadRequest(new { message = "Telefono invalido. Debe tener exactamente 10 digitos numericos" });
+
+            user.PhoneNumber = telefono;
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {

@@ -24,7 +24,7 @@ interface Perfil {
       <form #f="ngForm" (ngSubmit)="guardar(f)" class="card">
         <label>
           Nombre completo
-          <input type="text" name="nombre" [(ngModel)]="perfil.nombre" required />
+          <input type="text" name="nombre" [(ngModel)]="perfil.nombre" required minlength="3" maxlength="80" [pattern]="nombrePattern" />
         </label>
 
         <label>
@@ -34,7 +34,7 @@ interface Perfil {
 
         <label>
           Teléfono
-          <input type="tel" name="telefono" [(ngModel)]="perfil.telefono" required />
+          <input type="tel" name="telefono" [(ngModel)]="perfil.telefono" required maxlength="10" [pattern]="telefonoPattern" inputmode="numeric" (input)="onTelefonoInput()" />
         </label>
 
         <fieldset class="prefs">
@@ -73,6 +73,8 @@ export class OferenteConfiguracionComponent implements OnInit {
     notificarEmail: true,
     notificarSms: false,
   };
+  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{3,80}$";
+  readonly telefonoPattern = '^\\d{10}$';
 
   ngOnInit() {
     // Obtener datos del JWT token
@@ -100,7 +102,21 @@ export class OferenteConfiguracionComponent implements OnInit {
 
   guardar(form: NgForm) {
     if (form.invalid) return;
-    const { nombre, correo, telefono } = this.perfil;
+
+    const nombre = (this.perfil.nombre || '').trim();
+    const correo = (this.perfil.correo || '').trim();
+    const telefono = (this.perfil.telefono || '').trim();
+
+    if (!new RegExp(this.nombrePattern).test(nombre)) {
+      this.toastService.error('Nombre invalido. Debe tener entre 3 y 80 caracteres');
+      return;
+    }
+
+    if (!new RegExp(this.telefonoPattern).test(telefono)) {
+      this.toastService.error('Telefono invalido. Debe tener exactamente 10 digitos');
+      return;
+    }
+
     this.usuarioService.updatePerfil({ nombre, email: correo, telefono }).subscribe({
       next: async () => {
         await this.modalService.confirm({ title: 'Configuración', message: 'Cambios guardados correctamente.', confirmText: 'Aceptar' });
@@ -110,5 +126,10 @@ export class OferenteConfiguracionComponent implements OnInit {
         this.toastService.error('No fue posible guardar los cambios');
       }
     });
+  }
+
+  onTelefonoInput() {
+    const soloDigitos = (this.perfil.telefono || '').replace(/\D/g, '');
+    this.perfil.telefono = soloDigitos.slice(0, 10);
   }
 }

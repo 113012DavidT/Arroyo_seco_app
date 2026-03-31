@@ -12,6 +12,11 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class AlojamientosController : ControllerBase
 {
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp", ".gif"
+    };
+
     private readonly IAppDbContext _db;
     private readonly CrearAlojamientoCommandHandler _crear;
     private readonly ICurrentUserService _current;
@@ -164,6 +169,9 @@ public class AlojamientosController : ControllerBase
 
         foreach (var file in files.Where(f => f.Length > 0))
         {
+            if (!IsImageFile(file))
+                return BadRequest(new { message = $"El archivo '{file.FileName}' no es una imagen valida" });
+
             await using var stream = file.OpenReadStream();
             var relativePath = await _storage.SaveFileAsync(stream, file.FileName, "fotos/alojamientos", ct);
             var foto = new FotoAlojamiento
@@ -228,5 +236,17 @@ public class AlojamientosController : ControllerBase
         _db.Alojamientos.Remove(a);
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private static bool IsImageFile(IFormFile file)
+    {
+        if (file is null || string.IsNullOrWhiteSpace(file.ContentType))
+            return false;
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var ext = Path.GetExtension(file.FileName);
+        return !string.IsNullOrWhiteSpace(ext) && AllowedImageExtensions.Contains(ext);
     }
 }

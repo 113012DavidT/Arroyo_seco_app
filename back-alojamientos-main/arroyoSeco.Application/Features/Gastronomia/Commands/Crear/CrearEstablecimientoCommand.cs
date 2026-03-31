@@ -25,6 +25,11 @@ public class CrearEstablecimientoCommand
 
 public class CrearEstablecimientoCommandHandler
 {
+    private const int MinNombreEstablecimiento = 3;
+    private const int MaxNombreEstablecimiento = 120;
+    private const int MinDescripcionEstablecimiento = 15;
+    private const int MaxDescripcionEstablecimiento = 1000;
+
     private readonly IAppDbContext _context;
     private readonly ICurrentUserService _current;
 
@@ -38,8 +43,19 @@ public class CrearEstablecimientoCommandHandler
     {
         if (string.IsNullOrWhiteSpace(request.Nombre))
             throw new ArgumentException("Nombre requerido");
+        var nombre = request.Nombre.Trim();
+        if (nombre.Length < MinNombreEstablecimiento || nombre.Length > MaxNombreEstablecimiento)
+            throw new ArgumentException($"Nombre invalido. Debe tener entre {MinNombreEstablecimiento} y {MaxNombreEstablecimiento} caracteres");
+
         if (string.IsNullOrWhiteSpace(request.Ubicacion))
             throw new ArgumentException("Ubicación requerida");
+
+        var descripcion = request.Descripcion?.Trim();
+        if (!string.IsNullOrWhiteSpace(descripcion)
+            && (descripcion.Length < MinDescripcionEstablecimiento || descripcion.Length > MaxDescripcionEstablecimiento))
+        {
+            throw new ArgumentException($"Descripcion invalida. Debe tener entre {MinDescripcionEstablecimiento} y {MaxDescripcionEstablecimiento} caracteres");
+        }
 
         var owner = await _context.Oferentes
             .FirstOrDefaultAsync(o => o.Id == _current.UserId, ct);
@@ -49,14 +65,14 @@ public class CrearEstablecimientoCommandHandler
         var e = new Establecimiento
         {
             OferenteId = owner.Id,
-            Nombre = request.Nombre.Trim(),
+            Nombre = nombre,
             Ubicacion = request.Ubicacion.Trim(),
             Latitud = request.Latitud,
             Longitud = request.Longitud,
             Direccion = request.Direccion?.Trim(),
             TipoEstablecimiento = request.TipoEstablecimiento?.Trim(),
             Amenidades = request.Amenidades,
-            Descripcion = request.Descripcion,
+            Descripcion = descripcion,
             FotoPrincipal = request.FotoPrincipal,
             Fotos = request.FotosUrls
                 .Where(url => !string.IsNullOrWhiteSpace(url))

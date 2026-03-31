@@ -54,5 +54,30 @@
       </article>
     </div>
 
+    <article class="card reviews-card">
+      <h3>Reseñas recientes</h3>
+
+      <p class="muted" *ngIf="reviewsLoading">Cargando reseñas...</p>
+      <p class="muted" *ngIf="!reviewsLoading && misReviews.length === 0">No hay reseñas para mostrar.</p>
+
+      <ul class="reviews-list" *ngIf="!reviewsLoading && misReviews.length > 0">
+        <li *ngFor="let review of misReviews">
+          <div class="review-main">
+            <strong>{{ review.establecimientoNombre }}</strong>
+            <span class="review-stars">★ {{ review.puntuacion }}/5</span>
+            <p>{{ review.comentario }}</p>
+            <small>{{ review.fecha | date:'dd/MM/yyyy HH:mm' }} · Estado: {{ review.estado }}</small>
+          </div>
+          <button
+            type="button"
+            class="btn-report"
+            (click)="reportar(review)"
+            [disabled]="!puedeReportar(review) || reportingReviewId === review.id">
+            {{ review.estado === 'Reportada' ? 'Reportada' : (reportingReviewId === review.id ? 'Reportando...' : 'Reportar') }}
+          </button>
+        </li>
+      </ul>
+    </article>
+
   </ng-container>
 </section>

@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { first } from 'rxjs/operators';
-import { GastronomiaAnalyticsDto, GastronomiaService } from '../../services/gastronomia.service';
+import { GastronomiaAnalyticsDto, GastronomiaService, ReviewOferenteDto } from '../../services/gastronomia.service';
 import { Chart, registerables } from 'chart.js';
+import { ToastService } from '../../../shared/services/toast.service';
 
 Chart.register(...registerables);
 
@@ -17,6 +18,9 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   loading = true;
   error: string | null = null;
   data: GastronomiaAnalyticsDto | null = null;
+  reviewsLoading = true;
+  misReviews: ReviewOferenteDto[] = [];
+  reportingReviewId: number | null = null;
 
   @ViewChild('starsCanvas') starsCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('trendCanvas') trendCanvas!: ElementRef<HTMLCanvasElement>;
@@ -24,7 +28,10 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   private starsChart?: Chart;
   private trendChart?: Chart;
 
-  constructor(private gastronomiaService: GastronomiaService) {}
+  constructor(
+    private gastronomiaService: GastronomiaService,
+    private toast: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.gastronomiaService.getAnalytics().pipe(first()).subscribe({
@@ -39,6 +46,16 @@ export class AnalyticsGastronomiaComponent implements OnInit {
       error: (err) => {
         this.error = err?.error?.message || 'No se pudo cargar la analitica';
         this.loading = false;
+      }
+    });
+
+    this.gastronomiaService.getMisReviews().pipe(first()).subscribe({
+      next: (reviews) => {
+        this.misReviews = (reviews || []).slice(0, 30);
+        this.reviewsLoading = false;
+      },
+      error: () => {
+        this.reviewsLoading = false;
       }
     });
   }
@@ -105,5 +122,36 @@ export class AnalyticsGastronomiaComponent implements OnInit {
 
   trackByLabel(_: number, item: { etiqueta: string }) {
     return item?.etiqueta;
+  }
+
+  puedeReportar(review: ReviewOferenteDto): boolean {
+    return review.estado !== 'Reportada';
+  }
+
+  reportar(review: ReviewOferenteDto): void {
+    if (!review?.id || !this.puedeReportar(review) || this.reportingReviewId === review.id) {
+      return;
+    }
+
+    const motivo = (window.prompt('Motivo del reporte para esta reseña:') || '').trim();
+    if (!motivo) {
+      this.toast.info('Debes indicar el motivo del reporte');
+      return;
+    }
+
+    this.reportingReviewId = review.id;
+    this.gastronomiaService.reportarReview(review.id, { motivo }).pipe(first()).subscribe({
+      next: () => {
+        this.misReviews = this.misReviews.map((item) =>
+          item.id === review.id ? { ...item, estado: 'Reportada', motivoRechazo: motivo } : item
+        );
+        this.toast.success('Reseña reportada. El administrador la revisará.');
+        this.reportingReviewId = null;
+      },
+      error: (err) => {
+        this.toast.error(err?.error?.message || 'No se pudo reportar la reseña');
+        this.reportingReviewId = null;
+      }
+    });
   }
 }

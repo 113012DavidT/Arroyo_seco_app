@@ -98,6 +98,22 @@ export interface CrearReviewGastronomiaDto {
   comentario: string;
 }
 
+export interface ReviewOferenteDto {
+  id: number;
+  establecimientoId: number;
+  establecimientoNombre: string;
+  usuarioId: string;
+  comentario: string;
+  puntuacion: number;
+  fecha: string;
+  estado: string;
+  motivoRechazo?: string;
+}
+
+export interface ReportarReviewDto {
+  motivo?: string;
+}
+
 export interface RankingGastronomiaDto extends EstablecimientoDto {
   promedio?: number;
   totalResenas?: number;
@@ -244,6 +260,16 @@ export class GastronomiaService {
   /** Crear reseña de un establecimiento */
   createReview(id: number, payload: CrearReviewGastronomiaDto): Observable<number> {
     return this.api.post<number>(`/Gastronomias/${id}/reviews`, payload);
+  }
+
+  /** Listar reseñas de establecimientos del oferente */
+  getMisReviews(): Observable<ReviewOferenteDto[]> {
+    return this.api.get<ReviewOferenteDto[]>(`/Gastronomias/reviews/mias`);
+  }
+
+  /** Reportar reseña como oferente */
+  reportarReview(reviewId: number, payload: ReportarReviewDto): Observable<void> {
+    return this.api.patch<void>(`/Gastronomias/reviews/${reviewId}/reportar`, payload);
   }
 
   // ===== Oferente (autenticado) =====

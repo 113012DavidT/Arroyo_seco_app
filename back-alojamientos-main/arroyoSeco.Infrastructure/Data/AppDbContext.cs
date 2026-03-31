@@ -83,7 +83,7 @@ public class AppDbContext : DbContext, IAppDbContext
             e.Property(r => r.Comentario).HasMaxLength(1000);
             e.Property(r => r.Fecha).IsRequired();
             e.Property(r => r.UsuarioId).IsRequired();
-            e.Property(r => r.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("Pendiente");
+            e.Property(r => r.Estado).IsRequired().HasMaxLength(20).HasDefaultValue("Aprobada");
             e.Property(r => r.ModeradaPorId).HasMaxLength(450);
             e.Property(r => r.MotivoRechazo).HasMaxLength(250);
             e.HasIndex(r => r.Estado);

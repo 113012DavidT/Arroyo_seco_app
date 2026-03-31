@@ -66,8 +66,6 @@ public class GastronomiasController : ControllerBase
             return BadRequest(new { message = "El comentario es obligatorio" });
 
         var comentarioLimpio = cmd.Comentario.Trim();
-        if (ProfanityFilter.ContainsProfanity(comentarioLimpio, out _))
-            return BadRequest(new { message = "La reseña contiene lenguaje no permitido" });
 
         var exists = await _db.Establecimientos.AnyAsync(e => e.Id == id, ct);
         if (!exists)
@@ -102,27 +100,21 @@ public class GastronomiasController : ControllerBase
         var establecimiento = await _db.Establecimientos
             .AsNoTracking()
             .Where(e => e.Id == id)
-            .Select(e => new { e.Id, e.Nombre })
+            .Select(e => new { e.Id, e.Nombre, e.OferenteId })
             .FirstOrDefaultAsync(ct);
 
-        var admins = await _userManager.GetUsersInRoleAsync("Admin");
-        foreach (var admin in admins)
+        if (!string.IsNullOrWhiteSpace(establecimiento?.OferenteId))
         {
             await _notifications.PushAsync(
-                admin.Id,
-                "Reseña pendiente de revisión",
-                $"Hay una nueva reseña para {establecimiento?.Nombre ?? "un establecimiento"} que requiere moderación.",
-                "ModeracionReview",
-                "/admin/gastronomia/notificaciones",
+                establecimiento.OferenteId,
+                "Nueva reseña publicada",
+                $"Tu negocio {establecimiento.Nombre} recibió una nueva reseña.",
+                "ReviewPublicada",
+                "/oferente/gastronomia/analytics",
                 ct);
         }
 
-        return CreatedAtAction(nameof(GetReviews), new { id }, new
-        {
-            reviewId,
-            estado = "Pendiente",
-            message = "Tu reseña fue enviada y está pendiente de revisión del administrador"
-        });
+        return CreatedAtAction(nameof(GetReviews), new { id }, new { reviewId, estado = "Aprobada" });
     }
 
     [AllowAnonymous]
@@ -130,19 +122,20 @@ public class GastronomiasController : ControllerBase
     public async Task<ActionResult> GetReviews(int id, CancellationToken ct)
     {
         var reviews = await _db.Reviews
-            .Where(r => r.EstablecimientoId == id && r.Estado == "Aprobada")
+            .Where(r => r.EstablecimientoId == id && r.Estado != "Rechazada")
             .OrderByDescending(r => r.Fecha)
             .AsNoTracking()
             .ToListAsync(ct);
         return Ok(reviews);
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpGet("reviews/pendientes")]
-    public async Task<ActionResult> ListReviewsPendientes(CancellationToken ct)
+    [Authorize(Roles = "Oferente")]
+    [HttpGet("reviews/mias")]
+    public async Task<ActionResult> ListMisReviews(CancellationToken ct)
     {
-        var pendientes = await _db.Reviews
-            .Where(r => r.Estado == "Pendiente")
+        var reviews = await _db.Reviews
+            .AsNoTracking()
+            .Where(r => r.Establecimiento.OferenteId == _current.UserId && r.Estado != "Rechazada")
             .OrderByDescending(r => r.Fecha)
             .Select(r => new
             {
@@ -153,17 +146,17 @@ public class GastronomiasController : ControllerBase
                 r.Comentario,
                 r.Puntuacion,
                 r.Fecha,
-                r.Estado
+                r.Estado,
+                r.MotivoRechazo
             })
-            .AsNoTracking()
             .ToListAsync(ct);
 
-        return Ok(pendientes);
+        return Ok(reviews);
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpPatch("reviews/{reviewId:int}/moderar")]
-    public async Task<IActionResult> ModerarReview(int reviewId, [FromBody] ModerarReviewDto dto, CancellationToken ct)
+    [Authorize(Roles = "Oferente")]
+    [HttpPatch("reviews/{reviewId:int}/reportar")]
+    public async Task<IActionResult> ReportarReview(int reviewId, [FromBody] ReportarReviewDto dto, CancellationToken ct)
     {
         var review = await _db.Reviews
             .Include(r => r.Establecimiento)
@@ -171,28 +164,103 @@ public class GastronomiasController : ControllerBase
         if (review is null)
             return NotFound(new { message = "Reseña no encontrada" });
 
-        if (review.Estado != "Pendiente")
-            return BadRequest(new { message = "La reseña ya fue moderada" });
+        if (review.Establecimiento?.OferenteId != _current.UserId)
+            return Forbid();
 
-        review.Estado = dto.Aprobar ? "Aprobada" : "Rechazada";
+        if (review.Estado == "Reportada")
+            return BadRequest(new { message = "La reseña ya fue reportada" });
+
+        review.Estado = "Reportada";
+        review.MotivoRechazo = dto.Motivo?.Trim();
         review.FechaModeracionUtc = DateTime.UtcNow;
         review.ModeradaPorId = _current.UserId;
-        review.MotivoRechazo = dto.Aprobar ? null : dto.Motivo?.Trim();
+        await _db.SaveChangesAsync(ct);
+
+        var admins = await _userManager.GetUsersInRoleAsync("Admin");
+        foreach (var admin in admins)
+        {
+            await _notifications.PushAsync(
+                admin.Id,
+                "Reseña reportada por oferente",
+                $"Se reportó una reseña en {review.Establecimiento?.Nombre ?? "un establecimiento"} y requiere revisión.",
+                "ReporteReview",
+                "/admin/gastronomia/notificaciones",
+                ct);
+        }
+
+        return NoContent();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("reviews/reportadas")]
+    public async Task<ActionResult> ListReviewsReportadas(CancellationToken ct)
+    {
+        var reportadas = await _db.Reviews
+            .AsNoTracking()
+            .Where(r => r.Estado == "Reportada")
+            .OrderByDescending(r => r.FechaModeracionUtc ?? r.Fecha)
+            .Select(r => new
+            {
+                r.Id,
+                r.EstablecimientoId,
+                EstablecimientoNombre = r.Establecimiento.Nombre,
+                r.UsuarioId,
+                r.Comentario,
+                r.Puntuacion,
+                r.Fecha,
+                r.Estado,
+                MotivoReporte = r.MotivoRechazo,
+                r.ModeradaPorId,
+                r.FechaModeracionUtc
+            })
+            .ToListAsync(ct);
+
+        return Ok(reportadas);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("reviews/{reviewId:int}/resolver-reporte")]
+    public async Task<IActionResult> ResolverReporteReview(int reviewId, [FromBody] ResolverReporteReviewDto dto, CancellationToken ct)
+    {
+        var review = await _db.Reviews
+            .Include(r => r.Establecimiento)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, ct);
+        if (review is null)
+            return NotFound(new { message = "Reseña no encontrada" });
+
+        if (review.Estado != "Reportada")
+            return BadRequest(new { message = "La reseña no está en estado reportada" });
+
+        review.Estado = dto.EsValido ? "ReporteValido" : "ReporteNoValido";
+        review.FechaModeracionUtc = DateTime.UtcNow;
+        review.ModeradaPorId = _current.UserId;
+        if (!string.IsNullOrWhiteSpace(dto.ComentarioAdmin))
+            review.MotivoRechazo = $"{review.MotivoRechazo ?? string.Empty} | Revision admin: {dto.ComentarioAdmin.Trim()}".Trim();
 
         await _db.SaveChangesAsync(ct);
 
-        var titulo = dto.Aprobar ? "Reseña aprobada" : "Reseña rechazada";
-        var mensaje = dto.Aprobar
-            ? $"Tu reseña para {review.Establecimiento?.Nombre ?? "el establecimiento"} fue aprobada y ya es visible."
-            : $"Tu reseña para {review.Establecimiento?.Nombre ?? "el establecimiento"} fue rechazada por incumplir normas.";
-
         await _notifications.PushAsync(
             review.UsuarioId,
-            titulo,
-            mensaje,
-            "ModeracionReview",
-            "/cliente/gastronomia/notificaciones",
+            "Tu reseña fue revisada",
+            dto.EsValido
+                ? "Tu reseña fue reportada y el admin confirmó el reporte, pero la reseña sigue publicada."
+                : "Tu reseña fue reportada y el admin descartó el reporte.",
+            "ReporteReview",
+            $"/cliente/gastronomia/{review.EstablecimientoId}",
             ct);
+
+        if (!string.IsNullOrWhiteSpace(review.Establecimiento?.OferenteId))
+        {
+            await _notifications.PushAsync(
+                review.Establecimiento.OferenteId,
+                "Reporte de reseña resuelto",
+                dto.EsValido
+                    ? "El admin confirmó tu reporte de reseña."
+                    : "El admin rechazó tu reporte de reseña.",
+                "ReporteReview",
+                "/oferente/gastronomia/analytics",
+                ct);
+        }
 
         return NoContent();
     }
@@ -223,8 +291,8 @@ public class GastronomiasController : ControllerBase
             x.clase,
             x.confidence,
             x.fuente,
-            x.est.Reviews.Any(r => r.Estado == "Aprobada") ? x.est.Reviews.Where(r => r.Estado == "Aprobada").Average(r => r.Puntuacion) : 0,
-            x.est.Reviews.Count(r => r.Estado == "Aprobada")
+            x.est.Reviews.Any(r => r.Estado != "Rechazada") ? x.est.Reviews.Where(r => r.Estado != "Rechazada").Average(r => r.Puntuacion) : 0,
+            x.est.Reviews.Count(r => r.Estado != "Rechazada")
         )).ToList();
 
         return Ok(response);
@@ -244,7 +312,7 @@ public class GastronomiasController : ControllerBase
 
         var reviewsQuery = _db.Reviews
             .AsNoTracking()
-            .Where(r => establecimientoIds.Contains(r.EstablecimientoId) && r.Estado == "Aprobada");
+            .Where(r => establecimientoIds.Contains(r.EstablecimientoId) && r.Estado != "Rechazada");
 
         var totalReviews = await reviewsQuery.CountAsync(ct);
         var ratingPromedio = totalReviews > 0
@@ -266,12 +334,12 @@ public class GastronomiasController : ControllerBase
         var byEstablecimiento = await _db.Establecimientos
             .Include(e => e.Reviews)
             .AsNoTracking()
-            .Where(e => e.OferenteId == _current.UserId && e.Reviews.Any(r => r.Estado == "Aprobada"))
+            .Where(e => e.OferenteId == _current.UserId && e.Reviews.Any(r => r.Estado != "Rechazada"))
             .Select(e => new EstablecimientoReviewStatsDto(
                 e.Id,
                 e.Nombre,
-                e.Reviews.Where(r => r.Estado == "Aprobada").Average(r => (double)r.Puntuacion),
-                e.Reviews.Count(r => r.Estado == "Aprobada")
+                e.Reviews.Where(r => r.Estado != "Rechazada").Average(r => (double)r.Puntuacion),
+                e.Reviews.Count(r => r.Estado != "Rechazada")
             ))
             .ToListAsync(ct);
 
@@ -327,7 +395,7 @@ public class GastronomiasController : ControllerBase
 
         var mlInput = establecimientos.Select(est =>
         {
-            var reviewsAprobadas = est.Reviews.Where(r => r.Estado == "Aprobada").ToList();
+            var reviewsAprobadas = est.Reviews.Where(r => r.Estado != "Rechazada").ToList();
             var avgPuntuacion = reviewsAprobadas.Count > 0 ? reviewsAprobadas.Average(r => r.Puntuacion) : 3.0;
             var lastComentario = reviewsAprobadas.Count > 0
                 ? reviewsAprobadas.OrderByDescending(r => r.Fecha).First().Comentario
@@ -338,7 +406,7 @@ public class GastronomiasController : ControllerBase
         var fallback = establecimientos
             .Select(est =>
             {
-                var reviewsAprobadas = est.Reviews.Where(r => r.Estado == "Aprobada").ToList();
+                var reviewsAprobadas = est.Reviews.Where(r => r.Estado != "Rechazada").ToList();
                 var avg = reviewsAprobadas.Count > 0 ? reviewsAprobadas.Average(r => r.Puntuacion) : 0;
                 var clase = avg >= 4.0 ? 2 : (avg >= 2.5 ? 1 : 0);
                 return (est, clase, confidence: avg / 5.0, fuente: "fallback");
@@ -734,7 +802,11 @@ public record GastronomiaAnalyticsDto(
     List<ReviewsTrendPointDto> TendenciaMensual
 );
 
-public record ModerarReviewDto(
-    bool Aprobar,
+public record ReportarReviewDto(
     string? Motivo
+);
+
+public record ResolverReporteReviewDto(
+    bool EsValido,
+    string? ComentarioAdmin
 );

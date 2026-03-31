@@ -32,7 +32,7 @@ namespace arroyoSeco.Application.Features.Gastronomia.Commands.Crear
                 Comentario = request.Comentario.Trim(),
                 Puntuacion = request.Puntuacion,
                 Fecha = DateTime.UtcNow,
-                Estado = "Pendiente"
+                Estado = "Aprobada"
             };
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync(ct);

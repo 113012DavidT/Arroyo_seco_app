@@ -136,3 +136,63 @@
   font-size: 0.9rem;
   flex-shrink: 0;
 }
+
+.reviews-card {
+  margin-top: 0.5rem;
+}
+
+.muted {
+  color: #6b7280;
+  margin: 0.25rem 0 0;
+}
+
+.reviews-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.reviews-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.review-main {
+  flex: 1;
+}
+
+.review-main p {
+  margin: 0.35rem 0;
+  color: #374151;
+}
+
+.review-main small {
+  color: #6b7280;
+}
+
+.review-stars {
+  margin-left: 0.5rem;
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+.btn-report {
+  border: 1px solid #ef4444;
+  background: #fff;
+  color: #ef4444;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.btn-report:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -78,11 +78,6 @@ export class DetalleGastronomiaComponent implements OnInit {
     'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=400&fit=crop'
   ];
 
-  private readonly badWords = [
-    'puta', 'puto', 'pendejo', 'cabron', 'chingar', 'mierda', 'pinche', 'culero', 'estupido', 'imbecil',
-    'fuck', 'fucking', 'shit', 'bitch', 'bastard', 'asshole', 'dick', 'motherfucker', 'slut', 'whore'
-  ];
-
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -274,11 +269,6 @@ export class DetalleGastronomiaComponent implements OnInit {
       this.toast.error('Escribe un comentario para publicar la reseña');
       return;
     }
-    if (this.contieneLenguajeNoPermitido(texto)) {
-      this.toast.error('La reseña contiene lenguaje no permitido');
-      return;
-    }
-
     this.submittingReview = true;
     this.gastronomiaService.createReview(this.establecimiento.id, {
       puntuacion: this.puntuacion,
@@ -289,7 +279,6 @@ export class DetalleGastronomiaComponent implements OnInit {
         this.comentario = '';
         this.puntuacion = 5;
         this.submittingReview = false;
-        this.toast.info('Tu reseña quedó pendiente de revisión por el administrador');
         this.loadReviews(this.establecimiento!.id!);
       },
       error: (err) => {
@@ -405,15 +394,5 @@ export class DetalleGastronomiaComponent implements OnInit {
 
   get mesasDisponibles() {
     return (this.establecimiento?.mesas || []).filter((mesa) => !!mesa?.disponible);
-  }
-
-  private contieneLenguajeNoPermitido(texto: string): boolean {
-    const normalizado = texto
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-
-    const tokens = normalizado.split(/[^a-z]+/).filter(Boolean);
-    return tokens.some((token) => this.badWords.includes(token));
   }
 }

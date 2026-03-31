@@ -164,7 +164,8 @@
   <div class="modal-body">
     <label>
       Número de Mesa
-      <input type="number" [(ngModel)]="nuevaMesa.numero" min="1" />
+      <input type="number" [ngModel]="nuevaMesa.numero" name="numeroMesaFijo" readonly />
+      <small>Se asigna automáticamente y no se puede editar.</small>
     </label>
     <label>
       Capacidad (personas)

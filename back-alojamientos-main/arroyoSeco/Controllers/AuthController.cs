@@ -79,7 +79,7 @@ public class AuthController : ControllerBase
         _email = email;
     }
 
-    public record RegisterDto(string Email, string Password, string Direccion, string Sexo, string? Role, int? TipoOferente);
+    public record RegisterDto(string Email, string Password, string Direccion, string? Sexo, bool AceptaAvisoPrivacidad, string? Role, int? TipoOferente);
     public record LoginDto(string Email, string Password);
     public record CambiarPasswordDto(string PasswordActual, string PasswordNueva);
     public record UpdatePerfilDto(string? Nombre, string? Email, string? Telefono, string? Direccion, string? Sexo);
@@ -113,7 +113,7 @@ public class AuthController : ControllerBase
             EmailConfirmed = false,
             LockoutEnabled = true,
             Direccion = dto.Direccion.Trim(),
-            Sexo = dto.Sexo.Trim()
+            Sexo = dto.Sexo?.Trim() ?? string.Empty
         };
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded) return BadRequest(result.Errors);
@@ -922,7 +922,13 @@ public class AuthController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(dto.Direccion))
         {
-            error = "Direccion y sexo son obligatorios";
+            error = "La direccion es obligatoria";
+            return false;
+        }
+
+        if (!dto.AceptaAvisoPrivacidad)
+        {
+            error = "Debes aceptar el aviso de privacidad y terminos de uso";
             return false;
         }
 
@@ -933,7 +939,7 @@ public class AuthController : ControllerBase
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(dto.Sexo) || !SexosPermitidos.Contains(dto.Sexo.Trim()))
+        if (!string.IsNullOrWhiteSpace(dto.Sexo) && !SexosPermitidos.Contains(dto.Sexo.Trim()))
         {
             error = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir";
             return false;

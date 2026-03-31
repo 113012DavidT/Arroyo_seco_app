@@ -120,24 +120,70 @@
           </div>
 
           <div class="input-group">
-            <label for="sexo">Sexo</label>
+            <label for="sexo">Género (opcional)</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M13 3a5 5 0 1 0 2 9.58V15h-3v2h3v3h2v-3h3v-2h-3v-2.42A5 5 0 0 0 13 3z"/></svg>
               <select
                 id="sexo"
                 name="sexo"
                 [(ngModel)]="model.sexo"
-                required
                 #sexo="ngModel"
               >
-                <option value="" disabled>Selecciona una opcion</option>
+                <option value="">Prefiero no especificar</option>
                 <option value="Masculino">Masculino</option>
                 <option value="Femenino">Femenino</option>
                 <option value="Otro">Otro</option>
                 <option value="Prefiero no decir">Prefiero no decir</option>
               </select>
             </div>
-            <small class="field-error" *ngIf="sexo.invalid && (sexo.dirty || sexo.touched)">Selecciona una opcion</small>
+          </div>
+
+          <div class="input-group">
+            <label for="edad">Edad (opcional)</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 15h-2v-2h2zm0-4h-2V7h2z"/></svg>
+              <input
+                id="edad"
+                type="number"
+                name="edad"
+                [(ngModel)]="model.edad"
+                min="10"
+                max="120"
+                placeholder="Ej: 28"
+                inputmode="numeric"
+              />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="lugarOrigen">Lugar de origen (opcional)</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+              <input
+                id="lugarOrigen"
+                type="text"
+                name="lugarOrigen"
+                [(ngModel)]="model.lugarOrigen"
+                maxlength="120"
+                placeholder="Ej: Querétaro, Qro."
+              />
+            </div>
+          </div>
+
+          <div class="privacy-notice">
+            <p>
+              Aviso de privacidad: Los datos opcionales que proporciones (género, edad y lugar de origen)
+              son recopilados con fines estadísticos de turismo por el municipio de Arroyo Seco.
+              Esta información es confidencial, no será compartida con terceros y solo se utilizará de forma
+              agregada para la planificación turística local. Puedes omitirlos si lo prefieres.
+            </p>
+            <label class="privacy-check">
+              <input type="checkbox" name="aceptaAvisoPrivacidad" [(ngModel)]="model.aceptaAvisoPrivacidad" required #aviso="ngModel" />
+              <span>He leído y acepto el aviso de privacidad y los términos de uso</span>
+            </label>
+            <small class="field-error" *ngIf="aviso.invalid && (aviso.dirty || aviso.touched)">
+              Debes aceptar para continuar.
+            </small>
           </div>
 
           <div class="input-group">

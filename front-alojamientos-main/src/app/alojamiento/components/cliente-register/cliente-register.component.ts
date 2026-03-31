@@ -15,7 +15,19 @@ import { MexicanPostalCodeService, MexicanCpInfo } from '../../../shared/service
   styleUrls: ['./cliente-register.component.scss']
 })
 export class ClienteRegisterComponent {
-  model = { email: '', password: '', confirm: '', direccion: '', sexo: '', cp: '', colonia: '', detalleDireccion: '' };
+  model = {
+    email: '',
+    password: '',
+    confirm: '',
+    direccion: '',
+    sexo: '',
+    edad: null as number | null,
+    lugarOrigen: '',
+    cp: '',
+    colonia: '',
+    detalleDireccion: '',
+    aceptaAvisoPrivacidad: false
+  };
   loading = false;
   showPassword = false;
   showConfirm = false;
@@ -123,8 +135,8 @@ export class ClienteRegisterComponent {
       this.loading = false;
       return;
     }
-    if (!this.model.sexo) {
-      this.toast.show('El sexo es obligatorio', 'error');
+    if (!this.model.aceptaAvisoPrivacidad) {
+      this.toast.show('Debes aceptar el aviso de privacidad y los términos de uso', 'error');
       this.loading = false;
       return;
     }
@@ -133,7 +145,10 @@ export class ClienteRegisterComponent {
       email: this.model.email,
       password: this.model.password,
       direccion: this.model.direccion.trim(),
-      sexo: this.model.sexo
+      sexo: this.model.sexo || undefined,
+      edad: this.model.edad ?? undefined,
+      lugarOrigen: (this.model.lugarOrigen || '').trim() || undefined,
+      aceptaAvisoPrivacidad: this.model.aceptaAvisoPrivacidad
     }).pipe(first()).subscribe({
       next: (res: any) => {
         if (res?.queuedOffline) {

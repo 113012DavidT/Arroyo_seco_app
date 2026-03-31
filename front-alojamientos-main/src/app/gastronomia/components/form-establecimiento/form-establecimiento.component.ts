@@ -6,7 +6,6 @@ import { GastronomiaService, EstablecimientoDto } from '../../services/gastronom
 import { ToastService } from '../../../shared/services/toast.service';
 import { first } from 'rxjs/operators';
 import { MapPickerComponent } from '../../../shared/components/map-picker/map-picker.component';
-import { MexicanCpInfo, MexicanPostalCodeService } from '../../../shared/services/mexican-postal-code.service';
 
 @Component({
   selector: 'app-form-establecimiento',
@@ -30,17 +29,6 @@ export class FormEstablecimientoComponent implements OnInit {
   isEdit = false;
   submitting = false;
   subiendoFotos = false;
-  cp = '';
-  colonia = '';
-  detalleDireccion = '';
-  coloniasDisponibles: string[] = [];
-  ubicacionesSugeridas: string[] = [];
-  cpLoading = false;
-  cpError = '';
-  cpInfo: MexicanCpInfo | null = null;
-  coloniaSugerida = false;
-
-  private cpLookupTimeout: any = null;
 
   readonly tiposEstablecimiento = [
     { key: 'restaurante', label: 'Restaurante' },
@@ -70,8 +58,7 @@ export class FormEstablecimientoComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private gastronomiaService: GastronomiaService,
-    private toast: ToastService,
-    private cpService: MexicanPostalCodeService
+    private toast: ToastService
   ) {}
 
   ngOnInit(): void {
@@ -92,13 +79,11 @@ export class FormEstablecimientoComponent implements OnInit {
             this.establecimiento.fotosUrls = [this.establecimiento.fotoPrincipal, ...fotos.map((foto) => foto.url)]
               .filter((value): value is string => !!value)
               .filter((value, index, array) => array.indexOf(value) === index);
-            this.hydrateAddressFieldsFromDireccion(this.establecimiento.direccion || this.establecimiento.ubicacion || '');
           },
           error: () => {
             this.establecimiento.fotosUrls = [this.establecimiento.fotoPrincipal, ...(this.establecimiento.fotos || []).map((foto) => foto.url)]
               .filter((value): value is string => !!value)
               .filter((value, index, array) => array.indexOf(value) === index);
-            this.hydrateAddressFieldsFromDireccion(this.establecimiento.direccion || this.establecimiento.ubicacion || '');
           }
         });
       },
@@ -110,9 +95,22 @@ export class FormEstablecimientoComponent implements OnInit {
   }
 
   submit() {
-    if (!this.establecimiento.nombre || !this.establecimiento.ubicacion) {
+    if (!this.establecimiento.nombre) {
       this.toast.error('Completa los campos obligatorios');
       return;
+    }
+
+    if (this.establecimiento.latitud == null || this.establecimiento.longitud == null) {
+      this.toast.error('Selecciona la ubicación en el mapa antes de guardar');
+      return;
+    }
+
+    if (!this.establecimiento.ubicacion?.trim()) {
+      this.establecimiento.ubicacion = `Lat ${this.establecimiento.latitud.toFixed(6)}, Lng ${this.establecimiento.longitud.toFixed(6)}`;
+    }
+
+    if (!this.establecimiento.direccion?.trim()) {
+      this.establecimiento.direccion = this.establecimiento.ubicacion;
     }
 
     const fotos = this.establecimiento.fotosUrls || [];
@@ -136,17 +134,6 @@ export class FormEstablecimientoComponent implements OnInit {
     this.establecimiento.nombre = nombre;
     this.establecimiento.descripcion = descripcion;
 
-    if (this.cp && this.colonia && this.detalleDireccion.trim() && this.cpInfo) {
-      const lugar = [this.cpInfo.municipio, this.cpInfo.estado].filter(Boolean).join(', ');
-      this.establecimiento.direccion = `CP ${this.cp}, Col. ${this.colonia}, ${this.detalleDireccion.trim()}, ${lugar}`;
-      this.establecimiento.ubicacion = `${this.colonia}, ${lugar}`;
-    }
-
-    // Las coordenadas son opcionales ahora
-    if (!this.establecimiento.latitud || !this.establecimiento.longitud) {
-      console.warn('Sin coordenadas, guardando solo con ubicación de texto');
-    }
-
     this.submitting = true;
     const request = this.isEdit && this.establecimiento.id
       ? this.gastronomiaService.update(this.establecimiento.id, this.establecimiento)
@@ -167,66 +154,18 @@ export class FormEstablecimientoComponent implements OnInit {
   onLocationSelected(data: { lat: number; lng: number; address?: string }) {
     this.establecimiento.latitud = data.lat;
     this.establecimiento.longitud = data.lng;
-    if (data.address) {
-      this.establecimiento.direccion = data.address;
-      this.establecimiento.ubicacion = data.address;
-      this.hydrateAddressFieldsFromDireccion(data.address, false);
-      this.toast.success(`📍 ${data.address}`);
-    } else {
-      this.toast.success('📍 Ubicación marcada en el mapa');
-    }
-  }
-
-  onCpInput(): void {
-    const cp = (this.cp || '').trim();
-    this.cp = cp;
-    this.cpInfo = null;
-    this.cpError = '';
-    this.coloniasDisponibles = [];
-    this.colonia = '';
-    this.coloniaSugerida = false;
-
-    if (this.cpLookupTimeout) {
-      clearTimeout(this.cpLookupTimeout);
-    }
-
-    if (cp.length !== 5 || !/^\d{5}$/.test(cp)) {
-      this.syncAddressFromParts();
+    const address = (data.address || '').trim();
+    if (address) {
+      this.establecimiento.direccion = address;
+      this.establecimiento.ubicacion = address;
+      this.toast.success(`📍 ${address}`);
       return;
     }
 
-    this.cpLoading = true;
-    this.cpLookupTimeout = setTimeout(async () => {
-      try {
-        const info = await this.cpService.lookup(cp);
-        if (info) {
-          this.cpInfo = info;
-          this.coloniasDisponibles = this.normalizeColonias(info.colonias);
-          this.syncAddressFromParts();
-        } else {
-          this.cpError = 'Código postal no encontrado. Verifica e intenta de nuevo.';
-        }
-      } finally {
-        this.cpLoading = false;
-      }
-    }, 400);
-  }
-
-  onUbicacionInput() {
-    const value = (this.establecimiento.ubicacion || '').trim().toLowerCase();
-    this.ubicacionesSugeridas = this.coloniasDisponibles
-      .filter((item) => item.toLowerCase().includes(value))
-      .slice(0, 12);
-  }
-
-  onColoniaInput(): void {
-    this.colonia = this.normalizeColonia(this.colonia);
-    this.coloniaSugerida = this.coloniasDisponibles.includes(this.colonia);
-    this.syncAddressFromParts();
-  }
-
-  onDetalleDireccionInput(): void {
-    this.syncAddressFromParts();
+    const fallback = `Lat ${data.lat.toFixed(6)}, Lng ${data.lng.toFixed(6)}`;
+    this.establecimiento.direccion = fallback;
+    this.establecimiento.ubicacion = fallback;
+    this.toast.success('📍 Ubicación marcada en el mapa');
   }
 
   onFotosSeleccionadas(event: Event) {
@@ -312,65 +251,5 @@ export class FormEstablecimientoComponent implements OnInit {
 
   get mapSearchAddress(): string {
     return this.establecimiento.direccion || this.establecimiento.ubicacion || '';
-  }
-
-  private syncAddressFromParts(): void {
-    const detalle = (this.detalleDireccion || '').trim();
-    const colonia = this.normalizeColonia(this.colonia);
-    const lugar = [this.cpInfo?.municipio, this.cpInfo?.estado].filter(Boolean).join(', ');
-
-    if (this.cp && colonia && detalle && lugar) {
-      this.establecimiento.direccion = `CP ${this.cp}, Col. ${colonia}, ${detalle}, ${lugar}`;
-      this.establecimiento.ubicacion = `${colonia}, ${lugar}`;
-    } else if (detalle || colonia || this.cp) {
-      this.establecimiento.ubicacion = [colonia, lugar].filter(Boolean).join(', ');
-    }
-
-    this.onUbicacionInput();
-  }
-
-  private hydrateAddressFieldsFromDireccion(value: string, syncAddress = true): void {
-    const text = (value || '').replace(/\s+/g, ' ').trim();
-    if (!text) {
-      return;
-    }
-
-    const cpMatch = text.match(/\b(\d{5})\b/);
-    const coloniaMatch = text.match(/Col\.\s*([^,]+)/i);
-    const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
-
-    if (cpMatch) {
-      this.cp = cpMatch[1];
-      this.onCpInput();
-    }
-
-    if (coloniaMatch) {
-      this.colonia = this.normalizeColonia(coloniaMatch[1]);
-      this.coloniaSugerida = true;
-    } else if (parts.length >= 2) {
-      this.colonia = this.normalizeColonia(parts[1]);
-      this.coloniaSugerida = true;
-    }
-
-    if (/^CP\s+/i.test(text) && parts.length >= 3) {
-      this.detalleDireccion = parts[2].replace(/^Col\.\s*/i, '').trim();
-    } else if (parts.length >= 1) {
-      this.detalleDireccion = parts[0].trim();
-    }
-
-    if (syncAddress) {
-      this.syncAddressFromParts();
-    }
-  }
-
-  private normalizeColonias(colonias: string[]): string[] {
-    return [...new Set((colonias || [])
-      .map((colonia) => this.normalizeColonia(colonia))
-      .filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, 'es'));
-  }
-
-  private normalizeColonia(value: string): string {
-    return (value || '').replace(/\s+/g, ' ').trim();
   }
 }

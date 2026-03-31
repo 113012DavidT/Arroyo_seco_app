@@ -200,6 +200,8 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   }
 
   agregarMesa() {
+    this.nuevaMesa.numero = this.getNextMesaNumber();
+
     if (this.nuevaMesa.numero <= 0 || this.nuevaMesa.capacidad <= 0) {
       this.toast.error('Número y capacidad deben ser mayores a 0');
       return;

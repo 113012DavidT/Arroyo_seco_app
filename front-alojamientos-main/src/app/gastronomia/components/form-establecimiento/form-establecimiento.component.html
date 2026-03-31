@@ -22,14 +22,10 @@
         type="text" 
         id="ubicacion" 
         [(ngModel)]="establecimiento.ubicacion" 
-        (ngModelChange)="onUbicacionInput()"
         name="ubicacion"
         required
-        list="ubicaciones-arroyo"
-        placeholder="Ej: Centro, Barrio de San José" />
-      <datalist id="ubicaciones-arroyo">
-        <option *ngFor="let sugerida of ubicacionesSugeridas" [value]="sugerida"></option>
-      </datalist>
+        readonly
+        placeholder="Se llena automáticamente al seleccionar en el mapa" />
     </div>
 
     <div class="form-group">
@@ -39,58 +35,8 @@
         id="direccion"
         [(ngModel)]="establecimiento.direccion"
         name="direccion"
-        placeholder="Ej: Calle Principal 120, Arroyo Seco" />
-    </div>
-
-    <div class="form-group">
-      <label for="cp">Código postal</label>
-      <input
-        id="cp"
-        name="cp"
-        type="text"
-        [(ngModel)]="cp"
-        (ngModelChange)="onCpInput()"
-        maxlength="5"
-        inputmode="numeric"
-        placeholder="Ej: 79684" />
-      <small *ngIf="cpError" class="hint warning">{{ cpError }}</small>
-    </div>
-
-    <div class="form-group">
-      <label for="colonia">Colonia</label>
-      <input
-        id="colonia"
-        name="colonia"
-        type="text"
-        [(ngModel)]="colonia"
-        (ngModelChange)="onColoniaInput()"
-        [attr.list]="coloniasDisponibles.length ? 'colonias-gastronomia' : null"
-        [disabled]="!cpInfo"
-        [placeholder]="cpInfo ? 'Escribe o selecciona tu colonia' : 'Ingresa un CP primero'" />
-      <datalist id="colonias-gastronomia">
-        <option *ngFor="let coloniaItem of coloniasDisponibles" [value]="coloniaItem"></option>
-      </datalist>
-      <small *ngIf="cpInfo && coloniasDisponibles.length" class="hint info">
-        {{ coloniasDisponibles.length }} colonias encontradas. Si falta la tuya, escríbela manualmente.
-      </small>
-    </div>
-
-    <div class="form-group full-width" *ngIf="cpInfo">
-      <div class="cp-info-row">
-        <div class="cp-info-chip">{{ cpInfo.municipio }}</div>
-        <div class="cp-info-chip">{{ cpInfo.estado }}</div>
-      </div>
-    </div>
-
-    <div class="form-group full-width">
-      <label for="detalleDireccion">Detalle calle/número</label>
-      <input
-        type="text"
-        id="detalleDireccion"
-        name="detalleDireccion"
-        [(ngModel)]="detalleDireccion"
-        (ngModelChange)="onDetalleDireccionInput()"
-        placeholder="Ej: Calle Juárez 22, Int 4" />
+        readonly
+        placeholder="Se llena automáticamente al seleccionar en el mapa" />
     </div>
 
     <div class="form-group">
@@ -105,7 +51,7 @@
     </div>
 
     <div class="form-group full-width">
-      <label>📍 Marcar en el mapa (opcional pero recomendado)</label>
+      <label>📍 Marcar en el mapa *</label>
       <app-map-picker 
         [latitud]="establecimiento.latitud ?? null" 
         [longitud]="establecimiento.longitud ?? null"
@@ -113,6 +59,7 @@
         [searchAddress]="mapSearchAddress"
         (locationSelected)="onLocationSelected($event)">
       </app-map-picker>
+      <small>Haz clic en el mapa para establecer la ubicación exacta. El sistema llenará ubicación y dirección automáticamente.</small>
     </div>
 
     <div class="form-group full-width">

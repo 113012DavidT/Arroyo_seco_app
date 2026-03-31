@@ -11,7 +11,10 @@ export interface RegisterPayload {
   email: string;
   password: string;
   direccion: string;
-  sexo: string;
+  sexo?: string;
+  edad?: number;
+  lugarOrigen?: string;
+  aceptaAvisoPrivacidad: boolean;
   role?: string;
 }
 

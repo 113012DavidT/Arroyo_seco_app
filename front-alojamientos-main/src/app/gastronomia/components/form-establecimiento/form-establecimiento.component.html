@@ -26,7 +26,7 @@
         name="ubicacion"
         required
         list="ubicaciones-arroyo"
-        placeholder="Ej: Centro, Río del Sabino" />
+        placeholder="Ej: Centro, Barrio de San José" />
       <datalist id="ubicaciones-arroyo">
         <option *ngFor="let sugerida of ubicacionesSugeridas" [value]="sugerida"></option>
       </datalist>
@@ -44,18 +44,42 @@
 
     <div class="form-group">
       <label for="cp">Código postal</label>
-      <select id="cp" name="cp" [(ngModel)]="cp" (ngModelChange)="onCpChange()">
-        <option value="">Selecciona un CP</option>
-        <option *ngFor="let cpItem of codigosPostales" [value]="cpItem">{{ cpItem }}</option>
-      </select>
+      <input
+        id="cp"
+        name="cp"
+        type="text"
+        [(ngModel)]="cp"
+        (ngModelChange)="onCpInput()"
+        maxlength="5"
+        inputmode="numeric"
+        placeholder="Ej: 79684" />
+      <small *ngIf="cpError" class="hint warning">{{ cpError }}</small>
     </div>
 
     <div class="form-group">
       <label for="colonia">Colonia</label>
-      <select id="colonia" name="colonia" [(ngModel)]="colonia" [disabled]="!cp">
-        <option value="">Selecciona una colonia</option>
-        <option *ngFor="let coloniaItem of coloniasDisponibles" [value]="coloniaItem">{{ coloniaItem }}</option>
-      </select>
+      <input
+        id="colonia"
+        name="colonia"
+        type="text"
+        [(ngModel)]="colonia"
+        (ngModelChange)="onColoniaInput()"
+        [attr.list]="coloniasDisponibles.length ? 'colonias-gastronomia' : null"
+        [disabled]="!cpInfo"
+        [placeholder]="cpInfo ? 'Escribe o selecciona tu colonia' : 'Ingresa un CP primero'" />
+      <datalist id="colonias-gastronomia">
+        <option *ngFor="let coloniaItem of coloniasDisponibles" [value]="coloniaItem"></option>
+      </datalist>
+      <small *ngIf="cpInfo && coloniasDisponibles.length" class="hint info">
+        {{ coloniasDisponibles.length }} colonias encontradas. Si falta la tuya, escríbela manualmente.
+      </small>
+    </div>
+
+    <div class="form-group full-width" *ngIf="cpInfo">
+      <div class="cp-info-row">
+        <div class="cp-info-chip">{{ cpInfo.municipio }}</div>
+        <div class="cp-info-chip">{{ cpInfo.estado }}</div>
+      </div>
     </div>
 
     <div class="form-group full-width">
@@ -65,6 +89,7 @@
         id="detalleDireccion"
         name="detalleDireccion"
         [(ngModel)]="detalleDireccion"
+        (ngModelChange)="onDetalleDireccionInput()"
         placeholder="Ej: Calle Juárez 22, Int 4" />
     </div>
 
@@ -84,6 +109,8 @@
       <app-map-picker 
         [latitud]="establecimiento.latitud ?? null" 
         [longitud]="establecimiento.longitud ?? null"
+        [restrictToArroyoSeco]="false"
+        [searchAddress]="mapSearchAddress"
         (locationSelected)="onLocationSelected($event)">
       </app-map-picker>
     </div>

@@ -169,8 +169,13 @@ export class AdminNotificacionesComponent implements OnInit {
     return this.reportes.filter(item => [
       item.establecimientoNombre,
       item.comentario,
-      item.motivoReporte || ''
+      item.motivoReporte || '',
+      item.tipoSolicitud || ''
     ].some(v => v.toLowerCase().includes(term)));
+  }
+
+  esSolicitudEliminacion(reporte: ReviewReportadaAdminDto): boolean {
+    return (reporte.tipoSolicitud || '').toLowerCase() === 'eliminacion' || reporte.estado === 'EliminacionSolicitada';
   }
 
   marcarLeida(n: Notificacion) {
@@ -202,7 +207,9 @@ export class AdminNotificacionesComponent implements OnInit {
         this.resolvingReportId = null;
       },
       error: () => {
-        this.errorReportes = 'No se pudo resolver el reporte';
+        this.errorReportes = this.esSolicitudEliminacion(reporte)
+          ? 'No se pudo resolver la solicitud de eliminación'
+          : 'No se pudo resolver el reporte';
         this.resolvingReportId = null;
       }
     });

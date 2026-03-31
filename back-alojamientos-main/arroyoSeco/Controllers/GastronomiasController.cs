@@ -20,6 +20,13 @@ public class GastronomiasController : ControllerBase
     private const int MaxNombreEstablecimiento = 120;
     private const int MinDescripcionEstablecimiento = 15;
     private const int MaxDescripcionEstablecimiento = 1000;
+    private const int MaxModerationReasonLength = 250;
+    private const string ReviewEstadoAprobada = "Aprobada";
+    private const string ReviewEstadoRechazada = "Rechazada";
+    private const string ReviewEstadoReportada = "Reportada";
+    private const string ReviewEstadoReporteValido = "ReporteValido";
+    private const string ReviewEstadoReporteNoValido = "ReporteNoValido";
+    private const string ReviewEstadoEliminacionSolicitada = "EliminacionSolicitada";
 
     private readonly IAppDbContext _db;
     private readonly CrearEstablecimientoCommandHandler _crear;
@@ -66,6 +73,8 @@ public class GastronomiasController : ControllerBase
             return BadRequest(new { message = "El comentario es obligatorio" });
 
         var comentarioLimpio = cmd.Comentario.Trim();
+        if (ProfanityFilter.ContainsProfanity(comentarioLimpio, out _))
+            return BadRequest(new { message = "Tu reseña contiene lenguaje inapropiado. Edita el comentario para poder publicarlo." });
 
         var exists = await _db.Establecimientos.AnyAsync(e => e.Id == id, ct);
         if (!exists)
@@ -114,7 +123,7 @@ public class GastronomiasController : ControllerBase
                 ct);
         }
 
-        return CreatedAtAction(nameof(GetReviews), new { id }, new { reviewId, estado = "Aprobada" });
+        return CreatedAtAction(nameof(GetReviews), new { id }, new { reviewId, estado = ReviewEstadoAprobada });
     }
 
     [AllowAnonymous]
@@ -122,7 +131,7 @@ public class GastronomiasController : ControllerBase
     public async Task<ActionResult> GetReviews(int id, CancellationToken ct)
     {
         var reviews = await _db.Reviews
-            .Where(r => r.EstablecimientoId == id && r.Estado != "Rechazada")
+            .Where(r => r.EstablecimientoId == id && r.Estado != ReviewEstadoRechazada)
             .OrderByDescending(r => r.Fecha)
             .AsNoTracking()
             .ToListAsync(ct);
@@ -135,7 +144,7 @@ public class GastronomiasController : ControllerBase
     {
         var reviews = await _db.Reviews
             .AsNoTracking()
-            .Where(r => r.Establecimiento.OferenteId == _current.UserId && r.Estado != "Rechazada")
+            .Where(r => r.Establecimiento.OferenteId == _current.UserId && r.Estado != ReviewEstadoRechazada)
             .OrderByDescending(r => r.Fecha)
             .Select(r => new
             {
@@ -167,11 +176,15 @@ public class GastronomiasController : ControllerBase
         if (review.Establecimiento?.OferenteId != _current.UserId)
             return Forbid();
 
-        if (review.Estado == "Reportada")
+        if (review.Estado == ReviewEstadoReportada)
             return BadRequest(new { message = "La reseña ya fue reportada" });
+        if (review.Estado == ReviewEstadoEliminacionSolicitada)
+            return BadRequest(new { message = "La reseña ya tiene una solicitud de eliminación pendiente" });
+        if (review.Estado == ReviewEstadoRechazada)
+            return BadRequest(new { message = "No puedes reportar una reseña eliminada" });
 
-        review.Estado = "Reportada";
-        review.MotivoRechazo = dto.Motivo?.Trim();
+        review.Estado = ReviewEstadoReportada;
+        review.MotivoRechazo = BuildModerationReason("Reporte", dto.Motivo);
         review.FechaModeracionUtc = DateTime.UtcNow;
         review.ModeradaPorId = _current.UserId;
         await _db.SaveChangesAsync(ct);
@@ -191,13 +204,58 @@ public class GastronomiasController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Oferente")]
+    [HttpPatch("reviews/{reviewId:int}/solicitar-eliminacion")]
+    public async Task<IActionResult> SolicitarEliminacionReview(int reviewId, [FromBody] ReportarReviewDto dto, CancellationToken ct)
+    {
+        var review = await _db.Reviews
+            .Include(r => r.Establecimiento)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, ct);
+        if (review is null)
+            return NotFound(new { message = "Reseña no encontrada" });
+
+        if (review.Establecimiento?.OferenteId != _current.UserId)
+            return Forbid();
+
+        if (review.Estado == ReviewEstadoEliminacionSolicitada)
+            return BadRequest(new { message = "La reseña ya tiene una solicitud de eliminación pendiente" });
+        if (review.Estado == ReviewEstadoReportada)
+            return BadRequest(new { message = "La reseña ya fue reportada y está en revisión" });
+        if (review.Estado == ReviewEstadoRechazada)
+            return BadRequest(new { message = "La reseña ya fue eliminada" });
+
+        var motivo = dto.Motivo?.Trim();
+        if (string.IsNullOrWhiteSpace(motivo))
+            return BadRequest(new { message = "Debes indicar el motivo para solicitar la eliminación" });
+
+        review.Estado = ReviewEstadoEliminacionSolicitada;
+        review.MotivoRechazo = BuildModerationReason("Solicitud eliminación", motivo);
+        review.FechaModeracionUtc = DateTime.UtcNow;
+        review.ModeradaPorId = _current.UserId;
+        await _db.SaveChangesAsync(ct);
+
+        var admins = await _userManager.GetUsersInRoleAsync("Admin");
+        foreach (var admin in admins)
+        {
+            await _notifications.PushAsync(
+                admin.Id,
+                "Solicitud de eliminación de reseña",
+                $"Se solicitó eliminar una reseña en {review.Establecimiento?.Nombre ?? "un establecimiento"} y requiere revisión.",
+                "SolicitudEliminacionReview",
+                "/admin/gastronomia/notificaciones?tab=reportes",
+                ct);
+        }
+
+        return NoContent();
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpGet("reviews/reportadas")]
     public async Task<ActionResult> ListReviewsReportadas(CancellationToken ct)
     {
         var reportadas = await _db.Reviews
             .AsNoTracking()
-            .Where(r => r.Estado == "Reportada")
+            .Where(r => r.Estado == ReviewEstadoReportada || r.Estado == ReviewEstadoEliminacionSolicitada)
             .OrderByDescending(r => r.FechaModeracionUtc ?? r.Fecha)
             .Select(r => new
             {
@@ -210,6 +268,7 @@ public class GastronomiasController : ControllerBase
                 r.Fecha,
                 r.Estado,
                 MotivoReporte = r.MotivoRechazo,
+                TipoSolicitud = r.Estado == ReviewEstadoEliminacionSolicitada ? "Eliminacion" : "Reporte",
                 r.ModeradaPorId,
                 r.FechaModeracionUtc
             })
@@ -228,23 +287,37 @@ public class GastronomiasController : ControllerBase
         if (review is null)
             return NotFound(new { message = "Reseña no encontrada" });
 
-        if (review.Estado != "Reportada")
-            return BadRequest(new { message = "La reseña no está en estado reportada" });
+        var esReporte = review.Estado == ReviewEstadoReportada;
+        var esSolicitudEliminacion = review.Estado == ReviewEstadoEliminacionSolicitada;
+        if (!esReporte && !esSolicitudEliminacion)
+            return BadRequest(new { message = "La reseña no está en un estado pendiente de revisión" });
 
-        review.Estado = dto.EsValido ? "ReporteValido" : "ReporteNoValido";
+        if (esReporte)
+        {
+            review.Estado = dto.EsValido ? ReviewEstadoReporteValido : ReviewEstadoReporteNoValido;
+        }
+        else
+        {
+            review.Estado = dto.EsValido ? ReviewEstadoRechazada : ReviewEstadoAprobada;
+        }
+
         review.FechaModeracionUtc = DateTime.UtcNow;
         review.ModeradaPorId = _current.UserId;
         if (!string.IsNullOrWhiteSpace(dto.ComentarioAdmin))
-            review.MotivoRechazo = $"{review.MotivoRechazo ?? string.Empty} | Revision admin: {dto.ComentarioAdmin.Trim()}".Trim();
+            review.MotivoRechazo = AppendModerationReason(review.MotivoRechazo, $"Revision admin: {dto.ComentarioAdmin.Trim()}");
 
         await _db.SaveChangesAsync(ct);
 
         await _notifications.PushAsync(
             review.UsuarioId,
             "Tu reseña fue revisada",
-            dto.EsValido
-                ? "Tu reseña fue reportada y el admin confirmó el reporte, pero la reseña sigue publicada."
-                : "Tu reseña fue reportada y el admin descartó el reporte.",
+            esReporte
+                ? (dto.EsValido
+                    ? "Tu reseña fue reportada y el admin confirmó el reporte, pero la reseña sigue publicada."
+                    : "Tu reseña fue reportada y el admin descartó el reporte.")
+                : (dto.EsValido
+                    ? "El admin aprobó la eliminación de tu reseña y ya no está publicada."
+                    : "El admin rechazó la solicitud de eliminación y tu reseña sigue publicada."),
             "ReporteReview",
             $"/cliente/gastronomia/{review.EstablecimientoId}",
             ct);
@@ -253,10 +326,14 @@ public class GastronomiasController : ControllerBase
         {
             await _notifications.PushAsync(
                 review.Establecimiento.OferenteId,
-                "Reporte de reseña resuelto",
-                dto.EsValido
-                    ? "El admin confirmó tu reporte de reseña."
-                    : "El admin rechazó tu reporte de reseña.",
+                esReporte ? "Reporte de reseña resuelto" : "Solicitud de eliminación resuelta",
+                esReporte
+                    ? (dto.EsValido
+                        ? "El admin confirmó tu reporte de reseña."
+                        : "El admin rechazó tu reporte de reseña.")
+                    : (dto.EsValido
+                        ? "El admin aprobó tu solicitud y la reseña fue eliminada."
+                        : "El admin rechazó la solicitud de eliminación; la reseña sigue publicada."),
                 "ReporteReview",
                 "/oferente/gastronomia/analytics",
                 ct);
@@ -585,9 +662,6 @@ public class GastronomiasController : ControllerBase
         if (est == null) return NotFound(new { message = "Establecimiento no encontrado" });
         if (est.OferenteId != _current.UserId) return Forbid();
 
-        if (request.Latitud.HasValue && request.Longitud.HasValue && !ArroyoSecoGeoFence.Contains(request.Latitud.Value, request.Longitud.Value))
-            return BadRequest(new { message = "La ubicacion debe estar dentro de Arroyo Seco, Queretaro" });
-
         if (!string.IsNullOrWhiteSpace(request.Nombre))
         {
             var nombre = request.Nombre.Trim();
@@ -747,6 +821,32 @@ public class GastronomiasController : ControllerBase
             return false;
 
         return file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildModerationReason(string prefix, string? detail)
+    {
+        var baseText = string.IsNullOrWhiteSpace(detail)
+            ? prefix
+            : $"{prefix}: {detail.Trim()}";
+
+        return Truncate(baseText, MaxModerationReasonLength);
+    }
+
+    private static string AppendModerationReason(string? currentReason, string additionalReason)
+    {
+        var next = string.IsNullOrWhiteSpace(currentReason)
+            ? additionalReason.Trim()
+            : $"{currentReason.Trim()} | {additionalReason.Trim()}";
+
+        return Truncate(next, MaxModerationReasonLength);
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length <= maxLength)
+            return value;
+
+        return value[..maxLength];
     }
 }
 

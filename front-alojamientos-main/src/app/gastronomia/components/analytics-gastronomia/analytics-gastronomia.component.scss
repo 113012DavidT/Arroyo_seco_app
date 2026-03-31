@@ -182,6 +182,13 @@
   font-weight: 700;
 }
 
+.review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: stretch;
+}
+
 .btn-report {
   border: 1px solid #ef4444;
   background: #fff;
@@ -193,6 +200,21 @@
 }
 
 .btn-report:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-delete-request {
+  border: 1px solid #b45309;
+  background: #fff;
+  color: #b45309;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.btn-delete-request:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

@@ -6,7 +6,7 @@ import { GastronomiaService, EstablecimientoDto } from '../../services/gastronom
 import { ToastService } from '../../../shared/services/toast.service';
 import { first } from 'rxjs/operators';
 import { MapPickerComponent } from '../../../shared/components/map-picker/map-picker.component';
-import { ArroyoSecoLocationsService } from '../../../shared/services/arroyo-seco-locations.service';
+import { MexicanCpInfo, MexicanPostalCodeService } from '../../../shared/services/mexican-postal-code.service';
 
 @Component({
   selector: 'app-form-establecimiento',
@@ -33,9 +33,14 @@ export class FormEstablecimientoComponent implements OnInit {
   cp = '';
   colonia = '';
   detalleDireccion = '';
-  codigosPostales: string[] = [];
   coloniasDisponibles: string[] = [];
   ubicacionesSugeridas: string[] = [];
+  cpLoading = false;
+  cpError = '';
+  cpInfo: MexicanCpInfo | null = null;
+  coloniaSugerida = false;
+
+  private cpLookupTimeout: any = null;
 
   readonly tiposEstablecimiento = [
     { key: 'restaurante', label: 'Restaurante' },
@@ -66,10 +71,8 @@ export class FormEstablecimientoComponent implements OnInit {
     private router: Router,
     private gastronomiaService: GastronomiaService,
     private toast: ToastService,
-    private locations: ArroyoSecoLocationsService
-  ) {
-    this.codigosPostales = this.locations.getCodigosPostales();
-  }
+    private cpService: MexicanPostalCodeService
+  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -82,11 +85,22 @@ export class FormEstablecimientoComponent implements OnInit {
   private loadEstablecimiento(id: number) {
     this.gastronomiaService.getById(id).pipe(first()).subscribe({
       next: (data) => {
-        data.fotosUrls = [data.fotoPrincipal, ...(data.fotos || []).map((foto) => foto.url), ...(data.fotosUrls || [])]
-          .filter((value): value is string => !!value)
-          .filter((value, index, array) => array.indexOf(value) === index);
         this.establecimiento = data;
-        this.onUbicacionInput();
+        this.gastronomiaService.listFotos(id).pipe(first()).subscribe({
+          next: (fotos) => {
+            this.establecimiento.fotos = fotos;
+            this.establecimiento.fotosUrls = [this.establecimiento.fotoPrincipal, ...fotos.map((foto) => foto.url)]
+              .filter((value): value is string => !!value)
+              .filter((value, index, array) => array.indexOf(value) === index);
+            this.hydrateAddressFieldsFromDireccion(this.establecimiento.direccion || this.establecimiento.ubicacion || '');
+          },
+          error: () => {
+            this.establecimiento.fotosUrls = [this.establecimiento.fotoPrincipal, ...(this.establecimiento.fotos || []).map((foto) => foto.url)]
+              .filter((value): value is string => !!value)
+              .filter((value, index, array) => array.indexOf(value) === index);
+            this.hydrateAddressFieldsFromDireccion(this.establecimiento.direccion || this.establecimiento.ubicacion || '');
+          }
+        });
       },
       error: () => {
         this.toast.error('Error al cargar establecimiento');
@@ -122,9 +136,10 @@ export class FormEstablecimientoComponent implements OnInit {
     this.establecimiento.nombre = nombre;
     this.establecimiento.descripcion = descripcion;
 
-    if (this.cp && this.colonia && this.detalleDireccion.trim()) {
-      this.establecimiento.direccion = `CP ${this.cp}, Col. ${this.colonia}, ${this.detalleDireccion.trim()}, Arroyo Seco, Queretaro`;
-      this.establecimiento.ubicacion = this.colonia;
+    if (this.cp && this.colonia && this.detalleDireccion.trim() && this.cpInfo) {
+      const lugar = [this.cpInfo.municipio, this.cpInfo.estado].filter(Boolean).join(', ');
+      this.establecimiento.direccion = `CP ${this.cp}, Col. ${this.colonia}, ${this.detalleDireccion.trim()}, ${lugar}`;
+      this.establecimiento.ubicacion = `${this.colonia}, ${lugar}`;
     }
 
     // Las coordenadas son opcionales ahora
@@ -155,21 +170,63 @@ export class FormEstablecimientoComponent implements OnInit {
     if (data.address) {
       this.establecimiento.direccion = data.address;
       this.establecimiento.ubicacion = data.address;
+      this.hydrateAddressFieldsFromDireccion(data.address, false);
       this.toast.success(`📍 ${data.address}`);
     } else {
       this.toast.success('📍 Ubicación marcada en el mapa');
     }
   }
 
-  onCpChange() {
-    this.coloniasDisponibles = this.locations.getColoniasByCp(this.cp);
-    if (!this.coloniasDisponibles.includes(this.colonia)) {
-      this.colonia = '';
+  onCpInput(): void {
+    const cp = (this.cp || '').trim();
+    this.cp = cp;
+    this.cpInfo = null;
+    this.cpError = '';
+    this.coloniasDisponibles = [];
+    this.colonia = '';
+    this.coloniaSugerida = false;
+
+    if (this.cpLookupTimeout) {
+      clearTimeout(this.cpLookupTimeout);
     }
+
+    if (cp.length !== 5 || !/^\d{5}$/.test(cp)) {
+      this.syncAddressFromParts();
+      return;
+    }
+
+    this.cpLoading = true;
+    this.cpLookupTimeout = setTimeout(async () => {
+      try {
+        const info = await this.cpService.lookup(cp);
+        if (info) {
+          this.cpInfo = info;
+          this.coloniasDisponibles = this.normalizeColonias(info.colonias);
+          this.syncAddressFromParts();
+        } else {
+          this.cpError = 'Código postal no encontrado. Verifica e intenta de nuevo.';
+        }
+      } finally {
+        this.cpLoading = false;
+      }
+    }, 400);
   }
 
   onUbicacionInput() {
-    this.ubicacionesSugeridas = this.locations.searchColonias(this.establecimiento.ubicacion || '');
+    const value = (this.establecimiento.ubicacion || '').trim().toLowerCase();
+    this.ubicacionesSugeridas = this.coloniasDisponibles
+      .filter((item) => item.toLowerCase().includes(value))
+      .slice(0, 12);
+  }
+
+  onColoniaInput(): void {
+    this.colonia = this.normalizeColonia(this.colonia);
+    this.coloniaSugerida = this.coloniasDisponibles.includes(this.colonia);
+    this.syncAddressFromParts();
+  }
+
+  onDetalleDireccionInput(): void {
+    this.syncAddressFromParts();
   }
 
   onFotosSeleccionadas(event: Event) {
@@ -251,5 +308,69 @@ export class FormEstablecimientoComponent implements OnInit {
 
   get previewUbicacion(): string {
     return this.establecimiento.direccion || this.establecimiento.ubicacion || 'Ubicacion por definir';
+  }
+
+  get mapSearchAddress(): string {
+    return this.establecimiento.direccion || this.establecimiento.ubicacion || '';
+  }
+
+  private syncAddressFromParts(): void {
+    const detalle = (this.detalleDireccion || '').trim();
+    const colonia = this.normalizeColonia(this.colonia);
+    const lugar = [this.cpInfo?.municipio, this.cpInfo?.estado].filter(Boolean).join(', ');
+
+    if (this.cp && colonia && detalle && lugar) {
+      this.establecimiento.direccion = `CP ${this.cp}, Col. ${colonia}, ${detalle}, ${lugar}`;
+      this.establecimiento.ubicacion = `${colonia}, ${lugar}`;
+    } else if (detalle || colonia || this.cp) {
+      this.establecimiento.ubicacion = [colonia, lugar].filter(Boolean).join(', ');
+    }
+
+    this.onUbicacionInput();
+  }
+
+  private hydrateAddressFieldsFromDireccion(value: string, syncAddress = true): void {
+    const text = (value || '').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      return;
+    }
+
+    const cpMatch = text.match(/\b(\d{5})\b/);
+    const coloniaMatch = text.match(/Col\.\s*([^,]+)/i);
+    const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
+
+    if (cpMatch) {
+      this.cp = cpMatch[1];
+      this.onCpInput();
+    }
+
+    if (coloniaMatch) {
+      this.colonia = this.normalizeColonia(coloniaMatch[1]);
+      this.coloniaSugerida = true;
+    } else if (parts.length >= 2) {
+      this.colonia = this.normalizeColonia(parts[1]);
+      this.coloniaSugerida = true;
+    }
+
+    if (/^CP\s+/i.test(text) && parts.length >= 3) {
+      this.detalleDireccion = parts[2].replace(/^Col\.\s*/i, '').trim();
+    } else if (parts.length >= 1) {
+      this.detalleDireccion = parts[0].trim();
+    }
+
+    if (syncAddress) {
+      this.syncAddressFromParts();
+    }
+  }
+
+  private normalizeColonias(colonias: string[]): string[] {
+    return [...new Set((colonias || [])
+      .map((colonia) => this.normalizeColonia(colonia))
+      .filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  private normalizeColonia(value: string): string {
+    return (value || '').replace(/\s+/g, ' ').trim();
   }
 }

@@ -50,12 +50,27 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
     this.loading = true;
     this.gastronomiaService.getById(id).pipe(first()).subscribe({
       next: (data) => {
-        console.log('Establecimiento cargado:', data);
-        console.log('Menús recibidos:', data.menus);
-        console.log('Mesas recibidas:', data.mesas);
-        data.fotosUrls = this.galleryUrls(data);
         this.establecimiento = data;
-        this.loading = false;
+        this.gastronomiaService.listFotos(id).pipe(first()).subscribe({
+          next: (fotos) => {
+            if (!this.establecimiento) {
+              return;
+            }
+
+            this.establecimiento.fotos = fotos;
+            this.establecimiento.fotosUrls = this.galleryUrls(this.establecimiento);
+            if (!this.establecimiento.fotoPrincipal && this.establecimiento.fotosUrls.length > 0) {
+              this.establecimiento.fotoPrincipal = this.establecimiento.fotosUrls[0];
+            }
+            this.loading = false;
+          },
+          error: () => {
+            if (this.establecimiento) {
+              this.establecimiento.fotosUrls = this.galleryUrls(this.establecimiento);
+            }
+            this.loading = false;
+          }
+        });
       },
       error: () => {
         this.toast.error('Error al cargar establecimiento');
@@ -327,8 +342,7 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
     }
 
     this.gastronomiaService.update(this.establecimiento.id, {
-      fotoPrincipal: url,
-      fotosUrls: this.galleryUrls(this.establecimiento)
+      fotoPrincipal: url
     }).pipe(first()).subscribe({
       next: () => {
         if (this.establecimiento) {

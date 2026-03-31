@@ -124,6 +124,7 @@ export interface ReviewReportadaAdminDto {
   fecha: string;
   estado: string;
   motivoReporte?: string;
+  tipoSolicitud?: string;
   moderadaPorId?: string;
   fechaModeracionUtc?: string;
 }
@@ -289,6 +290,11 @@ export class GastronomiaService {
   /** Reportar reseña como oferente */
   reportarReview(reviewId: number, payload: ReportarReviewDto): Observable<void> {
     return this.api.patch<void>(`/Gastronomias/reviews/${reviewId}/reportar`, payload);
+  }
+
+  /** Solicitar eliminación de reseña como oferente */
+  solicitarEliminacionReview(reviewId: number, payload: ReportarReviewDto): Observable<void> {
+    return this.api.patch<void>(`/Gastronomias/reviews/${reviewId}/solicitar-eliminacion`, payload);
   }
 
   /** Admin: listar reseñas reportadas */

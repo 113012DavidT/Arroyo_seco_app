@@ -8,6 +8,8 @@ import { ToastService } from '../../../shared/services/toast.service';
 
 Chart.register(...registerables);
 
+type ModerationAction = 'report' | 'delete';
+
 @Component({
   selector: 'app-analytics-gastronomia',
   standalone: true,
@@ -27,6 +29,7 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   showReportModal = false;
   selectedReview: ReviewOferenteDto | null = null;
   reportMotivo = '';
+  moderationAction: ModerationAction = 'report';
 
   @ViewChild('starsCanvas') starsCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('trendCanvas') trendCanvas!: ElementRef<HTMLCanvasElement>;
@@ -131,7 +134,11 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   }
 
   puedeReportar(review: ReviewOferenteDto): boolean {
-    return review.estado !== 'Reportada';
+    return !['Reportada', 'EliminacionSolicitada', 'Rechazada'].includes(review.estado);
+  }
+
+  puedeSolicitarEliminacion(review: ReviewOferenteDto): boolean {
+    return !['EliminacionSolicitada', 'Rechazada'].includes(review.estado);
   }
 
   reportar(review: ReviewOferenteDto): void {
@@ -139,6 +146,19 @@ export class AnalyticsGastronomiaComponent implements OnInit {
       return;
     }
 
+    this.openModerationModal(review, 'report');
+  }
+
+  solicitarEliminacion(review: ReviewOferenteDto): void {
+    if (!review?.id || !this.puedeSolicitarEliminacion(review) || this.reportingReviewId === review.id) {
+      return;
+    }
+
+    this.openModerationModal(review, 'delete');
+  }
+
+  private openModerationModal(review: ReviewOferenteDto, action: ModerationAction): void {
+    this.moderationAction = action;
     this.selectedReview = review;
     this.reportMotivo = '';
     this.showReportModal = true;
@@ -148,6 +168,29 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     this.showReportModal = false;
     this.selectedReview = null;
     this.reportMotivo = '';
+    this.moderationAction = 'report';
+  }
+
+  get modalTitle(): string {
+    return this.moderationAction === 'delete' ? 'Solicitar eliminación de reseña' : 'Reportar reseña';
+  }
+
+  get modalDescription(): string {
+    if (this.moderationAction === 'delete') {
+      return 'Indícanos por qué deseas solicitar la eliminación de esta reseña. Un administrador deberá aprobar la solicitud.';
+    }
+
+    return 'Indícanos por qué deseas reportar esta reseña. El administrador revisará la denuncia.';
+  }
+
+  get modalPlaceholder(): string {
+    return this.moderationAction === 'delete'
+      ? 'Motivo de la solicitud de eliminación (lenguaje ofensivo, contenido falso, etc.)'
+      : 'Motivo del reporte (grosería, spam, contenido inapropiado, etc.)';
+  }
+
+  get submitLabel(): string {
+    return this.moderationAction === 'delete' ? 'Solicitar eliminación' : 'Reportar';
   }
 
   submitReport(): void {
@@ -159,12 +202,21 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     this.reportingReviewId = this.selectedReview.id;
     const motivo = this.reportMotivo.trim();
     
-    this.gastronomiaService.reportarReview(this.selectedReview.id, { motivo }).pipe(first()).subscribe({
+    const request$ = this.moderationAction === 'delete'
+      ? this.gastronomiaService.solicitarEliminacionReview(this.selectedReview.id, { motivo })
+      : this.gastronomiaService.reportarReview(this.selectedReview.id, { motivo });
+
+    request$.pipe(first()).subscribe({
       next: () => {
+        const nuevoEstado = this.moderationAction === 'delete' ? 'EliminacionSolicitada' : 'Reportada';
         this.misReviews = this.misReviews.map((item) =>
-          item.id === this.selectedReview!.id ? { ...item, estado: 'Reportada', motivoRechazo: motivo } : item
+          item.id === this.selectedReview!.id ? { ...item, estado: nuevoEstado, motivoRechazo: motivo } : item
         );
-        this.toast.success('Reseña reportada. El administrador la revisará.');
+        this.toast.success(
+          this.moderationAction === 'delete'
+            ? 'Solicitud enviada. El administrador decidirá si la reseña se elimina.'
+            : 'Reseña reportada. El administrador la revisará.'
+        );
         this.reportingReviewId = null;
         this.closeReportModal();
       },

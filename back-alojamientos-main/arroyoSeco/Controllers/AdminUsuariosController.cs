@@ -109,7 +109,7 @@ public class AdminUsuariosController : ControllerBase
             .CountAsync(s => s.Estatus == "Pendiente", ct);
         var reportesResenasPendientes = await _db.Reviews
             .AsNoTracking()
-            .CountAsync(r => r.Estado == "Reportada", ct);
+            .CountAsync(r => r.Estado == "Reportada" || r.Estado == "EliminacionSolicitada", ct);
 
         var usuariosPorSexo = users
             .GroupBy(u => string.IsNullOrWhiteSpace(u.Sexo) ? "No especificado" : u.Sexo.Trim())

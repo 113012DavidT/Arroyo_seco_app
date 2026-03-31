@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, EventEmitter, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GOOGLE_MAPS_CONFIG } from '../../../config/maps.config';
 
@@ -65,7 +65,7 @@ declare global {
   template: `
     <div class="map-picker">
       <div class="map-info">
-        <p *ngIf="!latitud || !longitud">📍 Haz click en el mapa para marcar la ubicación dentro de Arroyo Seco</p>
+        <p *ngIf="!latitud || !longitud">📍 Haz click en el mapa para marcar la ubicación{{ restrictToArroyoSeco ? ' dentro de Arroyo Seco' : '' }}</p>
         <div *ngIf="latitud && longitud" class="coords">
           <p class="address" *ngIf="direccionCapturada">
             ✅ <strong>{{ direccionCapturada }}</strong>
@@ -116,9 +116,11 @@ declare global {
     }
   `]
 })
-export class MapPickerComponent implements AfterViewInit {
+export class MapPickerComponent implements AfterViewInit, OnChanges {
   @Input() latitud: number | null = null;
   @Input() longitud: number | null = null;
+  @Input() restrictToArroyoSeco = true;
+  @Input() searchAddress = '';
   @Output() locationSelected = new EventEmitter<LocationData>();
 
   readonly mapId = `map-picker-${Math.random().toString(36).slice(2, 10)}`;
@@ -131,12 +133,19 @@ export class MapPickerComponent implements AfterViewInit {
   errorMapa = '';
   direccionCapturada = '';
   buscandoDireccion = false;
+  private lastGeocodedAddress = '';
 
   ngAfterViewInit(): void {
     this.initMap().catch((error) => {
       console.error('Error inicializando Google Maps:', error);
       this.errorMapa = 'No se pudo cargar Google Maps. Verifica la API key.';
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['searchAddress'] || changes['latitud'] || changes['longitud']) && this.map) {
+      void this.syncFromInputs();
+    }
   }
 
   private async initMap(): Promise<void> {
@@ -153,10 +162,12 @@ export class MapPickerComponent implements AfterViewInit {
       streetViewControl: false,
       fullscreenControl: false,
       gestureHandling: 'greedy',
-      restriction: {
-        latLngBounds: ARROYO_SECO_BOUNDS,
-        strictBounds: true
-      }
+      ...(this.restrictToArroyoSeco ? {
+        restriction: {
+          latLngBounds: ARROYO_SECO_BOUNDS,
+          strictBounds: true
+        }
+      } : {})
     });
 
     this.geocoder = new window.google.maps.Geocoder();
@@ -164,6 +175,8 @@ export class MapPickerComponent implements AfterViewInit {
     if (this.latitud && this.longitud) {
       this.addMarker(this.latitud, this.longitud);
       await this.getDireccion(this.latitud, this.longitud);
+    } else if (this.searchAddress?.trim()) {
+      await this.geocodeAddress(this.searchAddress.trim(), false);
     }
 
     this.map.addListener('click', async (event: any) => {
@@ -173,7 +186,7 @@ export class MapPickerComponent implements AfterViewInit {
         return;
       }
 
-      if (!this.isInsideArroyoSeco(lat, lng)) {
+      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
         this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Querétaro.';
         return;
       }
@@ -185,6 +198,60 @@ export class MapPickerComponent implements AfterViewInit {
     });
 
     this.cargandoMapa = false;
+  }
+
+  private async syncFromInputs(): Promise<void> {
+    if (this.latitud && this.longitud) {
+      this.errorMapa = '';
+      this.addMarker(this.latitud, this.longitud);
+      this.map?.setCenter({ lat: this.latitud, lng: this.longitud });
+      return;
+    }
+
+    const address = this.searchAddress?.trim();
+    if (!address || address === this.lastGeocodedAddress) {
+      return;
+    }
+
+    await this.geocodeAddress(address, true);
+  }
+
+  private async geocodeAddress(address: string, emitSelection: boolean): Promise<void> {
+    if (!this.geocoder || !address) {
+      return;
+    }
+
+    this.buscandoDireccion = true;
+    try {
+      const result = await this.geocoder.geocode({ address });
+      const first = result?.results?.[0];
+      const location = first?.geometry?.location;
+      const lat = location?.lat?.();
+      const lng = location?.lng?.();
+
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
+      }
+
+      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
+        this.errorMapa = 'La dirección encontrada está fuera de Arroyo Seco, Querétaro.';
+        return;
+      }
+
+      this.errorMapa = '';
+      this.lastGeocodedAddress = address;
+      this.direccionCapturada = first?.formatted_address || address;
+      this.addMarker(lat, lng);
+      this.map?.setCenter({ lat, lng });
+
+      if (emitSelection) {
+        this.locationSelected.emit({ lat, lng, address: this.direccionCapturada });
+      }
+    } catch (error) {
+      console.error('Error al geocodificar dirección:', error);
+    } finally {
+      this.buscandoDireccion = false;
+    }
   }
 
   private addMarker(lat: number, lng: number): void {

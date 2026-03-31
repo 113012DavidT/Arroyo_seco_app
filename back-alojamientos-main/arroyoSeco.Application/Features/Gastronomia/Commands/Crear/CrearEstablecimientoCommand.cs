@@ -51,9 +51,6 @@ public class CrearEstablecimientoCommandHandler
         if (string.IsNullOrWhiteSpace(request.Ubicacion))
             throw new ArgumentException("Ubicación requerida");
 
-        if (request.Latitud.HasValue && request.Longitud.HasValue && !ArroyoSecoGeoFence.Contains(request.Latitud.Value, request.Longitud.Value))
-            throw new ArgumentException("La ubicacion debe estar dentro de Arroyo Seco, Queretaro");
-
         var descripcion = request.Descripcion?.Trim();
         if (!string.IsNullOrWhiteSpace(descripcion)
             && (descripcion.Length < MinDescripcionEstablecimiento || descripcion.Length > MaxDescripcionEstablecimiento))

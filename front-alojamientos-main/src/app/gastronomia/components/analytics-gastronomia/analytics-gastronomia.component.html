@@ -68,13 +68,22 @@
             <p>{{ review.comentario }}</p>
             <small>{{ review.fecha | date:'dd/MM/yyyy HH:mm' }} · Estado: {{ review.estado }}</small>
           </div>
-          <button
-            type="button"
-            class="btn-report"
-            (click)="reportar(review)"
-            [disabled]="!puedeReportar(review) || reportingReviewId === review.id">
-            {{ review.estado === 'Reportada' ? 'Reportada' : (reportingReviewId === review.id ? 'Reportando...' : 'Reportar') }}
-          </button>
+          <div class="review-actions">
+            <button
+              type="button"
+              class="btn-report"
+              (click)="reportar(review)"
+              [disabled]="!puedeReportar(review) || reportingReviewId === review.id">
+              {{ review.estado === 'Reportada' ? 'Reportada' : (reportingReviewId === review.id ? 'Procesando...' : 'Reportar') }}
+            </button>
+            <button
+              type="button"
+              class="btn-delete-request"
+              (click)="solicitarEliminacion(review)"
+              [disabled]="!puedeSolicitarEliminacion(review) || reportingReviewId === review.id">
+              {{ review.estado === 'EliminacionSolicitada' ? 'Eliminación solicitada' : (reportingReviewId === review.id ? 'Procesando...' : 'Solicitar eliminación') }}
+            </button>
+          </div>
         </li>
       </ul>
     </article>
@@ -86,15 +95,15 @@
 <div class="modal-overlay" *ngIf="showReportModal" (click)="closeReportModal()"></div>
 <div class="modal" *ngIf="showReportModal">
   <div class="modal__header">
-    <h3>Reportar reseña</h3>
+    <h3>{{ modalTitle }}</h3>
     <button type="button" class="modal__close" (click)="closeReportModal()">×</button>
   </div>
   <div class="modal__body">
-    <p class="modal__text">Indícanos por qué deseas reportar esta reseña. El administrador revisar la denuncia.</p>
+    <p class="modal__text">{{ modalDescription }}</p>
     <textarea
       class="modal__textarea"
       [(ngModel)]="reportMotivo"
-      placeholder="Motivo del reporte (grosería, spam, contenido inapropiado, etc.)"
+      [placeholder]="modalPlaceholder"
       rows="5"
       maxlength="500"></textarea>
     <small class="modal__counter">{{ reportMotivo.length }}/500</small>
@@ -108,7 +117,7 @@
       class="modal__btn modal__btn--primary"
       (click)="submitReport()"
       [disabled]="!reportMotivo.trim() || reportingReviewId !== null">
-      {{ reportingReviewId ? 'Enviando...' : 'Reportar' }}
+      {{ reportingReviewId ? 'Enviando...' : submitLabel }}
     </button>
   </div>
 </div>

@@ -81,3 +81,34 @@
 
   </ng-container>
 </section>
+
+<!-- Modal para reportar reseña -->
+<div class="modal-overlay" *ngIf="showReportModal" (click)="closeReportModal()"></div>
+<div class="modal" *ngIf="showReportModal">
+  <div class="modal__header">
+    <h3>Reportar reseña</h3>
+    <button type="button" class="modal__close" (click)="closeReportModal()">×</button>
+  </div>
+  <div class="modal__body">
+    <p class="modal__text">Indícanos por qué deseas reportar esta reseña. El administrador revisar la denuncia.</p>
+    <textarea
+      class="modal__textarea"
+      [(ngModel)]="reportMotivo"
+      placeholder="Motivo del reporte (grosería, spam, contenido inapropiado, etc.)"
+      rows="5"
+      maxlength="500"></textarea>
+    <small class="modal__counter">{{ reportMotivo.length }}/500</small>
+  </div>
+  <div class="modal__footer">
+    <button type="button" class="modal__btn modal__btn--cancel" (click)="closeReportModal()">
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="modal__btn modal__btn--primary"
+      (click)="submitReport()"
+      [disabled]="!reportMotivo.trim() || reportingReviewId !== null">
+      {{ reportingReviewId ? 'Enviando...' : 'Reportar' }}
+    </button>
+  </div>
+</div>

@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { first } from 'rxjs/operators';
 import { GastronomiaAnalyticsDto, GastronomiaService, ReviewOferenteDto } from '../../services/gastronomia.service';
@@ -10,7 +11,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-analytics-gastronomia',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './analytics-gastronomia.component.html',
   styleUrl: './analytics-gastronomia.component.scss'
 })
@@ -21,6 +22,11 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   reviewsLoading = true;
   misReviews: ReviewOferenteDto[] = [];
   reportingReviewId: number | null = null;
+
+  // Modal para reporte
+  showReportModal = false;
+  selectedReview: ReviewOferenteDto | null = null;
+  reportMotivo = '';
 
   @ViewChild('starsCanvas') starsCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('trendCanvas') trendCanvas!: ElementRef<HTMLCanvasElement>;
@@ -133,20 +139,34 @@ export class AnalyticsGastronomiaComponent implements OnInit {
       return;
     }
 
-    const motivo = (window.prompt('Motivo del reporte para esta reseña:') || '').trim();
-    if (!motivo) {
+    this.selectedReview = review;
+    this.reportMotivo = '';
+    this.showReportModal = true;
+  }
+
+  closeReportModal(): void {
+    this.showReportModal = false;
+    this.selectedReview = null;
+    this.reportMotivo = '';
+  }
+
+  submitReport(): void {
+    if (!this.selectedReview || !this.reportMotivo.trim()) {
       this.toast.info('Debes indicar el motivo del reporte');
       return;
     }
 
-    this.reportingReviewId = review.id;
-    this.gastronomiaService.reportarReview(review.id, { motivo }).pipe(first()).subscribe({
+    this.reportingReviewId = this.selectedReview.id;
+    const motivo = this.reportMotivo.trim();
+    
+    this.gastronomiaService.reportarReview(this.selectedReview.id, { motivo }).pipe(first()).subscribe({
       next: () => {
         this.misReviews = this.misReviews.map((item) =>
-          item.id === review.id ? { ...item, estado: 'Reportada', motivoRechazo: motivo } : item
+          item.id === this.selectedReview!.id ? { ...item, estado: 'Reportada', motivoRechazo: motivo } : item
         );
         this.toast.success('Reseña reportada. El administrador la revisará.');
         this.reportingReviewId = null;
+        this.closeReportModal();
       },
       error: (err) => {
         this.toast.error(err?.error?.message || 'No se pudo reportar la reseña');

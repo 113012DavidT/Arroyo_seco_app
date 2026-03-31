@@ -13,6 +13,10 @@ namespace arroyoSeco.Controllers;
 public class GastronomiasController : ControllerBase
 {
     private const string NeuronaBaseUrl = "http://34.51.58.191:5000";
+    private const double ArroyoSecoNorth = 21.82;
+    private const double ArroyoSecoSouth = 21.43;
+    private const double ArroyoSecoWest = -100.06;
+    private const double ArroyoSecoEast = -99.52;
     private const int MinNombreEstablecimiento = 3;
     private const int MaxNombreEstablecimiento = 120;
     private const int MinDescripcionEstablecimiento = 15;
@@ -420,6 +424,9 @@ public class GastronomiasController : ControllerBase
         if (est == null) return NotFound(new { message = "Establecimiento no encontrado" });
         if (est.OferenteId != _current.UserId) return Forbid();
 
+        if (request.Latitud.HasValue && request.Longitud.HasValue && !IsInsideArroyoSeco(request.Latitud.Value, request.Longitud.Value))
+            return BadRequest(new { message = "La ubicacion debe estar dentro de Arroyo Seco, Queretaro" });
+
         if (!string.IsNullOrWhiteSpace(request.Nombre))
         {
             var nombre = request.Nombre.Trim();
@@ -468,6 +475,14 @@ public class GastronomiasController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         return Ok(est);
+    }
+
+    private static bool IsInsideArroyoSeco(double latitud, double longitud)
+    {
+        return latitud >= ArroyoSecoSouth
+            && latitud <= ArroyoSecoNorth
+            && longitud >= ArroyoSecoWest
+            && longitud <= ArroyoSecoEast;
     }
 
     [AllowAnonymous]

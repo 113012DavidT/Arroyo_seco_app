@@ -29,6 +29,11 @@ public class CrearAlojamientoCommand
 
 public class CrearAlojamientoCommandHandler
 {
+    private const double ArroyoSecoNorth = 21.82;
+    private const double ArroyoSecoSouth = 21.43;
+    private const double ArroyoSecoWest = -100.06;
+    private const double ArroyoSecoEast = -99.52;
+
     private readonly IAppDbContext _context;
     private readonly ICurrentUserService _current;
 
@@ -46,6 +51,9 @@ public class CrearAlojamientoCommandHandler
             throw new ArgumentException("Ubicaci�n requerida");
         if (request.PrecioPorNoche < 1)
             throw new ArgumentException("PrecioPorNoche invalido. Debe ser mayor o igual a 1.00");
+
+        if (request.Latitud.HasValue && request.Longitud.HasValue && !IsInsideArroyoSeco(request.Latitud.Value, request.Longitud.Value))
+            throw new ArgumentException("La ubicacion debe estar dentro de Arroyo Seco, Queretaro");
 
         var hasMainImage = !string.IsNullOrWhiteSpace(request.FotoPrincipal);
         var hasGalleryImage = request.FotosUrls.Any(url => !string.IsNullOrWhiteSpace(url));
@@ -80,5 +88,13 @@ public class CrearAlojamientoCommandHandler
         await _context.SaveChangesAsync(ct);
 
         return alojamiento.Id;
+    }
+
+    private static bool IsInsideArroyoSeco(double latitud, double longitud)
+    {
+        return latitud >= ArroyoSecoSouth
+            && latitud <= ArroyoSecoNorth
+            && longitud >= ArroyoSecoWest
+            && longitud <= ArroyoSecoEast;
     }
 }

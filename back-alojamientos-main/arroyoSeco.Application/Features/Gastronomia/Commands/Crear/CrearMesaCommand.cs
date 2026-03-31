@@ -16,6 +16,8 @@ public class CrearMesaCommand
 
 public class CrearMesaCommandHandler
 {
+    public const int MaxCapacidadMesa = 8;
+
     private readonly IAppDbContext _context;
     private readonly ICurrentUserService _current;
 
@@ -27,7 +29,11 @@ public class CrearMesaCommandHandler
 
     public async Task<int> Handle(CrearMesaCommand request, CancellationToken ct = default)
     {
-        if (request.Capacidad <= 0) throw new ArgumentException("Capacidad inválida");
+        if (request.Capacidad <= 0)
+            throw new ArgumentException("Capacidad invalida. Debe ser mayor a 0");
+
+        if (request.Capacidad > MaxCapacidadMesa)
+            throw new ArgumentException($"Capacidad invalida. El maximo permitido por mesa es de {MaxCapacidadMesa} personas");
 
         var est = await _context.Establecimientos.FirstOrDefaultAsync(e => e.Id == request.EstablecimientoId, ct);
         if (est == null) throw new InvalidOperationException("Establecimiento no encontrado");

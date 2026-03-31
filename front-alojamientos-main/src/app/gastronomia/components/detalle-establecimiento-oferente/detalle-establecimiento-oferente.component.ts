@@ -14,6 +14,8 @@ import { first } from 'rxjs/operators';
   styleUrl: './detalle-establecimiento-oferente.component.scss'
 })
 export class DetalleEstablecimientoOferenteComponent implements OnInit {
+  private readonly maxCapacidadMesa = 8;
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private gastronomiaService = inject(GastronomiaService);
@@ -185,6 +187,11 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   agregarMesa() {
     if (this.nuevaMesa.numero <= 0 || this.nuevaMesa.capacidad <= 0) {
       this.toast.error('Número y capacidad deben ser mayores a 0');
+      return;
+    }
+
+    if (this.nuevaMesa.capacidad > this.maxCapacidadMesa) {
+      this.toast.error(`La capacidad máxima por mesa es de ${this.maxCapacidadMesa} personas`);
       return;
     }
 

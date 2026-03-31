@@ -12,6 +12,11 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class AlojamientosController : ControllerBase
 {
+    private const double ArroyoSecoNorth = 21.82;
+    private const double ArroyoSecoSouth = 21.43;
+    private const double ArroyoSecoWest = -100.06;
+    private const double ArroyoSecoEast = -99.52;
+
     private readonly IAppDbContext _db;
     private readonly CrearAlojamientoCommandHandler _crear;
     private readonly ICurrentUserService _current;
@@ -97,6 +102,9 @@ public class AlojamientosController : ControllerBase
         if (dto.PrecioPorNoche < 1)
             return BadRequest(new { message = "El precio por noche debe ser mayor o igual a 1.00" });
 
+        if (dto.Latitud.HasValue && dto.Longitud.HasValue && !IsInsideArroyoSeco(dto.Latitud.Value, dto.Longitud.Value))
+            return BadRequest(new { message = "La ubicacion debe estar dentro de Arroyo Seco, Queretaro" });
+
         var a = await _db.Alojamientos
             .Include(x => x.Fotos)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -129,6 +137,14 @@ public class AlojamientosController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    private static bool IsInsideArroyoSeco(double latitud, double longitud)
+    {
+        return latitud >= ArroyoSecoSouth
+            && latitud <= ArroyoSecoNorth
+            && longitud >= ArroyoSecoWest
+            && longitud <= ArroyoSecoEast;
     }
 
     [AllowAnonymous]

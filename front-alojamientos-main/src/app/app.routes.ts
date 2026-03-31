@@ -94,7 +94,7 @@ export const routes: Routes = [
           heroImage: 'assets/images/hero-oferentes.svg'
         }
       },
-      { path: '', redirectTo: 'alojamientos', pathMatch: 'full' }
+      { path: '', redirectTo: 'gastronomia', pathMatch: 'full' }
     ]
   },
 
@@ -519,6 +519,6 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
-  { path: '', redirectTo: 'publica/alojamientos', pathMatch: 'full' },
-  { path: '**', redirectTo: 'publica/alojamientos' }
+  { path: '', redirectTo: 'publica/gastronomia', pathMatch: 'full' },
+  { path: '**', redirectTo: 'publica/gastronomia' }
 ];

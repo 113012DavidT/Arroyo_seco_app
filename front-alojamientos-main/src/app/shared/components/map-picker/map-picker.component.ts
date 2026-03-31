@@ -8,6 +8,18 @@ interface LocationData {
   address?: string;
 }
 
+const ARROYO_SECO_BOUNDS = {
+  north: 21.82,
+  south: 21.43,
+  west: -100.06,
+  east: -99.52
+};
+
+const ARROYO_SECO_CENTER = {
+  lat: 21.62,
+  lng: -99.77
+};
+
 declare global {
   interface Window {
     google?: any;
@@ -22,7 +34,7 @@ declare global {
   template: `
     <div class="map-picker">
       <div class="map-info">
-        <p *ngIf="!latitud || !longitud">📍 Haz click en el mapa para marcar la ubicación</p>
+        <p *ngIf="!latitud || !longitud">📍 Haz click en el mapa para marcar la ubicación dentro de Arroyo Seco</p>
         <div *ngIf="latitud && longitud" class="coords">
           <p class="address" *ngIf="direccionCapturada">
             ✅ <strong>{{ direccionCapturada }}</strong>
@@ -100,8 +112,8 @@ export class MapPickerComponent implements AfterViewInit {
     this.cargandoMapa = true;
     await this.loadGoogleMaps();
 
-    const defaultLat = this.latitud || 21.2569;
-    const defaultLng = this.longitud || -99.9897;
+    const defaultLat = this.latitud || ARROYO_SECO_CENTER.lat;
+    const defaultLng = this.longitud || ARROYO_SECO_CENTER.lng;
 
     this.map = new window.google.maps.Map(document.getElementById(this.mapId), {
       center: { lat: defaultLat, lng: defaultLng },
@@ -109,7 +121,11 @@ export class MapPickerComponent implements AfterViewInit {
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
-      gestureHandling: 'greedy'
+      gestureHandling: 'greedy',
+      restriction: {
+        latLngBounds: ARROYO_SECO_BOUNDS,
+        strictBounds: true
+      }
     });
 
     this.geocoder = new window.google.maps.Geocoder();
@@ -125,6 +141,13 @@ export class MapPickerComponent implements AfterViewInit {
       if (typeof lat !== 'number' || typeof lng !== 'number') {
         return;
       }
+
+      if (!this.isInsideArroyoSeco(lat, lng)) {
+        this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Queretaro.';
+        return;
+      }
+
+      this.errorMapa = '';
 
       this.addMarker(lat, lng);
       await this.getDireccion(lat, lng);
@@ -171,6 +194,13 @@ export class MapPickerComponent implements AfterViewInit {
     } finally {
       this.buscandoDireccion = false;
     }
+  }
+
+  private isInsideArroyoSeco(lat: number, lng: number): boolean {
+    return lat >= ARROYO_SECO_BOUNDS.south
+      && lat <= ARROYO_SECO_BOUNDS.north
+      && lng >= ARROYO_SECO_BOUNDS.west
+      && lng <= ARROYO_SECO_BOUNDS.east;
   }
 
   private async loadGoogleMaps(): Promise<any> {

@@ -389,12 +389,24 @@
 .star-btn {
   background: none;
   border: none;
-  font-size: 1.6rem;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   color: #d1d5db;
-  transition: color 0.15s;
+  transition: transform 0.15s ease, color 0.15s ease;
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
   &.active { color: #f59e0b; }
-  &:hover { color: #f59e0b; }
+  &:hover {
+    color: #f59e0b;
+    transform: translateY(-1px) scale(1.05);
+  }
 }
 
 .review-form__textarea {
@@ -426,9 +438,10 @@
 .review-item__head small { font-size: 0.8rem; color: #9ca3af; }
 
 .review-item__stars {
-  color: #f59e0b;
-  font-size: 1rem;
+  color: #d1d5db;
+  font-size: 1.05rem;
   margin-bottom: 0.4rem;
+  .filled { color: #f59e0b; }
   b { color: #1a1a1a; font-size: 0.85rem; margin-left: 0.25rem; }
 }
 

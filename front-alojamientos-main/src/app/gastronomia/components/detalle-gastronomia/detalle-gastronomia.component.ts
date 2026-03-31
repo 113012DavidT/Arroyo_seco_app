@@ -50,7 +50,7 @@ export class DetalleGastronomiaComponent implements OnInit {
     'restaurante': 'Restaurante',
     'bar': 'Bar',
     'antro': 'Antro',
-    'cafe': 'Cafe',
+    'cafe': 'Café',
     'desayunos': 'Desayunos',
     'comida-corrida': 'Comida corrida',
     'cena': 'Cena',
@@ -76,6 +76,11 @@ export class DetalleGastronomiaComponent implements OnInit {
     'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop',
     'https://images.unsplash.com/photo-1544148103-0773bf10d330?w=600&h=400&fit=crop',
     'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&h=400&fit=crop'
+  ];
+
+  private readonly badWords = [
+    'puta', 'puto', 'pendejo', 'cabron', 'chingar', 'mierda', 'pinche', 'culero', 'estupido', 'imbecil',
+    'fuck', 'fucking', 'shit', 'bitch', 'bastard', 'asshole', 'dick', 'motherfucker', 'slut', 'whore'
   ];
 
   constructor(
@@ -221,7 +226,7 @@ export class DetalleGastronomiaComponent implements OnInit {
         next: (result: any) => {
           console.log('Reserva de gastronomía creada exitosamente:', result);
           if (result?.queuedOffline) {
-            this.toast.info('Sin internet: reserva guardada localmente y pendiente de sincronizacion');
+            this.toast.info('Sin internet: reserva guardada localmente y pendiente de sincronización');
           } else {
             this.toast.success('Reserva creada exitosamente');
           }
@@ -269,6 +274,10 @@ export class DetalleGastronomiaComponent implements OnInit {
       this.toast.error('Escribe un comentario para publicar la reseña');
       return;
     }
+    if (this.contieneLenguajeNoPermitido(texto)) {
+      this.toast.error('La reseña contiene lenguaje no permitido');
+      return;
+    }
 
     this.submittingReview = true;
     this.gastronomiaService.createReview(this.establecimiento.id, {
@@ -280,6 +289,7 @@ export class DetalleGastronomiaComponent implements OnInit {
         this.comentario = '';
         this.puntuacion = 5;
         this.submittingReview = false;
+        this.toast.info('Tu reseña quedó pendiente de revisión por el administrador');
         this.loadReviews(this.establecimiento!.id!);
       },
       error: (err) => {
@@ -298,6 +308,10 @@ export class DetalleGastronomiaComponent implements OnInit {
   estrellas(valor: number): number[] {
     const v = Math.max(1, Math.min(5, Math.round(valor || 0)));
     return Array.from({ length: v }, (_, i) => i);
+  }
+
+  estrellasTotales(): number[] {
+    return [1, 2, 3, 4, 5];
   }
 
   obtenerAutor(review: ReviewGastronomiaDto): string {
@@ -387,5 +401,19 @@ export class DetalleGastronomiaComponent implements OnInit {
   // Exponer autenticación al template
   get autenticado(): boolean {
     return this.auth.isAuthenticated();
+  }
+
+  get mesasDisponibles() {
+    return (this.establecimiento?.mesas || []).filter((mesa) => !!mesa?.disponible);
+  }
+
+  private contieneLenguajeNoPermitido(texto: string): boolean {
+    const normalizado = texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    const tokens = normalizado.split(/[^a-z]+/).filter(Boolean);
+    return tokens.some((token) => this.badWords.includes(token));
   }
 }

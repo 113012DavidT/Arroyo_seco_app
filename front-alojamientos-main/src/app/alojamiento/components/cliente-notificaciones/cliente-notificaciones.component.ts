@@ -78,15 +78,6 @@ export class ClienteNotificacionesComponent implements OnInit {
     }
   }
 
-  async enviarPushPrueba() {
-    try {
-      await this.pushService.sendTest();
-      this.toastService.success('Notificación de prueba enviada');
-    } catch {
-      this.toastService.error('No se pudo enviar la prueba push');
-    }
-  }
-
   cargar() {
     this.loading.set(true);
     this.notiService.list(false).pipe(first()).subscribe({

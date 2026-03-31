@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using arroyoSeco.Application.Common.Interfaces;
+using arroyoSeco.Application.Common.Validation;
 using arroyoSeco.Domain.Entities.Gastronomia;
 
 namespace arroyoSeco.Application.Features.Gastronomia.Commands.Crear;
@@ -25,11 +26,6 @@ public class CrearEstablecimientoCommand
 
 public class CrearEstablecimientoCommandHandler
 {
-    private const double ArroyoSecoNorth = 21.82;
-    private const double ArroyoSecoSouth = 21.43;
-    private const double ArroyoSecoWest = -100.06;
-    private const double ArroyoSecoEast = -99.52;
-
     private const int MinNombreEstablecimiento = 3;
     private const int MaxNombreEstablecimiento = 120;
     private const int MinDescripcionEstablecimiento = 15;
@@ -55,7 +51,7 @@ public class CrearEstablecimientoCommandHandler
         if (string.IsNullOrWhiteSpace(request.Ubicacion))
             throw new ArgumentException("Ubicación requerida");
 
-        if (request.Latitud.HasValue && request.Longitud.HasValue && !IsInsideArroyoSeco(request.Latitud.Value, request.Longitud.Value))
+        if (request.Latitud.HasValue && request.Longitud.HasValue && !ArroyoSecoGeoFence.Contains(request.Latitud.Value, request.Longitud.Value))
             throw new ArgumentException("La ubicacion debe estar dentro de Arroyo Seco, Queretaro");
 
         var descripcion = request.Descripcion?.Trim();
@@ -100,13 +96,5 @@ public class CrearEstablecimientoCommandHandler
         _context.Establecimientos.Add(e);
         await _context.SaveChangesAsync(ct);
         return e.Id;
-    }
-
-    private static bool IsInsideArroyoSeco(double latitud, double longitud)
-    {
-        return latitud >= ArroyoSecoSouth
-            && latitud <= ArroyoSecoNorth
-            && longitud >= ArroyoSecoWest
-            && longitud <= ArroyoSecoEast;
     }
 }

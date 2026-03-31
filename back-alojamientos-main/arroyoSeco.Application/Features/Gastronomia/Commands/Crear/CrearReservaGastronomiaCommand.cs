@@ -34,6 +34,10 @@ public class CrearReservaGastronomiaCommandHandler
         if (request.NumeroPersonas <= 0)
             throw new ArgumentException("Número de personas inválido");
 
+        var now = DateTime.UtcNow;
+        if (request.Fecha <= now)
+            throw new ArgumentException("La reserva debe ser para una fecha y hora futura");
+
         var est = await _context.Establecimientos.FirstOrDefaultAsync(e => e.Id == request.EstablecimientoId, ct);
         if (est == null) throw new InvalidOperationException("Establecimiento no encontrado");
 
@@ -43,6 +47,19 @@ public class CrearReservaGastronomiaCommandHandler
             mesa = await _context.Mesas.FirstOrDefaultAsync(m => m.Id == request.MesaId && m.EstablecimientoId == est.Id, ct);
             if (mesa == null) throw new InvalidOperationException("Mesa no encontrada");
             if (!mesa.Disponible) throw new InvalidOperationException("Mesa no disponible");
+            if (mesa.Capacidad < request.NumeroPersonas)
+                throw new InvalidOperationException("La mesa seleccionada no tiene capacidad suficiente");
+        }
+        else
+        {
+            mesa = await _context.Mesas
+                .Where(m => m.EstablecimientoId == est.Id && m.Disponible && m.Capacidad >= request.NumeroPersonas)
+                .OrderBy(m => m.Capacidad)
+                .ThenBy(m => m.Numero)
+                .FirstOrDefaultAsync(ct);
+
+            if (mesa == null)
+                throw new InvalidOperationException("No hay mesas disponibles para esa reservación");
         }
 
         var reserva = new ReservaGastronomia
@@ -55,6 +72,9 @@ public class CrearReservaGastronomiaCommandHandler
             Estado = "Pendiente",
             Total = 0
         };
+
+        // Once reserved, table is hidden from options until the oferente marks it available again.
+        mesa.Disponible = false;
 
         _context.ReservasGastronomia.Add(reserva);
         await _context.SaveChangesAsync(ct);

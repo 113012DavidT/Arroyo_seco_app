@@ -8,11 +8,42 @@ interface LocationData {
   address?: string;
 }
 
+const ARROYO_SECO_POLYGON: Array<{ lat: number; lng: number }> = [
+  { lat: 21.8080, lng: -100.0480 },
+  { lat: 21.8120, lng: -99.9940 },
+  { lat: 21.8030, lng: -99.9360 },
+  { lat: 21.7810, lng: -99.8770 },
+  { lat: 21.7520, lng: -99.8220 },
+  { lat: 21.7280, lng: -99.7770 },
+  { lat: 21.7010, lng: -99.7330 },
+  { lat: 21.6710, lng: -99.6910 },
+  { lat: 21.6390, lng: -99.6610 },
+  { lat: 21.6070, lng: -99.6440 },
+  { lat: 21.5790, lng: -99.6380 },
+  { lat: 21.5480, lng: -99.6460 },
+  { lat: 21.5210, lng: -99.6670 },
+  { lat: 21.4950, lng: -99.7030 },
+  { lat: 21.4730, lng: -99.7480 },
+  { lat: 21.4560, lng: -99.8010 },
+  { lat: 21.4470, lng: -99.8610 },
+  { lat: 21.4510, lng: -99.9140 },
+  { lat: 21.4680, lng: -99.9650 },
+  { lat: 21.4940, lng: -100.0060 },
+  { lat: 21.5310, lng: -100.0360 },
+  { lat: 21.5690, lng: -100.0530 },
+  { lat: 21.6160, lng: -100.0600 },
+  { lat: 21.6630, lng: -100.0570 },
+  { lat: 21.7050, lng: -100.0460 },
+  { lat: 21.7430, lng: -100.0340 },
+  { lat: 21.7760, lng: -100.0280 },
+  { lat: 21.8080, lng: -100.0480 }
+];
+
 const ARROYO_SECO_BOUNDS = {
-  north: 21.82,
-  south: 21.43,
-  west: -100.06,
-  east: -99.52
+  north: Math.max(...ARROYO_SECO_POLYGON.map((p) => p.lat)),
+  south: Math.min(...ARROYO_SECO_POLYGON.map((p) => p.lat)),
+  west: Math.min(...ARROYO_SECO_POLYGON.map((p) => p.lng)),
+  east: Math.max(...ARROYO_SECO_POLYGON.map((p) => p.lng))
 };
 
 const ARROYO_SECO_CENTER = {
@@ -143,7 +174,7 @@ export class MapPickerComponent implements AfterViewInit {
       }
 
       if (!this.isInsideArroyoSeco(lat, lng)) {
-        this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Queretaro.';
+        this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Querétaro.';
         return;
       }
 
@@ -197,10 +228,30 @@ export class MapPickerComponent implements AfterViewInit {
   }
 
   private isInsideArroyoSeco(lat: number, lng: number): boolean {
-    return lat >= ARROYO_SECO_BOUNDS.south
-      && lat <= ARROYO_SECO_BOUNDS.north
-      && lng >= ARROYO_SECO_BOUNDS.west
-      && lng <= ARROYO_SECO_BOUNDS.east;
+    if (lat < ARROYO_SECO_BOUNDS.south || lat > ARROYO_SECO_BOUNDS.north || lng < ARROYO_SECO_BOUNDS.west || lng > ARROYO_SECO_BOUNDS.east) {
+      return false;
+    }
+
+    let inside = false;
+    let j = ARROYO_SECO_POLYGON.length - 1;
+
+    for (let i = 0; i < ARROYO_SECO_POLYGON.length; i++) {
+      const xi = ARROYO_SECO_POLYGON[i].lng;
+      const yi = ARROYO_SECO_POLYGON[i].lat;
+      const xj = ARROYO_SECO_POLYGON[j].lng;
+      const yj = ARROYO_SECO_POLYGON[j].lat;
+
+      const intersects = ((yi > lat) !== (yj > lat))
+        && (lng < (xj - xi) * (lat - yi) / ((yj - yi) || Number.EPSILON) + xi);
+
+      if (intersects) {
+        inside = !inside;
+      }
+
+      j = i;
+    }
+
+    return inside;
   }
 
   private async loadGoogleMaps(): Promise<any> {

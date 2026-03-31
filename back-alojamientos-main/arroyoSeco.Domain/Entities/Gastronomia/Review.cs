@@ -11,5 +11,9 @@ namespace arroyoSeco.Domain.Entities.Gastronomia
         public string Comentario { get; set; }
         public int Puntuacion { get; set; } // 1-5
         public DateTime Fecha { get; set; }
+        public string Estado { get; set; } = "Pendiente"; // Pendiente | Aprobada | Rechazada
+        public DateTime? FechaModeracionUtc { get; set; }
+        public string? ModeradaPorId { get; set; }
+        public string? MotivoRechazo { get; set; }
     }
 }

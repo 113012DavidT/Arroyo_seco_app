@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using arroyoSeco.Application.Common.Interfaces;
+using arroyoSeco.Application.Common.Validation;
 using arroyoSeco.Application.Features.Gastronomia.Commands.Crear;
 using arroyoSeco.Domain.Entities.Gastronomia;
+using arroyoSeco.Domain.Entities.Usuarios;
 using EstablecimientoEntity = arroyoSeco.Domain.Entities.Gastronomia.Establecimiento;
 
 namespace arroyoSeco.Controllers;
@@ -13,10 +16,6 @@ namespace arroyoSeco.Controllers;
 public class GastronomiasController : ControllerBase
 {
     private const string NeuronaBaseUrl = "http://34.51.58.191:5000";
-    private const double ArroyoSecoNorth = 21.82;
-    private const double ArroyoSecoSouth = 21.43;
-    private const double ArroyoSecoWest = -100.06;
-    private const double ArroyoSecoEast = -99.52;
     private const int MinNombreEstablecimiento = 3;
     private const int MaxNombreEstablecimiento = 120;
     private const int MinDescripcionEstablecimiento = 15;
@@ -30,6 +29,8 @@ public class GastronomiasController : ControllerBase
     private readonly CrearReservaGastronomiaCommandHandler _crearReserva;
     private readonly ICurrentUserService _current;
     private readonly IStorageService _storage;
+    private readonly INotificationService _notifications;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public GastronomiasController(
         IAppDbContext db,
@@ -39,7 +40,9 @@ public class GastronomiasController : ControllerBase
         CrearMesaCommandHandler crearMesa,
         CrearReservaGastronomiaCommandHandler crearReserva,
         ICurrentUserService current,
-        IStorageService storage)
+        IStorageService storage,
+        INotificationService notifications,
+        UserManager<ApplicationUser> userManager)
     {
         _db = db;
         _crear = crear;
@@ -49,6 +52,8 @@ public class GastronomiasController : ControllerBase
         _crearReserva = crearReserva;
         _current = current;
         _storage = storage;
+        _notifications = notifications;
+        _userManager = userManager;
     }
 
     [Authorize]
@@ -56,9 +61,13 @@ public class GastronomiasController : ControllerBase
     public async Task<ActionResult<int>> CrearReview(int id, [FromBody] CrearReviewCommand cmd, CancellationToken ct)
     {
         if (cmd.Puntuacion < 1 || cmd.Puntuacion > 5)
-            return BadRequest(new { message = "puntuacion debe estar entre 1 y 5" });
+            return BadRequest(new { message = "La puntuación debe estar entre 1 y 5" });
         if (string.IsNullOrWhiteSpace(cmd.Comentario))
-            return BadRequest(new { message = "comentario es obligatorio" });
+            return BadRequest(new { message = "El comentario es obligatorio" });
+
+        var comentarioLimpio = cmd.Comentario.Trim();
+        if (ProfanityFilter.ContainsProfanity(comentarioLimpio, out _))
+            return BadRequest(new { message = "La reseña contiene lenguaje no permitido" });
 
         var exists = await _db.Establecimientos.AnyAsync(e => e.Id == id, ct);
         if (!exists)
@@ -66,6 +75,7 @@ public class GastronomiasController : ControllerBase
 
         cmd.EstablecimientoId = id;
         cmd.UsuarioId = _current.UserId;
+        cmd.Comentario = comentarioLimpio;
 
         try
         {
@@ -78,10 +88,7 @@ public class GastronomiasController : ControllerBase
             var response = await client.PostAsync("http://34.51.58.191:5000/predict", content, ct);
             if (response.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadAsStringAsync(ct);
-                var result = System.Text.Json.JsonDocument.Parse(json);
-                int clase = result.RootElement.GetProperty("clase").GetInt32();
-                cmd.Comentario += $" [Clasificación ML: {clase}]";
+                // ML enrichment is optional. We do not modify user-visible text here.
             }
         }
         catch
@@ -91,7 +98,31 @@ public class GastronomiasController : ControllerBase
 
         var handler = new CrearReviewCommandHandler(_db);
         var reviewId = await handler.Handle(cmd, ct);
-        return CreatedAtAction(nameof(GetReviews), new { id }, reviewId);
+
+        var establecimiento = await _db.Establecimientos
+            .AsNoTracking()
+            .Where(e => e.Id == id)
+            .Select(e => new { e.Id, e.Nombre })
+            .FirstOrDefaultAsync(ct);
+
+        var admins = await _userManager.GetUsersInRoleAsync("Admin");
+        foreach (var admin in admins)
+        {
+            await _notifications.PushAsync(
+                admin.Id,
+                "Reseña pendiente de revisión",
+                $"Hay una nueva reseña para {establecimiento?.Nombre ?? "un establecimiento"} que requiere moderación.",
+                "ModeracionReview",
+                "/admin/gastronomia/notificaciones",
+                ct);
+        }
+
+        return CreatedAtAction(nameof(GetReviews), new { id }, new
+        {
+            reviewId,
+            estado = "Pendiente",
+            message = "Tu reseña fue enviada y está pendiente de revisión del administrador"
+        });
     }
 
     [AllowAnonymous]
@@ -99,11 +130,71 @@ public class GastronomiasController : ControllerBase
     public async Task<ActionResult> GetReviews(int id, CancellationToken ct)
     {
         var reviews = await _db.Reviews
-            .Where(r => r.EstablecimientoId == id)
+            .Where(r => r.EstablecimientoId == id && r.Estado == "Aprobada")
             .OrderByDescending(r => r.Fecha)
             .AsNoTracking()
             .ToListAsync(ct);
         return Ok(reviews);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("reviews/pendientes")]
+    public async Task<ActionResult> ListReviewsPendientes(CancellationToken ct)
+    {
+        var pendientes = await _db.Reviews
+            .Where(r => r.Estado == "Pendiente")
+            .OrderByDescending(r => r.Fecha)
+            .Select(r => new
+            {
+                r.Id,
+                r.EstablecimientoId,
+                EstablecimientoNombre = r.Establecimiento.Nombre,
+                r.UsuarioId,
+                r.Comentario,
+                r.Puntuacion,
+                r.Fecha,
+                r.Estado
+            })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return Ok(pendientes);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("reviews/{reviewId:int}/moderar")]
+    public async Task<IActionResult> ModerarReview(int reviewId, [FromBody] ModerarReviewDto dto, CancellationToken ct)
+    {
+        var review = await _db.Reviews
+            .Include(r => r.Establecimiento)
+            .FirstOrDefaultAsync(r => r.Id == reviewId, ct);
+        if (review is null)
+            return NotFound(new { message = "Reseña no encontrada" });
+
+        if (review.Estado != "Pendiente")
+            return BadRequest(new { message = "La reseña ya fue moderada" });
+
+        review.Estado = dto.Aprobar ? "Aprobada" : "Rechazada";
+        review.FechaModeracionUtc = DateTime.UtcNow;
+        review.ModeradaPorId = _current.UserId;
+        review.MotivoRechazo = dto.Aprobar ? null : dto.Motivo?.Trim();
+
+        await _db.SaveChangesAsync(ct);
+
+        var titulo = dto.Aprobar ? "Reseña aprobada" : "Reseña rechazada";
+        var mensaje = dto.Aprobar
+            ? $"Tu reseña para {review.Establecimiento?.Nombre ?? "el establecimiento"} fue aprobada y ya es visible."
+            : $"Tu reseña para {review.Establecimiento?.Nombre ?? "el establecimiento"} fue rechazada por incumplir normas.";
+
+        await _notifications.PushAsync(
+            review.UsuarioId,
+            titulo,
+            mensaje,
+            "ModeracionReview",
+            "/cliente/gastronomia/notificaciones",
+            ct);
+
+        return NoContent();
     }
 
     [AllowAnonymous]
@@ -132,8 +223,8 @@ public class GastronomiasController : ControllerBase
             x.clase,
             x.confidence,
             x.fuente,
-            x.est.Reviews.Count > 0 ? x.est.Reviews.Average(r => r.Puntuacion) : 0,
-            x.est.Reviews.Count
+            x.est.Reviews.Any(r => r.Estado == "Aprobada") ? x.est.Reviews.Where(r => r.Estado == "Aprobada").Average(r => r.Puntuacion) : 0,
+            x.est.Reviews.Count(r => r.Estado == "Aprobada")
         )).ToList();
 
         return Ok(response);
@@ -153,7 +244,7 @@ public class GastronomiasController : ControllerBase
 
         var reviewsQuery = _db.Reviews
             .AsNoTracking()
-            .Where(r => establecimientoIds.Contains(r.EstablecimientoId));
+            .Where(r => establecimientoIds.Contains(r.EstablecimientoId) && r.Estado == "Aprobada");
 
         var totalReviews = await reviewsQuery.CountAsync(ct);
         var ratingPromedio = totalReviews > 0
@@ -175,12 +266,12 @@ public class GastronomiasController : ControllerBase
         var byEstablecimiento = await _db.Establecimientos
             .Include(e => e.Reviews)
             .AsNoTracking()
-            .Where(e => e.OferenteId == _current.UserId && e.Reviews.Any())
+            .Where(e => e.OferenteId == _current.UserId && e.Reviews.Any(r => r.Estado == "Aprobada"))
             .Select(e => new EstablecimientoReviewStatsDto(
                 e.Id,
                 e.Nombre,
-                e.Reviews.Average(r => (double)r.Puntuacion),
-                e.Reviews.Count
+                e.Reviews.Where(r => r.Estado == "Aprobada").Average(r => (double)r.Puntuacion),
+                e.Reviews.Count(r => r.Estado == "Aprobada")
             ))
             .ToListAsync(ct);
 
@@ -236,9 +327,10 @@ public class GastronomiasController : ControllerBase
 
         var mlInput = establecimientos.Select(est =>
         {
-            var avgPuntuacion = est.Reviews.Count > 0 ? est.Reviews.Average(r => r.Puntuacion) : 3.0;
-            var lastComentario = est.Reviews.Count > 0
-                ? est.Reviews.OrderByDescending(r => r.Fecha).First().Comentario
+            var reviewsAprobadas = est.Reviews.Where(r => r.Estado == "Aprobada").ToList();
+            var avgPuntuacion = reviewsAprobadas.Count > 0 ? reviewsAprobadas.Average(r => r.Puntuacion) : 3.0;
+            var lastComentario = reviewsAprobadas.Count > 0
+                ? reviewsAprobadas.OrderByDescending(r => r.Fecha).First().Comentario
                 : "sin reseñas";
             return new { puntuacion = avgPuntuacion, comentario = lastComentario };
         }).ToList();
@@ -246,7 +338,8 @@ public class GastronomiasController : ControllerBase
         var fallback = establecimientos
             .Select(est =>
             {
-                var avg = est.Reviews.Count > 0 ? est.Reviews.Average(r => r.Puntuacion) : 0;
+                var reviewsAprobadas = est.Reviews.Where(r => r.Estado == "Aprobada").ToList();
+                var avg = reviewsAprobadas.Count > 0 ? reviewsAprobadas.Average(r => r.Puntuacion) : 0;
                 var clase = avg >= 4.0 ? 2 : (avg >= 2.5 ? 1 : 0);
                 return (est, clase, confidence: avg / 5.0, fuente: "fallback");
             })
@@ -424,7 +517,7 @@ public class GastronomiasController : ControllerBase
         if (est == null) return NotFound(new { message = "Establecimiento no encontrado" });
         if (est.OferenteId != _current.UserId) return Forbid();
 
-        if (request.Latitud.HasValue && request.Longitud.HasValue && !IsInsideArroyoSeco(request.Latitud.Value, request.Longitud.Value))
+        if (request.Latitud.HasValue && request.Longitud.HasValue && !ArroyoSecoGeoFence.Contains(request.Latitud.Value, request.Longitud.Value))
             return BadRequest(new { message = "La ubicacion debe estar dentro de Arroyo Seco, Queretaro" });
 
         if (!string.IsNullOrWhiteSpace(request.Nombre))
@@ -475,14 +568,6 @@ public class GastronomiasController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         return Ok(est);
-    }
-
-    private static bool IsInsideArroyoSeco(double latitud, double longitud)
-    {
-        return latitud >= ArroyoSecoSouth
-            && latitud <= ArroyoSecoNorth
-            && longitud >= ArroyoSecoWest
-            && longitud <= ArroyoSecoEast;
     }
 
     [AllowAnonymous]
@@ -647,4 +732,9 @@ public record GastronomiaAnalyticsDto(
     List<EstablecimientoReviewStatsDto> Top5,
     List<EstablecimientoReviewStatsDto> Bottom5,
     List<ReviewsTrendPointDto> TendenciaMensual
+);
+
+public record ModerarReviewDto(
+    bool Aprobar,
+    string? Motivo
 );

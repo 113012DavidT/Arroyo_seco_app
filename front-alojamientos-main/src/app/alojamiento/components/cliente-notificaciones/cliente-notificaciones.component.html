@@ -5,13 +5,10 @@
 
   <div class="push-controls" *ngIf="pushSupported">
     <button class="btn-action" (click)="activarPush()" [disabled]="pushEnabled || pushLoading">
-      {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar push PWA' }}
+      {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar notificaciones push' }}
     </button>
     <button class="btn-action" (click)="desactivarPush()" [disabled]="!pushEnabled || pushLoading">
       Desactivar push
-    </button>
-    <button class="btn-action" (click)="enviarPushPrueba()" [disabled]="!pushEnabled">
-      Enviar prueba
     </button>
   </div>
 

@@ -127,7 +127,7 @@
         <app-map-view [latitud]="establecimiento.latitud || null" [longitud]="establecimiento.longitud || null"></app-map-view>
         <button class="btn-como-llegar" (click)="abrirComoLlegar()">
           <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Como llegar
+          Cómo llegar
         </button>
       </div>
 
@@ -154,35 +154,37 @@
       <div class="divider"></div>
       <div class="reviews-section">
         <div class="reviews-header">
-          <h2>Calificaciones y resenas</h2>
+          <h2>Calificaciones y reseñas</h2>
           <div class="reviews-summary" *ngIf="reviews.length > 0">
             <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
             <strong>{{ promedioReviews | number:'1.1-1' }}</strong>
-            <span>{{ reviews.length }} resenas</span>
+            <span>{{ reviews.length }} reseñas</span>
           </div>
         </div>
 
         <div class="review-form" *ngIf="autenticado">
-          <label class="review-form__label">Tu calificacion</label>
+          <label class="review-form__label">Tu calificación</label>
           <div class="review-stars">
-            <button type="button" class="star-btn" *ngFor="let star of [1,2,3,4,5]"
+            <button type="button" class="star-btn" *ngFor="let star of estrellasTotales()"
               [class.active]="star <= puntuacion" (click)="puntuacion = star"
-              [attr.aria-label]="'Calificar con ' + star + ' estrellas'">*</button>
+              [attr.aria-label]="'Calificar con ' + star + ' estrellas'">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            </button>
           </div>
           <textarea [(ngModel)]="comentario" class="review-form__textarea" rows="3" maxlength="500"
-            placeholder="Cuentanos tu experiencia en este restaurante"></textarea>
+            placeholder="Cuéntanos tu experiencia en este restaurante"></textarea>
           <div class="review-form__actions">
             <span class="review-form__hint">{{ comentario.length || 0 }}/500</span>
             <button class="btn-reserva" (click)="enviarReview()" [disabled]="submittingReview">
-              <span *ngIf="!submittingReview">Publicar resena</span>
+              <span *ngIf="!submittingReview">Publicar reseña</span>
               <span *ngIf="submittingReview">Publicando...</span>
             </button>
           </div>
         </div>
 
         <div class="review-login" *ngIf="!autenticado">
-          <p>Inicia sesion para dejar tu calificacion y resena.</p>
-          <a routerLink="/login" [queryParams]="{ returnUrl: '/cliente/gastronomia/' + establecimiento.id }" class="btn-ghost">Iniciar sesion</a>
+          <p>Inicia sesión para dejar tu calificación y reseña.</p>
+          <a routerLink="/login" [queryParams]="{ returnUrl: '/cliente/gastronomia/' + establecimiento.id }" class="btn-ghost">Iniciar sesión</a>
         </div>
 
         <div class="reviews-list" *ngIf="!loadingReviews && reviews.length > 0">
@@ -192,14 +194,14 @@
               <small>{{ review.fecha | date:'dd/MM/yyyy' }}</small>
             </div>
             <div class="review-item__stars">
-              <span *ngFor="let s of estrellas(review.puntuacion)">*</span>
+              <span *ngFor="let star of estrellasTotales()" [class.filled]="star <= review.puntuacion">★</span>
               <b>{{ review.puntuacion | number:'1.0-1' }}/5</b>
             </div>
             <p class="review-item__text">{{ review.comentario }}</p>
           </article>
         </div>
-        <p class="reviews-empty" *ngIf="!loadingReviews && reviews.length === 0">Aun no hay resenas. Se la primera persona en opinar.</p>
-        <p class="reviews-empty" *ngIf="loadingReviews">Cargando resenas...</p>
+        <p class="reviews-empty" *ngIf="!loadingReviews && reviews.length === 0">Aún no hay reseñas. Sé la primera persona en opinar.</p>
+        <p class="reviews-empty" *ngIf="loadingReviews">Cargando reseñas...</p>
       </div>
     </div>
 
@@ -212,15 +214,15 @@
         </div>
 
         <ng-container *ngIf="isPublic || !autenticado; else reservaAuth">
-          <p class="booking-notice">Inicia sesion para reservar una mesa.</p>
+          <p class="booking-notice">Inicia sesión para reservar una mesa.</p>
           <a routerLink="/login" [queryParams]="{ returnUrl: '/cliente/gastronomia/' + establecimiento.id }" class="btn-reserva btn-reserva--full">
-            Iniciar sesion
+            Iniciar sesión
           </a>
         </ng-container>
 
         <ng-template #reservaAuth>
           <div *ngIf="!showReservaForm">
-            <p class="booking-cta">Elegi fecha, hora y cantidad de comensales</p>
+            <p class="booking-cta">Elige fecha, hora y cantidad de comensales</p>
             <button class="btn-reserva btn-reserva--full" (click)="toggleReservaForm()">
               Reservar mesa
             </button>
@@ -253,12 +255,15 @@
             <div class="booking-field" *ngIf="establecimiento.mesas && establecimiento.mesas.length > 0">
               <label>Mesa (opcional)</label>
               <select [(ngModel)]="mesaId">
-                <option [ngValue]="null">Cualquier mesa disponible</option>
-                <option *ngFor="let mesa of establecimiento.mesas" [ngValue]="mesa.id" [disabled]="!mesa.disponible">
-                  Mesa {{ mesa.numero }} - {{ mesa.capacidad }} personas {{ !mesa.disponible ? '(Ocupada)' : '' }}
+                <option [ngValue]="null">Asignar automáticamente</option>
+                <option *ngFor="let mesa of mesasDisponibles" [ngValue]="mesa.id">
+                  Mesa {{ mesa.numero }} - {{ mesa.capacidad }} personas
                 </option>
               </select>
             </div>
+            <p class="booking-notice" *ngIf="showReservaForm && establecimiento.mesas?.length && mesasDisponibles.length === 0">
+              No hay mesas disponibles por el momento.
+            </p>
 
             <button class="btn-reserva btn-reserva--full" (click)="crearReserva()" [disabled]="submitting">
               <span *ngIf="!submitting">Confirmar reserva</span>

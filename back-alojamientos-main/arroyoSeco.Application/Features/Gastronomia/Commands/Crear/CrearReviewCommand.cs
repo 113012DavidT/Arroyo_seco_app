@@ -29,9 +29,10 @@ namespace arroyoSeco.Application.Features.Gastronomia.Commands.Crear
             {
                 EstablecimientoId = request.EstablecimientoId,
                 UsuarioId = request.UsuarioId ?? string.Empty,
-                Comentario = request.Comentario,
+                Comentario = request.Comentario.Trim(),
                 Puntuacion = request.Puntuacion,
-                Fecha = DateTime.UtcNow
+                Fecha = DateTime.UtcNow,
+                Estado = "Pendiente"
             };
             _context.Reviews.Add(review);
             await _context.SaveChangesAsync(ct);

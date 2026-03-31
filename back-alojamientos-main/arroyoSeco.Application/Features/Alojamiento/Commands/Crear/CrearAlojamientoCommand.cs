@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using arroyoSeco.Domain.Entities.Alojamientos;
 using arroyoSeco.Application.Common.Interfaces;
+using arroyoSeco.Application.Common.Validation;
 // Alias para evitar la colisi�n con el namespace Features.Alojamiento
 using AlojamientoEntity = arroyoSeco.Domain.Entities.Alojamientos.Alojamiento;
 
@@ -29,11 +30,6 @@ public class CrearAlojamientoCommand
 
 public class CrearAlojamientoCommandHandler
 {
-    private const double ArroyoSecoNorth = 21.82;
-    private const double ArroyoSecoSouth = 21.43;
-    private const double ArroyoSecoWest = -100.06;
-    private const double ArroyoSecoEast = -99.52;
-
     private readonly IAppDbContext _context;
     private readonly ICurrentUserService _current;
 
@@ -52,7 +48,7 @@ public class CrearAlojamientoCommandHandler
         if (request.PrecioPorNoche < 1)
             throw new ArgumentException("PrecioPorNoche invalido. Debe ser mayor o igual a 1.00");
 
-        if (request.Latitud.HasValue && request.Longitud.HasValue && !IsInsideArroyoSeco(request.Latitud.Value, request.Longitud.Value))
+        if (request.Latitud.HasValue && request.Longitud.HasValue && !ArroyoSecoGeoFence.Contains(request.Latitud.Value, request.Longitud.Value))
             throw new ArgumentException("La ubicacion debe estar dentro de Arroyo Seco, Queretaro");
 
         var hasMainImage = !string.IsNullOrWhiteSpace(request.FotoPrincipal);
@@ -88,13 +84,5 @@ public class CrearAlojamientoCommandHandler
         await _context.SaveChangesAsync(ct);
 
         return alojamiento.Id;
-    }
-
-    private static bool IsInsideArroyoSeco(double latitud, double longitud)
-    {
-        return latitud >= ArroyoSecoSouth
-            && latitud <= ArroyoSecoNorth
-            && longitud >= ArroyoSecoWest
-            && longitud <= ArroyoSecoEast;
     }
 }

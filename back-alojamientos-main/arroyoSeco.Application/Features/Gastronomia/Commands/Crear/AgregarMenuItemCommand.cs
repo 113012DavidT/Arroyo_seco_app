@@ -30,7 +30,7 @@ public class AgregarMenuItemCommandHandler
     {
         if (string.IsNullOrWhiteSpace(request.Nombre))
             throw new ArgumentException("Nombre requerido");
-        if (request.Precio < 0) throw new ArgumentException("Precio inválido");
+        if (request.Precio < 1) throw new ArgumentException("Precio invalido. Debe ser mayor o igual a 1.00");
 
         var menu = await _context.Menus.Include(m => m.Establecimiento).FirstOrDefaultAsync(m => m.Id == request.MenuId, ct);
         if (menu == null) throw new InvalidOperationException("Menu no encontrado");

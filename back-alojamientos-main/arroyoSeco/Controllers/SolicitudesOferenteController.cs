@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Solicitudes;
 using arroyoSeco.Domain.Entities.Usuarios;
@@ -11,6 +13,11 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class SolicitudesOferenteController : ControllerBase
 {
+    private static readonly EmailAddressAttribute EmailValidator = new();
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{2,80}$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
+    private static readonly Regex TextoLibreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,#()\-]{2,120}$", RegexOptions.Compiled);
+
     private readonly IAppDbContext _db;
     private readonly INotificationService _noti;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -38,7 +45,15 @@ public class SolicitudesOferenteController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Crear([FromBody] SolicitudOferente s, CancellationToken ct)
     {
+        if (!TryValidateSolicitud(s, out var validationError))
+            return BadRequest(new { message = validationError });
+
         s.Id = 0;
+        s.NombreSolicitante = s.NombreSolicitante.Trim();
+        s.NombreNegocio = s.NombreNegocio.Trim();
+        s.Correo = s.Correo.Trim();
+        s.Telefono = s.Telefono.Trim();
+        s.Mensaje = string.IsNullOrWhiteSpace(s.Mensaje) ? null : s.Mensaje.Trim();
         s.FechaSolicitud = DateTime.UtcNow;
         _db.SolicitudesOferente.Add(s);
         await _db.SaveChangesAsync(ct);
@@ -75,5 +90,41 @@ public class SolicitudesOferenteController : ControllerBase
             .Where(s => s.Estatus == "Pendiente")
             .CountAsync(ct);
         return Ok(new { count });
+    }
+
+    private static bool TryValidateSolicitud(SolicitudOferente s, out string error)
+    {
+        if (string.IsNullOrWhiteSpace(s.NombreSolicitante) || !NombreRegex.IsMatch(s.NombreSolicitante.Trim()))
+        {
+            error = "Nombre invalido. Solo letras y espacios permitidos";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(s.Telefono) || !TelefonoRegex.IsMatch(s.Telefono.Trim()))
+        {
+            error = "Telefono invalido. Debe tener exactamente 10 digitos numericos";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(s.Correo) || !EmailValidator.IsValid(s.Correo.Trim()) || s.Correo.Trim().Length > 120)
+        {
+            error = "Correo invalido";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(s.NombreNegocio) || !TextoLibreRegex.IsMatch(s.NombreNegocio.Trim()))
+        {
+            error = "Nombre de negocio invalido";
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(s.Mensaje) && s.Mensaje.Trim().Length > 500)
+        {
+            error = "La descripcion del negocio no puede exceder 500 caracteres";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
     }
 }

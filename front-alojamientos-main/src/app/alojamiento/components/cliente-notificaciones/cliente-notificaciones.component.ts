@@ -2,6 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../../shared/services/toast.service';
 import { NotificacionesService, NotificacionDto } from '../../services/notificaciones.service';
+import { PwaPushService } from '../../../core/services/pwa-push.service';
 import { first } from 'rxjs/operators';
 
 interface Notificacion {
@@ -24,11 +25,66 @@ export class ClienteNotificacionesComponent implements OnInit {
   notificaciones = signal<Notificacion[]>([]);
   loading = signal<boolean>(false);
   error = signal<string | null>(null);
+  pushSupported = false;
+  pushEnabled = false;
+  pushLoading = false;
 
-  constructor(private toastService: ToastService, private notiService: NotificacionesService) {}
+  constructor(
+    private toastService: ToastService,
+    private notiService: NotificacionesService,
+    private pushService: PwaPushService
+  ) {}
 
   ngOnInit(): void {
     this.cargar();
+    this.initPushState();
+  }
+
+  private async initPushState() {
+    this.pushSupported = this.pushService.isSupported();
+    if (!this.pushSupported) return;
+    this.pushEnabled = await this.pushService.hasActiveSubscription();
+  }
+
+  async activarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      const ok = await this.pushService.enablePush();
+      if (!ok) {
+        this.toastService.info('No fue posible activar notificaciones push');
+      } else {
+        this.pushEnabled = true;
+        this.toastService.success('Notificaciones push activadas');
+      }
+    } catch {
+      this.toastService.error('Error al activar notificaciones push');
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async desactivarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      await this.pushService.disablePush();
+      this.pushEnabled = false;
+      this.toastService.info('Notificaciones push desactivadas');
+    } catch {
+      this.toastService.error('Error al desactivar notificaciones push');
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async enviarPushPrueba() {
+    try {
+      await this.pushService.sendTest();
+      this.toastService.success('Notificación de prueba enviada');
+    } catch {
+      this.toastService.error('No se pudo enviar la prueba push');
+    }
   }
 
   cargar() {

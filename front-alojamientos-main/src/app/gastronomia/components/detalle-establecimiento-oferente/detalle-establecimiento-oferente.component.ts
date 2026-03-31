@@ -126,8 +126,8 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   }
 
   agregarItem() {
-    if (!this.nuevoItem.nombre.trim() || this.nuevoItem.precio <= 0) {
-      this.toast.error('Completa todos los campos del item');
+    if (!this.nuevoItem.nombre.trim() || this.nuevoItem.precio < 1) {
+      this.toast.error('Completa los campos y usa un precio mayor o igual a 1.00');
       return;
     }
 

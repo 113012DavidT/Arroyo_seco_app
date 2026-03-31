@@ -49,6 +49,11 @@ export class ClientePerfilComponent implements OnInit {
   cargando = false;
   guardando = false;
   editando = false;
+  readonly nombrePattern = "^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\\s.'-]{2,80}$";
+  readonly correoPattern = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$';
+  readonly telefonoPattern = '^\\d{10}$';
+  readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';
+  readonly sexosPermitidos = ['Masculino', 'Femenino', 'Otro', 'Prefiero no decir'];
 
   ngOnInit() {
     this.cargarPerfil();
@@ -112,6 +117,8 @@ export class ClientePerfilComponent implements OnInit {
   guardarPerfil() {
     if (this.guardando) return;
 
+    if (!this.validarPerfil()) return;
+
     const payload = {
       nombre: this.editPerfil.nombre?.trim(),
       email: this.editPerfil.email?.trim(),
@@ -131,9 +138,49 @@ export class ClientePerfilComponent implements OnInit {
       error: (err) => {
         console.error('Error al actualizar perfil:', err);
         this.guardando = false;
-        this.toastService.error('No fue posible actualizar tu perfil');
+        this.toastService.error(err?.error?.message || 'No fue posible actualizar tu perfil');
       }
     });
+  }
+
+  onTelefonoInput() {
+    const soloDigitos = (this.editPerfil.telefono || '').replace(/\D/g, '');
+    this.editPerfil.telefono = soloDigitos.slice(0, 10);
+  }
+
+  private validarPerfil(): boolean {
+    const nombre = (this.editPerfil.nombre || '').trim();
+    const email = (this.editPerfil.email || '').trim();
+    const telefono = (this.editPerfil.telefono || '').trim();
+    const direccion = (this.editPerfil.direccion || '').trim();
+    const sexo = (this.editPerfil.sexo || '').trim();
+
+    if (!new RegExp(this.nombrePattern).test(nombre)) {
+      this.toastService.error('Nombre invalido. Solo letras y espacios permitidos');
+      return false;
+    }
+
+    if (!new RegExp(this.correoPattern).test(email)) {
+      this.toastService.error('Correo invalido');
+      return false;
+    }
+
+    if (!new RegExp(this.telefonoPattern).test(telefono)) {
+      this.toastService.error('Telefono invalido. Debe tener exactamente 10 digitos');
+      return false;
+    }
+
+    if (!new RegExp(this.direccionPattern).test(direccion)) {
+      this.toastService.error('Direccion invalida. Usa entre 5 y 200 caracteres permitidos');
+      return false;
+    }
+
+    if (!this.sexosPermitidos.includes(sexo)) {
+      this.toastService.error('Selecciona un sexo valido');
+      return false;
+    }
+
+    return true;
   }
 
   irRecuperarPassword() {

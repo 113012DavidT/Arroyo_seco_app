@@ -12,6 +12,9 @@
           [(ngModel)]="model.direccion"
           placeholder="Calle, colonia, municipio"
           required
+          minlength="5"
+          maxlength="200"
+          [pattern]="direccionPattern"
         />
       </label>
 

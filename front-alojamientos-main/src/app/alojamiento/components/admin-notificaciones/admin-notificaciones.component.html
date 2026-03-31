@@ -1,4 +1,12 @@
 <section class="notificaciones">
+  <div class="push-controls" *ngIf="pushSupported">
+    <button type="button" class="btn mark" (click)="activarPush()" [disabled]="pushEnabled || pushLoading">
+      {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar push PWA' }}
+    </button>
+    <button type="button" class="btn mark" (click)="desactivarPush()" [disabled]="!pushEnabled || pushLoading">Desactivar push</button>
+    <button type="button" class="btn view" (click)="enviarPushPrueba()" [disabled]="!pushEnabled">Enviar prueba</button>
+  </div>
+
   <div class="toolbar">
     <div class="search">
       <input

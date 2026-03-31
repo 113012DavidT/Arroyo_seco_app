@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificacionesService, NotificacionDto } from '../../services/notificaciones.service';
+import { PwaPushService } from '../../../core/services/pwa-push.service';
 import { first } from 'rxjs/operators';
 
 interface Notificacion {
@@ -25,6 +26,9 @@ export class AdminNotificacionesComponent implements OnInit {
   notificaciones: Notificacion[] = [];
   loading = false;
   error: string | null = null;
+  pushSupported = false;
+  pushEnabled = false;
+  pushLoading = false;
 
   private readonly MOCK_NOTIFICACIONES: Notificacion[] = [
     { id: 'mock-n1', nombre: 'Nueva reserva - Cabaña del Bosque', telefono: '442-123-4567', negocio: 'Cabaña del Bosque', estatus: 'Abierta', leida: false },
@@ -36,10 +40,47 @@ export class AdminNotificacionesComponent implements OnInit {
     { id: 'mock-n7', nombre: 'Reseña recibida ★★★★★', telefono: '442-789-0123', negocio: 'Cabaña del Bosque', estatus: 'Atendida', leida: true },
   ];
 
-  constructor(private notiService: NotificacionesService) {}
+  constructor(private notiService: NotificacionesService, private pushService: PwaPushService) {}
 
   ngOnInit(): void {
     this.cargar();
+    this.initPushState();
+  }
+
+  private async initPushState() {
+    this.pushSupported = this.pushService.isSupported();
+    if (!this.pushSupported) return;
+    this.pushEnabled = await this.pushService.hasActiveSubscription();
+  }
+
+  async activarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      const ok = await this.pushService.enablePush();
+      this.pushEnabled = ok;
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async desactivarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      await this.pushService.disablePush();
+      this.pushEnabled = false;
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async enviarPushPrueba() {
+    try {
+      await this.pushService.sendTest();
+    } catch {
+      this.error = 'No se pudo enviar la prueba push';
+    }
   }
 
   cargar() {

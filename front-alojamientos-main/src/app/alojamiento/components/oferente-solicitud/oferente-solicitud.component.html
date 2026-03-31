@@ -64,16 +64,16 @@
             <div class="form-row">
               <label class="form-field">
                 <span class="field-label">Nombre completo <span class="req">*</span></span>
-                <input type="text" name="nombre" [(ngModel)]="model.nombre" placeholder="Juan Pérez" required />
+                <input type="text" name="nombre" [(ngModel)]="model.nombre" placeholder="Juan Pérez" required minlength="2" maxlength="80" [pattern]="nombrePattern" />
               </label>
               <label class="form-field">
                 <span class="field-label">Correo electrónico <span class="req">*</span></span>
-                <input type="email" name="correo" [(ngModel)]="model.correo" placeholder="juan@ejemplo.com" required />
+                <input type="email" name="correo" [(ngModel)]="model.correo" placeholder="juan@ejemplo.com" required maxlength="120" [pattern]="correoPattern" />
               </label>
             </div>
             <label class="form-field">
               <span class="field-label">Teléfono <span class="req">*</span></span>
-              <input type="tel" name="telefono" [(ngModel)]="model.telefono" placeholder="442-334-5590" required />
+              <input type="tel" name="telefono" [(ngModel)]="model.telefono" placeholder="4423345590" required maxlength="10" [pattern]="telefonoPattern" inputmode="numeric" (input)="onTelefonoInput()" />
             </label>
           </div>
 
@@ -81,7 +81,7 @@
             <span class="form-section__label">Cuéntanos sobre tu negocio</span>
             <label class="form-field">
               <span class="field-label">Descripción del negocio <span class="req">*</span></span>
-              <textarea name="contexto" [(ngModel)]="model.contexto" placeholder="Ej: Cabaña familiar con capacidad para 8 personas, ubicada en zona boscosa con vista al río..." required rows="3"></textarea>
+              <textarea name="contexto" [(ngModel)]="model.contexto" placeholder="Ej: Cabaña familiar con capacidad para 8 personas, ubicada en zona boscosa con vista al río..." required rows="3" maxlength="500"></textarea>
             </label>
           </div>
 

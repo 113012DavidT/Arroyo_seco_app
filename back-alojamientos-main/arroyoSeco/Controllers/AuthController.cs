@@ -6,6 +6,8 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using System.Text;
 using System.Net;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Usuarios;
 using arroyoSeco.Infrastructure.Auth;
@@ -18,6 +20,14 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private const int PrimerBloqueoIntentos = 5;
+    private const int SegundosBloqueoBase = 30;
+
+    private static readonly EmailAddressAttribute EmailValidator = new();
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{2,80}$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
+    private static readonly Regex DireccionRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,#-]{5,200}$", RegexOptions.Compiled);
+
     private static readonly HashSet<string> SexosPermitidos = new(StringComparer.OrdinalIgnoreCase)
     {
         "Masculino",
@@ -80,16 +90,15 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Direccion) || string.IsNullOrWhiteSpace(dto.Sexo))
-            return BadRequest(new { message = "Direccion y sexo son obligatorios" });
-        if (!SexosPermitidos.Contains(dto.Sexo.Trim()))
-            return BadRequest(new { message = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir" });
+        if (!TryValidateRegisterDto(dto, out var registerValidationError))
+            return BadRequest(new { message = registerValidationError });
 
         var user = new ApplicationUser
         {
-            UserName = dto.Email,
-            Email = dto.Email,
+            UserName = dto.Email.Trim(),
+            Email = dto.Email.Trim(),
             EmailConfirmed = true,
+            LockoutEnabled = true,
             Direccion = dto.Direccion.Trim(),
             Sexo = dto.Sexo.Trim()
         };
@@ -125,11 +134,43 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
-        var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user is null) return Unauthorized();
+        var email = dto.Email?.Trim();
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(dto.Password))
+            return Unauthorized(new { message = "Credenciales invalidas" });
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: false);
-        if (!result.Succeeded) return Unauthorized();
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            return Unauthorized(new { message = "Credenciales invalidas" });
+
+        if (!user.LockoutEnabled)
+        {
+            user.LockoutEnabled = true;
+            await _userManager.UpdateAsync(user);
+        }
+
+        if (await _userManager.IsLockedOutAsync(user))
+            return BuildLockedOutResponse(user.LockoutEnd);
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
+        if (!isPasswordValid)
+        {
+            await _userManager.AccessFailedAsync(user);
+            var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+            if (failedCount >= PrimerBloqueoIntentos)
+            {
+                var lockLevel = 1 + ((failedCount - PrimerBloqueoIntentos) / PrimerBloqueoIntentos);
+                var lockSeconds = SegundosBloqueoBase * lockLevel;
+                var lockoutEnd = DateTimeOffset.UtcNow.AddSeconds(lockSeconds);
+                await _userManager.SetLockoutEndDateAsync(user, lockoutEnd);
+                return BuildLockedOutResponse(lockoutEnd);
+            }
+
+            var restantes = PrimerBloqueoIntentos - failedCount;
+            return Unauthorized(new { message = $"Credenciales invalidas. Te quedan {restantes} intentos antes del bloqueo." });
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
+        await _userManager.SetLockoutEndDateAsync(user, null);
 
         return await BuildLoginResponseAsync(user);
     }
@@ -482,6 +523,9 @@ public class AuthController : ControllerBase
     [HttpPut("perfil")]
     public async Task<IActionResult> UpdatePerfil([FromBody] UpdatePerfilDto dto)
     {
+        if (!TryValidateUpdatePerfilDto(dto, out var perfilValidationError))
+            return BadRequest(new { message = perfilValidationError });
+
         if (!string.IsNullOrWhiteSpace(dto.Sexo) && !SexosPermitidos.Contains(dto.Sexo.Trim()))
             return BadRequest(new { message = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir" });
 
@@ -626,5 +670,99 @@ public class AuthController : ControllerBase
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
+    }
+
+    private static bool TryValidateRegisterDto(RegisterDto dto, out string error)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || !EmailValidator.IsValid(dto.Email.Trim()) || dto.Email.Trim().Length > 120)
+        {
+            error = "Correo invalido";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Direccion))
+        {
+            error = "Direccion y sexo son obligatorios";
+            return false;
+        }
+
+        var direccion = dto.Direccion.Trim();
+        if (!DireccionRegex.IsMatch(direccion))
+        {
+            error = "Direccion invalida. Usa entre 5 y 200 caracteres permitidos";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Sexo) || !SexosPermitidos.Contains(dto.Sexo.Trim()))
+        {
+            error = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir";
+            return false;
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private static bool TryValidateUpdatePerfilDto(UpdatePerfilDto dto, out string error)
+    {
+        if (!string.IsNullOrWhiteSpace(dto.Nombre))
+        {
+            var nombre = dto.Nombre.Trim();
+            if (!NombreRegex.IsMatch(nombre))
+            {
+                error = "Nombre invalido. Solo letras, espacios y signos permitidos";
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+        {
+            var email = dto.Email.Trim();
+            if (!EmailValidator.IsValid(email) || email.Length > 120)
+            {
+                error = "Correo invalido";
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Telefono))
+        {
+            var telefono = dto.Telefono.Trim();
+            if (!TelefonoRegex.IsMatch(telefono))
+            {
+                error = "Telefono invalido. Debe tener exactamente 10 digitos numericos";
+                return false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.Direccion))
+        {
+            var direccion = dto.Direccion.Trim();
+            if (!DireccionRegex.IsMatch(direccion))
+            {
+                error = "Direccion invalida. Usa entre 5 y 200 caracteres permitidos";
+                return false;
+            }
+        }
+
+        error = string.Empty;
+        return true;
+    }
+
+    private IActionResult BuildLockedOutResponse(DateTimeOffset? lockoutEnd)
+    {
+        var remainingSeconds = 30;
+        if (lockoutEnd.HasValue)
+        {
+            remainingSeconds = (int)Math.Ceiling((lockoutEnd.Value - DateTimeOffset.UtcNow).TotalSeconds);
+            if (remainingSeconds < 1)
+                remainingSeconds = 1;
+        }
+
+        return StatusCode(StatusCodes.Status423Locked, new
+        {
+            message = $"Cuenta bloqueada temporalmente. Intenta de nuevo en {remainingSeconds} segundos.",
+            remainingSeconds
+        });
     }
 }

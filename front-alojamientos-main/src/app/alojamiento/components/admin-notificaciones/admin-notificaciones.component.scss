@@ -5,6 +5,12 @@
   gap: 1.5rem;
 }
 
+.push-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .toolbar {
   display: flex;
   justify-content: flex-end;

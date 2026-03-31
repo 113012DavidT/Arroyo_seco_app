@@ -44,10 +44,13 @@
                 [(ngModel)]="model.direccion"
                 placeholder="Calle, colonia, municipio"
                 required
+                minlength="5"
+                maxlength="200"
+                [pattern]="direccionPattern"
                 #direccion="ngModel"
               />
             </div>
-            <small class="field-error" *ngIf="direccion.invalid && (direccion.dirty || direccion.touched)">La direccion es obligatoria</small>
+            <small class="field-error" *ngIf="direccion.invalid && (direccion.dirty || direccion.touched)">Ingresa una direccion valida (5-200 caracteres)</small>
           </div>
 
           <div class="input-group">

@@ -47,7 +47,7 @@
 
     <label>
       Precio por noche (MXN)
-      <input type="number" name="precio" min="0" [(ngModel)]="formModel.precio" required />
+      <input type="number" name="precio" min="1" step="0.01" [(ngModel)]="formModel.precio" required />
     </label>
 
     <div class="col-span-2">

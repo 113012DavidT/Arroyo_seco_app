@@ -57,8 +57,9 @@ export class ClienteLoginComponent implements OnInit {
           this.router.navigate(['/cliente/home']);
         }
       },
-      error: () => {
-        this.toast.show('Credenciales inválidas o error de servidor', 'error');
+      error: (err) => {
+        const message = err?.error?.message || 'Credenciales inválidas o error de servidor';
+        this.toast.show(message, 'error');
         this.loading = false;
       }
     });

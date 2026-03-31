@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificacionesService, NotificacionDto } from '../../services/notificaciones.service';
+import { PwaPushService } from '../../../core/services/pwa-push.service';
 import { first } from 'rxjs/operators';
 
 interface Notificacion {
@@ -18,6 +19,14 @@ interface Notificacion {
   template: `
     <section class="notificaciones">
       <h2>Notificaciones</h2>
+
+      <div class="push-controls" *ngIf="pushSupported">
+        <button class="btn" (click)="activarPush()" [disabled]="pushEnabled || pushLoading">
+          {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar push PWA' }}
+        </button>
+        <button class="btn" (click)="desactivarPush()" [disabled]="!pushEnabled || pushLoading">Desactivar push</button>
+        <button class="btn" (click)="enviarPushPrueba()" [disabled]="!pushEnabled">Enviar prueba</button>
+      </div>
 
       <div class="lista" *ngIf="notificaciones.length; else empty">
         <article *ngFor="let n of notificaciones" class="item" [class.leida]="n.leida">
@@ -43,6 +52,7 @@ interface Notificacion {
     .notificaciones { display: grid; gap: 1.5rem; }
     h2 { margin: 0; font-size: 1.6rem; color: var(--color-text, #1f2937); }
     .lista { display: grid; gap: .75rem; }
+    .push-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
     .item {
       background: #fff;
       border-radius: 12px;
@@ -86,11 +96,51 @@ export class OferenteNotificacionesComponent implements OnInit {
   notificaciones: Notificacion[] = [];
   loading = false;
   error: string | null = null;
+  pushSupported = false;
+  pushEnabled = false;
+  pushLoading = false;
 
-  constructor(private notiService: NotificacionesService) {}
+  constructor(private notiService: NotificacionesService, private pushService: PwaPushService) {}
 
   ngOnInit(): void {
     this.load();
+    this.initPushState();
+  }
+
+  private async initPushState() {
+    this.pushSupported = this.pushService.isSupported();
+    if (!this.pushSupported) return;
+    this.pushEnabled = await this.pushService.hasActiveSubscription();
+  }
+
+  async activarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      const ok = await this.pushService.enablePush();
+      this.pushEnabled = ok;
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async desactivarPush() {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    try {
+      await this.pushService.disablePush();
+      this.pushEnabled = false;
+    } finally {
+      this.pushLoading = false;
+    }
+  }
+
+  async enviarPushPrueba() {
+    try {
+      await this.pushService.sendTest();
+    } catch {
+      this.error = 'No se pudo enviar la prueba push';
+    }
   }
 
   load() {

@@ -3,6 +3,18 @@
     <h2>Notificaciones</h2>
   </div>
 
+  <div class="push-controls" *ngIf="pushSupported">
+    <button class="btn-action" (click)="activarPush()" [disabled]="pushEnabled || pushLoading">
+      {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar push PWA' }}
+    </button>
+    <button class="btn-action" (click)="desactivarPush()" [disabled]="!pushEnabled || pushLoading">
+      Desactivar push
+    </button>
+    <button class="btn-action" (click)="enviarPushPrueba()" [disabled]="!pushEnabled">
+      Enviar prueba
+    </button>
+  </div>
+
   <!-- Notificaciones No Leídas -->
   <div class="section">
     <h3>No leídas ({{ notificacionesNoLeidas.length }})</h3>

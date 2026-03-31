@@ -18,6 +18,7 @@ public interface IAppDbContext
     DbSet<FotoAlojamiento> FotosAlojamiento { get; }
     DbSet<Reserva> Reservas { get; }
     DbSet<Notificacion> Notificaciones { get; }
+    DbSet<PushSubscription> PushSubscriptions { get; }
     DbSet<SolicitudOferente> SolicitudesOferente { get; }
     DbSet<Establecimiento> Establecimientos { get; }
     DbSet<FotoEstablecimiento> FotosEstablecimiento { get; }

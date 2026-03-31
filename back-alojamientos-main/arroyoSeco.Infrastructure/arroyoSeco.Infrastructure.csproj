@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- EF Core Provider PostgreSQL (8.x empata con .NET 8) -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.4" />
+    <PackageReference Include="WebPush" Version="1.0.12" />
 
     <!-- Identity EF Core + JWT tokens (para AuthDbContext y JwtTokenGenerator) -->
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.7" />

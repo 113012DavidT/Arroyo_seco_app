@@ -172,6 +172,11 @@ export class FormRegistroAlojamientoComponent implements OnInit {
 
   onSubmit(form: NgForm) {
     if (form.invalid) return;
+
+    if (this.formModel.precio < 1) {
+      this.toastService.error('El precio por noche debe ser mayor o igual a 1.00');
+      return;
+    }
     
     // Las coordenadas son opcionales
     if (!this.formModel.latitud || !this.formModel.longitud) {

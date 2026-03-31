@@ -18,6 +18,7 @@ export class ClienteRegisterComponent {
   loading = false;
   showPassword = false;
   showConfirm = false;
+  readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';
 
   constructor(private toast: ToastService, private router: Router, private auth: AuthService) {}
 
@@ -40,6 +41,11 @@ export class ClienteRegisterComponent {
     // El backend asigna rol CLIENTE por defecto; no enviamos role
     if (!this.model.direccion.trim()) {
       this.toast.show('La direccion es obligatoria', 'error');
+      this.loading = false;
+      return;
+    }
+    if (!this.validarDireccion(this.model.direccion)) {
+      this.toast.show('La direccion debe tener entre 5 y 200 caracteres permitidos', 'error');
       this.loading = false;
       return;
     }
@@ -79,6 +85,11 @@ export class ClienteRegisterComponent {
     const hasDigit = /\d/.test(password);
     const hasSymbol = /[^A-Za-z0-9]/.test(password);
     return hasMinLength && hasUpper && hasLower && hasDigit && hasSymbol;
+  }
+
+  private validarDireccion(direccion: string): boolean {
+    const direccionLimpia = (direccion || '').trim();
+    return new RegExp(this.direccionPattern).test(direccionLimpia);
   }
 
   private getRegisterErrorMessage(err: any): string {

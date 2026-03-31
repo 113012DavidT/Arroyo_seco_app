@@ -94,6 +94,9 @@ public class AlojamientosController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] ActualizarAlojamientoDto dto, CancellationToken ct)
     {
+        if (dto.PrecioPorNoche < 1)
+            return BadRequest(new { message = "El precio por noche debe ser mayor o igual a 1.00" });
+
         var a = await _db.Alojamientos
             .Include(x => x.Fotos)
             .FirstOrDefaultAsync(x => x.Id == id, ct);

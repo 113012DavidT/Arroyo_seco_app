@@ -25,6 +25,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Mesa> Mesas => Set<Mesa>();
     public DbSet<ReservaGastronomia> ReservasGastronomia => Set<ReservaGastronomia>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<SolicitudOferente> SolicitudesOferente => Set<SolicitudOferente>();
     public DbSet<Review> Reviews => Set<Review>();
 
@@ -131,6 +132,15 @@ public class AppDbContext : DbContext, IAppDbContext
         });
 
         b.Entity<Notificacion>().HasIndex(n => n.UsuarioId);
+        b.Entity<PushSubscription>(e =>
+        {
+            e.HasIndex(x => x.UsuarioId);
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.Property(x => x.Endpoint).IsRequired();
+            e.Property(x => x.P256DH).IsRequired();
+            e.Property(x => x.Auth).IsRequired();
+            e.Property(x => x.FechaRegistroUtc).IsRequired();
+        });
         b.Entity<SolicitudOferente>().HasIndex(s => s.Estatus);
 
         base.OnModelCreating(b);

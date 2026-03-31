@@ -45,6 +45,9 @@
           [(ngModel)]="editPerfil.nombre"
           name="nombre"
           required
+          minlength="2"
+          maxlength="80"
+          [pattern]="nombrePattern"
         />
       </div>
 
@@ -56,6 +59,8 @@
           [(ngModel)]="editPerfil.email"
           name="email"
           required
+          maxlength="120"
+          [pattern]="correoPattern"
         />
       </div>
 
@@ -67,6 +72,10 @@
           [(ngModel)]="editPerfil.telefono"
           name="telefono"
           required
+          maxlength="10"
+          [pattern]="telefonoPattern"
+          inputmode="numeric"
+          (input)="onTelefonoInput()"
         />
       </div>
 
@@ -77,17 +86,19 @@
           id="direccion"
           [(ngModel)]="editPerfil.direccion"
           name="direccion"
+          required
+          minlength="5"
+          maxlength="200"
+          [pattern]="direccionPattern"
         />
       </div>
 
       <div class="form-group">
         <label for="sexo">Sexo</label>
-        <input
-          type="text"
-          id="sexo"
-          [(ngModel)]="editPerfil.sexo"
-          name="sexo"
-        />
+        <select id="sexo" [(ngModel)]="editPerfil.sexo" name="sexo" required>
+          <option value="" disabled>Selecciona una opcion</option>
+          <option *ngFor="let sexo of sexosPermitidos" [value]="sexo">{{ sexo }}</option>
+        </select>
       </div>
 
       <div class="form-actions">

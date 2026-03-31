@@ -267,6 +267,32 @@ builder.Services.PostConfigure<EmailOptions>(o =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.ExecuteSqlRawAsync(@"
+CREATE TABLE IF NOT EXISTS ""PushSubscriptions"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""UsuarioId"" TEXT NOT NULL,
+    ""Endpoint"" TEXT NOT NULL,
+    ""P256DH"" TEXT NOT NULL,
+    ""Auth"" TEXT NOT NULL,
+    ""UserAgent"" TEXT NULL,
+    ""Activa"" BOOLEAN NOT NULL DEFAULT TRUE,
+    ""FechaRegistroUtc"" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PushSubscriptions_Endpoint"" ON ""PushSubscriptions"" (""Endpoint"");
+CREATE INDEX IF NOT EXISTS ""IX_PushSubscriptions_UsuarioId"" ON ""PushSubscriptions"" (""UsuarioId"");
+");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"No se pudo inicializar tabla PushSubscriptions: {ex.Message}");
+    }
+}
+
 // Defensive CORS middleware: ensures 401/500 responses keep CORS headers for allowed origins.
 app.Use(async (ctx, next) =>
 {

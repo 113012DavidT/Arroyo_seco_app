@@ -1,8 +1,12 @@
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Notificaciones;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using arroyoSeco.Domain.Entities.Usuarios;
+using WebPush;
+using System.Text.Json;
 
 namespace arroyoSeco.Infrastructure.Services;
 
@@ -12,16 +16,19 @@ public class NotificationService : INotificationService
     private readonly IEmailService _email;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<NotificationService> _logger;
+    private readonly IConfiguration _configuration;
 
     public NotificationService(
         IAppDbContext ctx,
         IEmailService email,
         UserManager<ApplicationUser> userManager,
+        IConfiguration configuration,
         ILogger<NotificationService> logger)
     {
         _ctx = ctx;
         _email = email;
         _userManager = userManager;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -81,6 +88,18 @@ public class NotificationService : INotificationService
             _logger.LogWarning($"No se puede enviar email: usuario {usuarioId} no tiene email registrado");
         }
 
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await SendWebPushAsync(usuarioId, titulo, mensaje, url, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enviando web push para notificación {NotificacionId}", n.Id);
+            }
+        }, CancellationToken.None);
+
         return n.Id;
     }
 
@@ -91,5 +110,62 @@ public class NotificationService : INotificationService
 
         n.Leida = true;
         await _ctx.SaveChangesAsync(ct);
+    }
+
+    private async Task SendWebPushAsync(string usuarioId, string titulo, string mensaje, string? url, CancellationToken ct)
+    {
+        var publicKey = _configuration["Push:PublicKey"];
+        var privateKey = _configuration["Push:PrivateKey"];
+        var subject = _configuration["Push:Subject"] ?? "mailto:soporte@arroyoseco.local";
+
+        if (string.IsNullOrWhiteSpace(publicKey) || string.IsNullOrWhiteSpace(privateKey))
+            return;
+
+        var subs = await _ctx.PushSubscriptions
+            .Where(x => x.UsuarioId == usuarioId && x.Activa)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        if (subs.Count == 0) return;
+
+        var client = new WebPushClient();
+        var vapid = new VapidDetails(subject, publicKey, privateKey);
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            notification = new
+            {
+                title = string.IsNullOrWhiteSpace(titulo) ? "Arroyo Seco" : titulo,
+                body = mensaje,
+                icon = "/icons/icon-192x192.png",
+                badge = "/icons/icon-72x72.png",
+                data = new
+                {
+                    url = string.IsNullOrWhiteSpace(url) ? "/cliente/notificaciones" : url
+                }
+            }
+        });
+
+        foreach (var sub in subs)
+        {
+            var pushSub = new WebPush.PushSubscription(sub.Endpoint, sub.P256DH, sub.Auth);
+            try
+            {
+                await client.SendNotificationAsync(pushSub, payload, vapid);
+            }
+            catch (WebPushException ex) when ((int)ex.StatusCode is 404 or 410)
+            {
+                var stale = await _ctx.PushSubscriptions.FirstOrDefaultAsync(x => x.Endpoint == sub.Endpoint, ct);
+                if (stale is not null)
+                {
+                    stale.Activa = false;
+                    await _ctx.SaveChangesAsync(ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo enviar push al endpoint {Endpoint}", sub.Endpoint);
+            }
+        }
     }
 }

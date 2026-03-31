@@ -15,6 +15,7 @@ import { ToastService } from '../../services/toast.service';
 })
 export class CompletarPerfilComponent {
   loading = false;
+  readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';
   model = {
     direccion: '',
     sexo: ''
@@ -28,6 +29,11 @@ export class CompletarPerfilComponent {
 
   submit(form: NgForm) {
     if (form.invalid || this.loading) return;
+
+    if (!this.validarDireccion(this.model.direccion)) {
+      this.toast.error('Ingresa una direccion valida (5-200 caracteres permitidos)');
+      return;
+    }
 
     this.loading = true;
     this.auth.completarPerfil({
@@ -45,5 +51,10 @@ export class CompletarPerfilComponent {
         this.toast.error(err?.error?.message || 'No se pudo completar el perfil');
       }
     });
+  }
+
+  private validarDireccion(direccion: string): boolean {
+    const limpia = (direccion || '').trim();
+    return new RegExp(this.direccionPattern).test(limpia);
   }
 }

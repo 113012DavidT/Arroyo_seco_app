@@ -44,8 +44,8 @@ public class CrearAlojamientoCommandHandler
             throw new ArgumentException("Nombre requerido");
         if (string.IsNullOrWhiteSpace(request.Ubicacion))
             throw new ArgumentException("Ubicaci�n requerida");
-        if (request.PrecioPorNoche <= 0)
-            throw new ArgumentException("PrecioPorNoche inv�lido");
+        if (request.PrecioPorNoche < 1)
+            throw new ArgumentException("PrecioPorNoche invalido. Debe ser mayor o igual a 1.00");
 
         var oferente = await _context.Oferentes
             .FirstOrDefaultAsync(o => o.Id == _current.UserId, ct);

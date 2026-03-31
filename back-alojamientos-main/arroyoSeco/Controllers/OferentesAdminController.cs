@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Solicitudes;
 using arroyoSeco.Domain.Entities.Usuarios;
@@ -14,6 +16,10 @@ namespace arroyoSeco.Controllers;
 [Authorize(Roles = "Admin")]
 public class OferentesAdminController : ControllerBase
 {
+    private static readonly EmailAddressAttribute EmailValidator = new();
+    private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{2,80}$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoRegex = new(@"^\d{10}$", RegexOptions.Compiled);
+
     private readonly IAppDbContext _db;
     private readonly INotificationService _noti;
     private readonly IEmailService _email;
@@ -39,10 +45,19 @@ public class OferentesAdminController : ControllerBase
     [HttpPost("usuarios")]
     public async Task<IActionResult> CrearUsuarioOferente([FromBody] CrearUsuarioOferenteDto dto, CancellationToken ct)
     {
-        var existing = await _userManager.FindByEmailAsync(dto.Email);
+        var email = dto.Email?.Trim();
+        var nombre = dto.Nombre?.Trim();
+
+        if (string.IsNullOrWhiteSpace(email) || !EmailValidator.IsValid(email) || email.Length > 120)
+            return BadRequest(new { message = "Correo invalido" });
+
+        if (string.IsNullOrWhiteSpace(nombre) || !NombreRegex.IsMatch(nombre))
+            return BadRequest(new { message = "Nombre invalido. Solo letras y espacios permitidos" });
+
+        var existing = await _userManager.FindByEmailAsync(email);
         if (existing is not null) return Conflict("Ya existe un usuario con ese email.");
 
-        var user = new ApplicationUser { UserName = dto.Email, Email = dto.Email, EmailConfirmed = true, RequiereCambioPassword = true };
+        var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true, RequiereCambioPassword = true, LockoutEnabled = true };
         var res = await _userManager.CreateAsync(user, dto.Password);
         if (!res.Succeeded) return BadRequest(res.Errors);
 
@@ -52,7 +67,7 @@ public class OferentesAdminController : ControllerBase
 
         if (!await _db.Oferentes.AnyAsync(o => o.Id == user.Id, ct))
         {
-            var o = new UsuarioOferente { Id = user.Id, Nombre = dto.Nombre, NumeroAlojamientos = 0, Tipo = (arroyoSeco.Domain.Entities.Enums.TipoOferente)dto.Tipo };
+            var o = new UsuarioOferente { Id = user.Id, Nombre = nombre, NumeroAlojamientos = 0, Tipo = (arroyoSeco.Domain.Entities.Enums.TipoOferente)dto.Tipo };
             _db.Oferentes.Add(o);
             await _db.SaveChangesAsync(ct);
         }
@@ -80,10 +95,10 @@ public class OferentesAdminController : ControllerBase
             <h1>¡Tu Cuenta de Oferente ha sido Creada!</h1>
         </div>
         <div class='content'>
-            <p>Hola {dto.Nombre},</p>
+            <p>Hola {nombre},</p>
             <p>Tu cuenta de oferente en <strong>Arroyo Seco</strong> para <strong>{tipoTexto}</strong> ha sido creada por un administrador.</p>
             <div class='credentials'>
-                <p><strong>Email:</strong> {dto.Email}</p>
+                <p><strong>Email:</strong> {email}</p>
                 <p><strong>Contraseña:</strong> {dto.Password}</p>
                 <p><em>Por favor, cambia tu contraseña al iniciar sesión por primera vez.</em></p>
             </div>
@@ -101,7 +116,7 @@ public class OferentesAdminController : ControllerBase
 </body>
 </html>";
 
-        await _email.SendEmailAsync(dto.Email, "Tu Cuenta de Oferente ha sido Creada", correoHtml, ct);
+        await _email.SendEmailAsync(email, "Tu Cuenta de Oferente ha sido Creada", correoHtml, ct);
         await _noti.PushAsync(user.Id, "Cuenta de Oferente creada",
             $"Tu cuenta de oferente para {tipoTexto} ha sido creada por un administrador. Hemos enviado tus credenciales al correo.", "Oferente", null, ct);
 
@@ -128,17 +143,26 @@ public class OferentesAdminController : ControllerBase
         if (o is null) return NotFound(new { message = "Oferente no encontrado" });
 
         if (!string.IsNullOrWhiteSpace(dto.Nombre))
-            o.Nombre = dto.Nombre;
+        {
+            var nombre = dto.Nombre.Trim();
+            if (!NombreRegex.IsMatch(nombre))
+                return BadRequest(new { message = "Nombre invalido. Solo letras y espacios permitidos" });
+            o.Nombre = nombre;
+        }
 
         if (dto.Tipo.HasValue)
             o.Tipo = (arroyoSeco.Domain.Entities.Enums.TipoOferente)dto.Tipo.Value;
 
         if (dto.Telefono != null)
         {
+            var telefono = dto.Telefono.Trim();
+            if (!TelefonoRegex.IsMatch(telefono))
+                return BadRequest(new { message = "Telefono invalido. Debe tener exactamente 10 digitos numericos" });
+
             var user = await _userManager.FindByIdAsync(id);
             if (user != null)
             {
-                user.PhoneNumber = dto.Telefono;
+                user.PhoneNumber = telefono;
                 var updateResult = await _userManager.UpdateAsync(user);
                 if (!updateResult.Succeeded)
                     return BadRequest(new { message = "Error al actualizar teléfono", errors = updateResult.Errors });
@@ -199,6 +223,7 @@ public class OferentesAdminController : ControllerBase
                 Email = email,
                 EmailConfirmed = true,
                 PhoneNumber = s.Telefono,
+                LockoutEnabled = true,
                 RequiereCambioPassword = true
             };
 

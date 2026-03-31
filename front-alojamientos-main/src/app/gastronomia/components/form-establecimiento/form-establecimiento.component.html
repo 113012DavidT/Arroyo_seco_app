@@ -55,7 +55,7 @@
       <app-map-picker 
         [latitud]="establecimiento.latitud ?? null" 
         [longitud]="establecimiento.longitud ?? null"
-        [restrictToArroyoSeco]="false"
+        [restrictToArroyoSeco]="true"
         [searchAddress]="mapSearchAddress"
         (locationSelected)="onLocationSelected($event)">
       </app-map-picker>

@@ -195,7 +195,11 @@ export class AnalyticsGastronomiaComponent implements OnInit {
 
   submitReport(): void {
     if (!this.selectedReview || !this.reportMotivo.trim()) {
-      this.toast.info('Debes indicar el motivo del reporte');
+      this.toast.info(
+        this.moderationAction === 'delete'
+          ? 'Debes indicar el motivo de la solicitud de eliminación'
+          : 'Debes indicar el motivo del reporte'
+      );
       return;
     }
 
@@ -221,9 +225,26 @@ export class AnalyticsGastronomiaComponent implements OnInit {
         this.closeReportModal();
       },
       error: (err) => {
-        this.toast.error(err?.error?.message || 'No se pudo reportar la reseña');
+        this.toast.error(this.getModerationErrorMessage(err));
         this.reportingReviewId = null;
       }
     });
+  }
+
+  private getModerationErrorMessage(err: any): string {
+    const backendMessage = err?.error?.message;
+    if (typeof backendMessage === 'string' && backendMessage.trim()) {
+      return backendMessage;
+    }
+
+    if (this.moderationAction === 'delete') {
+      if (err?.status === 404) {
+        return 'No se pudo solicitar la eliminación. El servidor aún no tiene habilitada esta función.';
+      }
+
+      return 'No se pudo solicitar la eliminación de la reseña';
+    }
+
+    return 'No se pudo reportar la reseña';
   }
 }

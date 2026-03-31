@@ -128,6 +128,7 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
   private map?: any;
   private marker?: any;
   private geocoder?: any;
+  private boundaryPolygon?: any;
 
   cargandoMapa = false;
   errorMapa = '';
@@ -169,6 +170,25 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
         }
       } : {})
     });
+
+    if (this.restrictToArroyoSeco) {
+      this.boundaryPolygon = new window.google.maps.Polygon({
+        paths: ARROYO_SECO_POLYGON,
+        strokeColor: '#1d4ed8',
+        strokeOpacity: 0.95,
+        strokeWeight: 3,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        clickable: false
+      });
+      this.boundaryPolygon.setMap(this.map);
+
+      const bounds = new window.google.maps.LatLngBounds();
+      for (const point of ARROYO_SECO_POLYGON) {
+        bounds.extend(point);
+      }
+      this.map.fitBounds(bounds);
+    }
 
     this.geocoder = new window.google.maps.Geocoder();
 

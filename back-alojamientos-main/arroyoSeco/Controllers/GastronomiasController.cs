@@ -294,7 +294,7 @@ public class GastronomiasController : ControllerBase
 
         if (esReporte)
         {
-            review.Estado = dto.EsValido ? ReviewEstadoReporteValido : ReviewEstadoReporteNoValido;
+            review.Estado = dto.EsValido ? ReviewEstadoRechazada : ReviewEstadoReporteNoValido;
         }
         else
         {
@@ -313,7 +313,7 @@ public class GastronomiasController : ControllerBase
             "Tu reseña fue revisada",
             esReporte
                 ? (dto.EsValido
-                    ? "Tu reseña fue reportada y el admin confirmó el reporte, pero la reseña sigue publicada."
+                    ? "Tu reseña fue reportada y el admin confirmó el reporte, por lo que ya no se muestra públicamente."
                     : "Tu reseña fue reportada y el admin descartó el reporte.")
                 : (dto.EsValido
                     ? "El admin aprobó la eliminación de tu reseña y ya no está publicada."
@@ -329,7 +329,7 @@ public class GastronomiasController : ControllerBase
                 esReporte ? "Reporte de reseña resuelto" : "Solicitud de eliminación resuelta",
                 esReporte
                     ? (dto.EsValido
-                        ? "El admin confirmó tu reporte de reseña."
+                        ? "El admin confirmó tu reporte de reseña y la ocultó del público."
                         : "El admin rechazó tu reporte de reseña.")
                     : (dto.EsValido
                         ? "El admin aprobó tu solicitud y la reseña fue eliminada."

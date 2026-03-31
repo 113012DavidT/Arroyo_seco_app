@@ -161,6 +161,10 @@ builder.Services
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+// Extiende la vida útil del token de restablecimiento de contraseña a 3 días.
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+    options.TokenLifespan = TimeSpan.FromDays(3));
+
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 builder.Services.AddAuthentication(options =>

@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { first } from 'rxjs/operators';
-import { ArroyoSecoLocationsService } from '../../../shared/services/arroyo-seco-locations.service';
+import { MexicanPostalCodeService, MexicanCpInfo } from '../../../shared/services/mexican-postal-code.service';
 
 @Component({
   selector: 'app-cliente-register',
@@ -20,23 +20,55 @@ export class ClienteRegisterComponent {
   showPassword = false;
   showConfirm = false;
   readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';
-  codigosPostales: string[] = [];
+
+  cpLoading = false;
+  cpError = '';
+  cpInfo: MexicanCpInfo | null = null;
   coloniasDisponibles: string[] = [];
+
+  private cpLookupTimeout: any = null;
 
   constructor(
     private toast: ToastService,
     private router: Router,
     private auth: AuthService,
-    private locations: ArroyoSecoLocationsService
-  ) {
-    this.codigosPostales = this.locations.getCodigosPostales();
-  }
+    private cpService: MexicanPostalCodeService
+  ) {}
 
-  onCpChange(): void {
-    this.coloniasDisponibles = this.locations.getColoniasByCp(this.model.cp);
-    if (!this.coloniasDisponibles.includes(this.model.colonia)) {
-      this.model.colonia = '';
+  onCpInput(): void {
+    const cp = (this.model.cp || '').trim();
+    this.cpInfo = null;
+    this.coloniasDisponibles = [];
+    this.model.colonia = '';
+    this.cpError = '';
+
+    if (this.cpLookupTimeout !== null) {
+      clearTimeout(this.cpLookupTimeout);
     }
+
+    if (cp.length !== 5 || !/^\d{5}$/.test(cp)) {
+      if (cp.length > 0 && cp.length < 5) {
+        this.cpError = '';   // still typing
+      }
+      return;
+    }
+
+    this.cpLoading = true;
+    this.cpLookupTimeout = setTimeout(async () => {
+      try {
+        const info = await this.cpService.lookup(cp);
+        if (info) {
+          this.cpInfo = info;
+          this.coloniasDisponibles = info.colonias;
+        } else {
+          this.cpError = 'CP no encontrado. Verifica que sea un código postal válido de México.';
+        }
+      } catch {
+        this.cpError = 'No se pudo buscar el CP. Verifica tu conexión.';
+      } finally {
+        this.cpLoading = false;
+      }
+    }, 400);
   }
 
   submit(form: NgForm) {
@@ -62,7 +94,17 @@ export class ClienteRegisterComponent {
       return;
     }
 
-    this.model.direccion = `CP ${this.model.cp}, Col. ${this.model.colonia}, ${this.model.detalleDireccion.trim()}, Arroyo Seco, Queretaro`;
+    if (!this.cpInfo) {
+      this.toast.show('Busca un código postal válido antes de continuar', 'error');
+      this.loading = false;
+      return;
+    }
+
+    const municipio = this.cpInfo.municipio || '';
+    const estado = this.cpInfo.estado || '';
+    const lugar = [municipio, estado].filter(Boolean).join(', ');
+
+    this.model.direccion = `CP ${this.model.cp}, Col. ${this.model.colonia}, ${this.model.detalleDireccion.trim()}, ${lugar}`;
 
     if (!this.validarDireccion(this.model.direccion)) {
       this.toast.show('La direccion debe tener entre 5 y 200 caracteres permitidos', 'error');

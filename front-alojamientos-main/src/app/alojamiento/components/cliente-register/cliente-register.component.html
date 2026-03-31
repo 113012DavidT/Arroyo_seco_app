@@ -33,23 +33,59 @@
         </div>
 
         <form #f="ngForm" (ngSubmit)="submit(f)" class="register-form">
+          <!-- CP -->
           <div class="input-group">
-            <label for="cp">Código postal</label>
+            <label for="cp">Código Postal</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
-              <select id="cp" name="cp" [(ngModel)]="model.cp" (ngModelChange)="onCpChange()" required>
-                <option value="" disabled>Selecciona un CP</option>
-                <option *ngFor="let cp of codigosPostales" [value]="cp">{{ cp }}</option>
-              </select>
+              <input
+                id="cp"
+                type="text"
+                name="cp"
+                [(ngModel)]="model.cp"
+                (ngModelChange)="onCpInput()"
+                placeholder="Ej: 76400"
+                required
+                minlength="5"
+                maxlength="5"
+                pattern="^\d{5}$"
+                inputmode="numeric"
+                autocomplete="postal-code"
+                #cp="ngModel"
+              />
+              <span class="cp-spinner" *ngIf="cpLoading">
+                <svg viewBox="0 0 24 24" class="spinning"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" opacity=".3"/><path d="M12 4a8 8 0 0 1 8 8h2A10 10 0 0 0 12 2z"/></svg>
+              </span>
+            </div>
+            <small class="field-error" *ngIf="cpError">{{ cpError }}</small>
+            <small class="field-error" *ngIf="cp.invalid && (cp.dirty || cp.touched) && !cpError">Ingresa 5 dígitos numéricos</small>
+          </div>
+
+          <!-- Estado y Municipio (auto) -->
+          <div class="cp-info-row" *ngIf="cpInfo">
+            <div class="cp-info-chip">
+              <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+              <span>{{ cpInfo.municipio }}</span>
+            </div>
+            <div class="cp-info-chip">
+              <svg viewBox="0 0 24 24"><path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/></svg>
+              <span>{{ cpInfo.estado }}</span>
             </div>
           </div>
 
+          <!-- Colonia -->
           <div class="input-group">
             <label for="colonia">Colonia</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
-              <select id="colonia" name="colonia" [(ngModel)]="model.colonia" [disabled]="!model.cp" required>
-                <option value="" disabled>Selecciona una colonia</option>
+              <select
+                id="colonia"
+                name="colonia"
+                [(ngModel)]="model.colonia"
+                [disabled]="coloniasDisponibles.length === 0"
+                required
+              >
+                <option value="" disabled>{{ coloniasDisponibles.length === 0 ? 'Ingresa un CP primero' : 'Selecciona una colonia' }}</option>
                 <option *ngFor="let colonia of coloniasDisponibles" [value]="colonia">{{ colonia }}</option>
               </select>
             </div>

@@ -219,6 +219,52 @@
   font-weight: 500;
 }
 
+/* --- CP Info chips (estado / municipio auto) --- */
+.cp-info-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: -0.5rem;
+}
+
+.cp-info-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  color: #166534;
+  font-weight: 500;
+}
+
+.cp-info-chip svg {
+  width: 14px;
+  height: 14px;
+  fill: #16a34a;
+  flex-shrink: 0;
+}
+
+/* --- CP loading spinner inside input --- */
+.cp-spinner {
+  position: absolute;
+  right: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.cp-spinner svg {
+  width: 18px;
+  height: 18px;
+  fill: var(--color-primary, #E31B23);
+}
+
+.spinning {
+  animation: spin 0.7s linear infinite;
+}
+
 /* --- Toggle Password --- */
 .toggle-pass {
   position: absolute;

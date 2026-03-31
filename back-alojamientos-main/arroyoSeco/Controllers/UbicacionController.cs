@@ -34,51 +34,96 @@ public class UbicacionController : ControllerBase
         if (_cache.TryGetValue(cacheKey, out CpInfoResponse? cached) && cached != null)
             return Ok(cached);
 
-        var httpClient = _httpFactory.CreateClient("sepomex");
-        JsonElement root;
+        // Try multiple SEPOMEX provider URLs in order until one succeeds.
+        var result = await TryIcaliaLabsAsync(cleanCp)
+                  ?? await TryHckdrkAsync(cleanCp);
+
+        if (result is null)
+            return NotFound(new { message = "Código postal no encontrado." });
+
+        _cache.Set(cacheKey, result, CpCacheTtl);
+        return Ok(result);
+    }
+
+    // ── Provider 1: IcaliaLabs (generally the most available) ────────────────
+    private async Task<CpInfoResponse?> TryIcaliaLabsAsync(string cp)
+    {
         try
         {
-            var response = await httpClient.GetAsync(
-                $"https://api-sepomex.hckdrk.mx/query/info_cp/{cleanCp}",
-                HttpContext.RequestAborted);
+            var client = _httpFactory.CreateClient("sepomex");
+            var response = await client.GetAsync(
+                $"https://sepomex.icalialabs.com/api/v1/zip_codes?zip_code={cp}");
 
-            if (!response.IsSuccessStatusCode)
-                return NotFound(new { message = "CP no encontrado." });
+            if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync();
-            root = JsonSerializer.Deserialize<JsonElement>(json);
+            var root = JsonSerializer.Deserialize<JsonElement>(json);
+
+            if (!root.TryGetProperty("zip_codes", out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return null;
+
+            var entries = arr.EnumerateArray().ToList();
+            if (entries.Count == 0) return null;
+
+            var first = entries[0];
+            var estado    = first.TryGetProperty("d_estado", out var eEl) ? eEl.GetString() ?? "" : "";
+            var municipio = first.TryGetProperty("D_mnpio",  out var mEl) ? mEl.GetString() ?? "" : "";
+
+            var colonias = entries
+                .Select(e => e.TryGetProperty("d_asenta", out var aEl) ? aEl.GetString()?.Trim() ?? "" : "")
+                .Where(c => c.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            return colonias.Count > 0 ? new CpInfoResponse(cp, estado, municipio, colonias) : null;
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                new { message = "No se pudo consultar el servicio postal en este momento." });
+            return null;
         }
+    }
 
-        if (!root.TryGetProperty("error", out var errorEl) || errorEl.GetBoolean())
-            return NotFound(new { message = "CP no encontrado." });
+    // ── Provider 2: hckdrk.mx (original) ─────────────────────────────────────
+    private async Task<CpInfoResponse?> TryHckdrkAsync(string cp)
+    {
+        try
+        {
+            var client = _httpFactory.CreateClient("sepomex");
+            var response = await client.GetAsync(
+                $"https://api-sepomex.hckdrk.mx/query/info_cp/{cp}");
 
-        if (!root.TryGetProperty("response", out var responsesEl) || responsesEl.ValueKind != JsonValueKind.Array)
-            return NotFound(new { message = "CP no encontrado." });
+            if (!response.IsSuccessStatusCode) return null;
 
-        var entries = responsesEl.EnumerateArray().ToList();
-        if (entries.Count == 0)
-            return NotFound(new { message = "CP no encontrado." });
+            var json = await response.Content.ReadAsStringAsync();
+            var root = JsonSerializer.Deserialize<JsonElement>(json);
 
-        var first = entries[0];
-        var estado = first.TryGetProperty("d_estado", out var eEl) ? eEl.GetString() ?? "" : "";
-        var municipio = first.TryGetProperty("D_mnpio", out var mEl) ? mEl.GetString() ?? "" : "";
+            if (!root.TryGetProperty("error", out var errorEl) || errorEl.GetBoolean())
+                return null;
 
-        var colonias = entries
-            .Select(e => e.TryGetProperty("d_asenta", out var aEl) ? aEl.GetString()?.Trim() ?? "" : "")
-            .Where(c => c.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+            if (!root.TryGetProperty("response", out var arr) || arr.ValueKind != JsonValueKind.Array)
+                return null;
 
-        var result = new CpInfoResponse(cleanCp, estado, municipio, colonias);
-        _cache.Set(cacheKey, result, CpCacheTtl);
+            var entries = arr.EnumerateArray().ToList();
+            if (entries.Count == 0) return null;
 
-        return Ok(result);
+            var first = entries[0];
+            var estado    = first.TryGetProperty("d_estado", out var eEl) ? eEl.GetString() ?? "" : "";
+            var municipio = first.TryGetProperty("D_mnpio",  out var mEl) ? mEl.GetString() ?? "" : "";
+
+            var colonias = entries
+                .Select(e => e.TryGetProperty("d_asenta", out var aEl) ? aEl.GetString()?.Trim() ?? "" : "")
+                .Where(c => c.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            return colonias.Count > 0 ? new CpInfoResponse(cp, estado, municipio, colonias) : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private sealed record CpInfoResponse(string Cp, string Estado, string Municipio, List<string> Colonias);

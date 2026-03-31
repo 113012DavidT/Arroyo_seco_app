@@ -19,6 +19,18 @@ export interface OferenteDto {
   tipo?: TipoOferente;
 }
 
+export interface AdminUserDto {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  roles: string[];
+  lockoutEnabled: boolean;
+  lockoutEnd?: string | null;
+  accessFailedCount: number;
+  isLocked: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminOferentesService {
   private readonly api = inject(ApiService);
@@ -84,5 +96,21 @@ export class AdminOferentesService {
 
   cambiarEstado(id: string, estado: string): Observable<any> {
     return this.api.put(`/admin/oferentes/${id}/estado`, { estado });
+  }
+
+  listUsuariosAdmin(): Observable<AdminUserDto[]> {
+    return this.api.get<AdminUserDto[]>('/admin/oferentes/usuarios');
+  }
+
+  updateUsuarioAdmin(id: string, payload: { nombre?: string; email?: string; telefono?: string }): Observable<any> {
+    return this.api.put(`/admin/oferentes/usuarios/${id}`, payload);
+  }
+
+  desbloquearUsuario(id: string): Observable<any> {
+    return this.api.post(`/admin/oferentes/usuarios/${id}/desbloquear`, {});
+  }
+
+  deleteUsuarioAdmin(id: string): Observable<any> {
+    return this.api.delete(`/admin/oferentes/usuarios/${id}`);
   }
 }

@@ -141,22 +141,26 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(dto.Password))
             return Unauthorized(new { message = "Credenciales invalidas" });
 
-        if (_cache.TryGetValue(FailedLoginCacheKey(email), out FailedLoginState? cachedState)
-            && cachedState?.LockedUntil is not null
-            && cachedState.LockedUntil.Value > DateTimeOffset.UtcNow)
-        {
-            return BuildLockedOutResponse(cachedState.LockedUntil);
-        }
-
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
             return Unauthorized(new { message = "Credenciales invalidas" });
+
+        _cache.TryGetValue(FailedLoginCacheKey(email), out FailedLoginState? cachedState);
 
         if (!user.LockoutEnabled)
         {
             var enableResult = await _userManager.SetLockoutEnabledAsync(user, true);
             if (!enableResult.Succeeded)
                 return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo inicializar la política de bloqueo" });
+        }
+
+        if (cachedState?.LockedUntil is not null && cachedState.LockedUntil.Value > DateTimeOffset.UtcNow)
+        {
+            if (await _userManager.IsLockedOutAsync(user))
+                return BuildLockedOutResponse(cachedState.LockedUntil);
+
+            _cache.Remove(FailedLoginCacheKey(email));
+            cachedState = null;
         }
 
         if (await _userManager.IsLockedOutAsync(user))

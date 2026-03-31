@@ -172,7 +172,7 @@ export class LoginSelectorComponent implements OnInit {
             return;
           }
 
-          this.toast.show('Credenciales inválidas', 'error');
+          this.toast.show(err?.error?.message || 'Credenciales inválidas', 'error');
           this.loading = false;
         }
       });

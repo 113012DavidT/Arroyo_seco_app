@@ -346,12 +346,17 @@ public class GastronomiasController : ControllerBase
     [HttpGet]
     [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Any, VaryByHeader = "Accept")]
     public async Task<ActionResult<IEnumerable<EstablecimientoEntity>>> List(CancellationToken ct)
-        => Ok(await _db.Establecimientos
+    {
+        var establecimientos = await _db.Establecimientos
             .Include(e => e.Fotos)
             .Include(e => e.Menus)
             .Include(e => e.Mesas)
             .AsNoTracking()
-            .ToListAsync(ct));
+            .ToListAsync(ct);
+
+        NormalizeEstablecimientosPhotoUrls(establecimientos);
+        return Ok(establecimientos);
+    }
 
     [AllowAnonymous]
     [HttpGet("ranking")]
@@ -541,6 +546,8 @@ public class GastronomiasController : ControllerBase
             .AsNoTracking()
             .ToListAsync(ct);
 
+        NormalizeEstablecimientosPhotoUrls(establecimientos);
+
         return Ok(establecimientos);
     }
 
@@ -553,7 +560,14 @@ public class GastronomiasController : ControllerBase
             .Include(x => x.Menus)
             .ThenInclude(m => m.Items)
             .Include(x => x.Mesas)
+            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (e is not null)
+        {
+            NormalizeEstablecimientosPhotoUrls(new List<EstablecimientoEntity> { e });
+        }
+
         return e is null ? NotFound() : Ok(e);
     }
 
@@ -694,18 +708,38 @@ public class GastronomiasController : ControllerBase
             est.Descripcion = descripcion;
         }
         if (!string.IsNullOrWhiteSpace(request.FotoPrincipal))
-            est.FotoPrincipal = request.FotoPrincipal;
+        {
+            var normalizedCover = NormalizeStoredPhotoUrl(request.FotoPrincipal);
+            if (!string.IsNullOrWhiteSpace(normalizedCover))
+                est.FotoPrincipal = normalizedCover;
+        }
+
         if (request.FotosUrls != null)
         {
-            _db.FotosEstablecimiento.RemoveRange(est.Fotos);
-            est.Fotos = request.FotosUrls
+            var normalizedUrls = request.FotosUrls
+                .Select(NormalizeStoredPhotoUrl)
                 .Where(url => !string.IsNullOrWhiteSpace(url))
-                .Select((url, index) => new FotoEstablecimiento
-                {
-                    Url = url.Trim(),
-                    Orden = index + 1
-                })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            // Prevent accidental wipe when frontend sends an empty list while editing unrelated fields.
+            if (normalizedUrls.Count > 0)
+            {
+                _db.FotosEstablecimiento.RemoveRange(est.Fotos);
+                est.Fotos = normalizedUrls
+                    .Select((url, index) => new FotoEstablecimiento
+                    {
+                        Url = url,
+                        Orden = index + 1
+                    })
+                    .ToList();
+
+                if (string.IsNullOrWhiteSpace(est.FotoPrincipal)
+                    || !normalizedUrls.Any(url => string.Equals(url, est.FotoPrincipal, StringComparison.OrdinalIgnoreCase)))
+                {
+                    est.FotoPrincipal = normalizedUrls[0];
+                }
+            }
         }
 
         await _db.SaveChangesAsync(ct);
@@ -724,6 +758,11 @@ public class GastronomiasController : ControllerBase
             .OrderBy(f => f.Orden)
             .AsNoTracking()
             .ToListAsync(ct);
+
+        foreach (var foto in fotos)
+        {
+            foto.Url = NormalizeStoredPhotoUrl(foto.Url) ?? foto.Url;
+        }
 
         return Ok(fotos);
     }
@@ -847,6 +886,69 @@ public class GastronomiasController : ControllerBase
             return value;
 
         return value[..maxLength];
+    }
+
+    private static string? NormalizeStoredPhotoUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        var value = url.Trim();
+
+        if (Uri.TryCreate(value, UriKind.Absolute, out var absoluteUri))
+        {
+            value = absoluteUri.AbsolutePath;
+        }
+
+        var comprobantesPrefix = "/comprobantes/";
+        var storagePrefix = "/api/Storage/public/";
+
+        var idxComprobantes = value.IndexOf(comprobantesPrefix, StringComparison.OrdinalIgnoreCase);
+        if (idxComprobantes >= 0)
+        {
+            var relativeFromComprobantes = value[(idxComprobantes + comprobantesPrefix.Length)..].TrimStart('/');
+            return string.IsNullOrWhiteSpace(relativeFromComprobantes)
+                ? null
+                : $"/comprobantes/{relativeFromComprobantes}";
+        }
+
+        var idxStorage = value.IndexOf(storagePrefix, StringComparison.OrdinalIgnoreCase);
+        if (idxStorage >= 0)
+        {
+            var relativeFromStorage = value[(idxStorage + storagePrefix.Length)..].TrimStart('/');
+            return string.IsNullOrWhiteSpace(relativeFromStorage)
+                ? null
+                : $"/comprobantes/{relativeFromStorage}";
+        }
+
+        if (value.StartsWith("api/Storage/public/", StringComparison.OrdinalIgnoreCase))
+        {
+            var relative = value["api/Storage/public/".Length..].TrimStart('/');
+            return string.IsNullOrWhiteSpace(relative)
+                ? null
+                : $"/comprobantes/{relative}";
+        }
+
+        var cleanedRelative = value.TrimStart('/');
+        return string.IsNullOrWhiteSpace(cleanedRelative)
+            ? null
+            : $"/comprobantes/{cleanedRelative}";
+    }
+
+    private static void NormalizeEstablecimientosPhotoUrls(IEnumerable<EstablecimientoEntity> establecimientos)
+    {
+        foreach (var establecimiento in establecimientos)
+        {
+            establecimiento.FotoPrincipal = NormalizeStoredPhotoUrl(establecimiento.FotoPrincipal) ?? establecimiento.FotoPrincipal;
+
+            if (establecimiento.Fotos is null)
+                continue;
+
+            foreach (var foto in establecimiento.Fotos)
+            {
+                foto.Url = NormalizeStoredPhotoUrl(foto.Url) ?? foto.Url;
+            }
+        }
     }
 }
 

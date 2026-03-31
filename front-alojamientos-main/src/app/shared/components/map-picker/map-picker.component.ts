@@ -62,59 +62,8 @@ declare global {
   selector: 'app-map-picker',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    <div class="map-picker">
-      <div class="map-info">
-        <p *ngIf="!latitud || !longitud">📍 Haz click en el mapa para marcar la ubicación{{ restrictToArroyoSeco ? ' dentro de Arroyo Seco' : '' }}</p>
-        <div *ngIf="latitud && longitud" class="coords">
-          <p class="address" *ngIf="direccionCapturada">
-            ✅ <strong>{{ direccionCapturada }}</strong>
-          </p>
-          <p class="coords-detail">
-            Coordenadas: {{ latitud.toFixed(6) }}, {{ longitud.toFixed(6) }}
-          </p>
-        </div>
-        <p *ngIf="buscandoDireccion" class="loading">🔍 Buscando dirección...</p>
-        <p *ngIf="cargandoMapa" class="loading">🗺️ Cargando Google Maps...</p>
-        <p *ngIf="errorMapa" class="loading">⚠️ {{ errorMapa }}</p>
-      </div>
-      <div [id]="mapId" style="height: 400px; width: 100%; border-radius: 8px;"></div>
-    </div>
-  `,
-  styles: [`
-    .map-picker {
-      margin: 1rem 0;
-    }
-    .map-info {
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
-      border-radius: 8px;
-      background: #dbeafe;
-      color: #1e40af;
-      font-size: 0.9rem;
-    }
-    .coords {
-      background: #d1fae5;
-      color: #065f46;
-      padding: 0.75rem;
-      border-radius: 8px;
-    }
-    .address {
-      margin: 0 0 0.5rem 0;
-      font-size: 1rem;
-    }
-    .coords-detail {
-      margin: 0;
-      font-size: 0.85rem;
-      opacity: 0.8;
-    }
-    .loading {
-      background: #fef3c7;
-      color: #92400e;
-      padding: 0.75rem;
-      border-radius: 8px;
-    }
-  `]
+  templateUrl: './map-picker.component.html',
+  styleUrls: ['./map-picker.component.scss']
 })
 export class MapPickerComponent implements AfterViewInit, OnChanges {
   @Input() latitud: number | null = null;

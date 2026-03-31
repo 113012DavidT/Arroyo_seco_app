@@ -47,6 +47,9 @@ public class AuthController : ControllerBase
 
     private static string RegisterCacheKey(string userId) => $"webauthn:register:{userId}";
     private static string LoginCacheKey(string email) => $"webauthn:login:{email.ToLowerInvariant()}";
+    private static string FailedLoginCacheKey(string email) => $"auth:failed-login:{email.ToLowerInvariant()}";
+
+    private sealed record FailedLoginState(int FailedCount, DateTimeOffset? LockedUntil);
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
@@ -138,14 +141,22 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(dto.Password))
             return Unauthorized(new { message = "Credenciales invalidas" });
 
+        if (_cache.TryGetValue(FailedLoginCacheKey(email), out FailedLoginState? cachedState)
+            && cachedState?.LockedUntil is not null
+            && cachedState.LockedUntil.Value > DateTimeOffset.UtcNow)
+        {
+            return BuildLockedOutResponse(cachedState.LockedUntil);
+        }
+
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
             return Unauthorized(new { message = "Credenciales invalidas" });
 
         if (!user.LockoutEnabled)
         {
-            user.LockoutEnabled = true;
-            await _userManager.UpdateAsync(user);
+            var enableResult = await _userManager.SetLockoutEnabledAsync(user, true);
+            if (!enableResult.Succeeded)
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo inicializar la política de bloqueo" });
         }
 
         if (await _userManager.IsLockedOutAsync(user))
@@ -155,22 +166,28 @@ public class AuthController : ControllerBase
         if (!isPasswordValid)
         {
             await _userManager.AccessFailedAsync(user);
-            var failedCount = await _userManager.GetAccessFailedCountAsync(user);
+
+            var previousCount = cachedState?.FailedCount ?? 0;
+            var failedCount = previousCount + 1;
+
             if (failedCount >= PrimerBloqueoIntentos)
             {
                 var lockLevel = 1 + ((failedCount - PrimerBloqueoIntentos) / PrimerBloqueoIntentos);
                 var lockSeconds = SegundosBloqueoBase * lockLevel;
                 var lockoutEnd = DateTimeOffset.UtcNow.AddSeconds(lockSeconds);
                 await _userManager.SetLockoutEndDateAsync(user, lockoutEnd);
+                _cache.Set(FailedLoginCacheKey(email), new FailedLoginState(failedCount, lockoutEnd), TimeSpan.FromHours(24));
                 return BuildLockedOutResponse(lockoutEnd);
             }
 
+            _cache.Set(FailedLoginCacheKey(email), new FailedLoginState(failedCount, null), TimeSpan.FromHours(24));
             var restantes = PrimerBloqueoIntentos - failedCount;
             return Unauthorized(new { message = $"Credenciales invalidas. Te quedan {restantes} intentos antes del bloqueo." });
         }
 
         await _userManager.ResetAccessFailedCountAsync(user);
         await _userManager.SetLockoutEndDateAsync(user, null);
+        _cache.Remove(FailedLoginCacheKey(email));
 
         return await BuildLoginResponseAsync(user);
     }

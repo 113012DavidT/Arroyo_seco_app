@@ -90,6 +90,12 @@ export class FormEstablecimientoComponent implements OnInit {
       return;
     }
 
+    const fotos = this.establecimiento.fotosUrls || [];
+    if (!fotos.length && !this.establecimiento.fotoPrincipal) {
+      this.toast.error('Debes agregar al menos una imagen del establecimiento');
+      return;
+    }
+
     const nombre = (this.establecimiento.nombre || '').trim();
     if (!new RegExp(this.nombrePattern).test(nombre)) {
       this.toast.error('El nombre del establecimiento debe tener entre 3 y 120 caracteres válidos');

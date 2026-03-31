@@ -12,11 +12,6 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class AlojamientosController : ControllerBase
 {
-    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".webp", ".gif"
-    };
-
     private readonly IAppDbContext _db;
     private readonly CrearAlojamientoCommandHandler _crear;
     private readonly ICurrentUserService _current;
@@ -243,10 +238,6 @@ public class AlojamientosController : ControllerBase
         if (file is null || string.IsNullOrWhiteSpace(file.ContentType))
             return false;
 
-        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var ext = Path.GetExtension(file.FileName);
-        return !string.IsNullOrWhiteSpace(ext) && AllowedImageExtensions.Contains(ext);
+        return file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 }

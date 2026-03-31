@@ -47,6 +47,11 @@ public class CrearAlojamientoCommandHandler
         if (request.PrecioPorNoche < 1)
             throw new ArgumentException("PrecioPorNoche invalido. Debe ser mayor o igual a 1.00");
 
+        var hasMainImage = !string.IsNullOrWhiteSpace(request.FotoPrincipal);
+        var hasGalleryImage = request.FotosUrls.Any(url => !string.IsNullOrWhiteSpace(url));
+        if (!hasMainImage && !hasGalleryImage)
+            throw new ArgumentException("Debes agregar al menos una imagen del alojamiento");
+
         var oferente = await _context.Oferentes
             .FirstOrDefaultAsync(o => o.Id == _current.UserId, ct);
         if (oferente == null)

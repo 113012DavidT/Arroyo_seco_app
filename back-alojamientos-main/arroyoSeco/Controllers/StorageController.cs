@@ -8,11 +8,6 @@ namespace arroyoSeco.Controllers;
 [Route("api/[controller]")]
 public class StorageController : ControllerBase
 {
-    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".webp", ".gif"
-    };
-
     private readonly IStorageService _storage;
 
     public StorageController(IStorageService storage)
@@ -28,7 +23,7 @@ public class StorageController : ControllerBase
             return BadRequest("Archivo vacío");
 
         if (!IsImageFile(file))
-            return BadRequest(new { message = "Solo se permiten archivos de imagen (jpg, jpeg, png, webp, gif)" });
+            return BadRequest(new { message = "Solo se permiten archivos de imagen" });
 
         using var stream = file.OpenReadStream();
         var relativePath = await _storage.SaveFileAsync(stream, file.FileName, folder, ct);
@@ -41,10 +36,6 @@ public class StorageController : ControllerBase
         if (file is null || string.IsNullOrWhiteSpace(file.ContentType))
             return false;
 
-        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var ext = Path.GetExtension(file.FileName);
-        return !string.IsNullOrWhiteSpace(ext) && AllowedImageExtensions.Contains(ext);
+        return file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 }

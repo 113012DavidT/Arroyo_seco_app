@@ -180,6 +180,11 @@ export class FormRegistroAlojamientoComponent implements OnInit {
   onSubmit(form: NgForm) {
     if (form.invalid) return;
 
+    if (!this.formModel.fotos?.length) {
+      this.toastService.error('Debes agregar al menos una imagen del alojamiento');
+      return;
+    }
+
     if (this.formModel.precio < 1) {
       this.toastService.error('El precio por noche debe ser mayor o igual a 1.00');
       return;

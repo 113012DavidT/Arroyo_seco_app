@@ -18,11 +18,6 @@ public class GastronomiasController : ControllerBase
     private const int MinDescripcionEstablecimiento = 15;
     private const int MaxDescripcionEstablecimiento = 1000;
 
-    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".jpg", ".jpeg", ".png", ".webp", ".gif"
-    };
-
     private readonly IAppDbContext _db;
     private readonly CrearEstablecimientoCommandHandler _crear;
     private readonly CrearMenuCommandHandler _crearMenu;
@@ -583,11 +578,7 @@ public class GastronomiasController : ControllerBase
         if (file is null || string.IsNullOrWhiteSpace(file.ContentType))
             return false;
 
-        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        var ext = Path.GetExtension(file.FileName);
-        return !string.IsNullOrWhiteSpace(ext) && AllowedImageExtensions.Contains(ext);
+        return file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 }
 

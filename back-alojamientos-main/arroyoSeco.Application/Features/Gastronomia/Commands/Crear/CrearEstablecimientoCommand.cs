@@ -57,6 +57,11 @@ public class CrearEstablecimientoCommandHandler
             throw new ArgumentException($"Descripcion invalida. Debe tener entre {MinDescripcionEstablecimiento} y {MaxDescripcionEstablecimiento} caracteres");
         }
 
+        var hasMainImage = !string.IsNullOrWhiteSpace(request.FotoPrincipal);
+        var hasGalleryImage = request.FotosUrls.Any(url => !string.IsNullOrWhiteSpace(url));
+        if (!hasMainImage && !hasGalleryImage)
+            throw new ArgumentException("Debes agregar al menos una imagen del establecimiento");
+
         var owner = await _context.Oferentes
             .FirstOrDefaultAsync(o => o.Id == _current.UserId, ct);
         if (owner == null)

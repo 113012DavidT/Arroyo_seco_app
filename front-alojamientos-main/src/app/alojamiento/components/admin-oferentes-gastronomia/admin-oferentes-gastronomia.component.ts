@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ToastService } from '../../../shared/services/toast.service';
-import { AdminOferentesService, OferenteDto, TipoOferente, AdminUserDto } from '../../services/admin-oferentes.service';
+import { AdminOferentesService, OferenteDto, TipoOferente } from '../../services/admin-oferentes.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { first } from 'rxjs/operators';
 
@@ -14,17 +14,6 @@ interface Oferente {
   establecimientos: number;
   estado: 'Activo' | 'Inactivo' | 'Pendiente';
   tipo: TipoOferente;
-}
-
-interface UsuarioSistema {
-  id: string;
-  nombre: string;
-  email: string;
-  telefono: string;
-  roles: string[];
-  accessFailedCount: number;
-  lockoutEnd?: string | null;
-  isLocked: boolean;
 }
 
 @Component({
@@ -56,12 +45,6 @@ export class AdminOferentesGastronomiaComponent implements OnInit {
     tipo: TipoOferente.Gastronomia
   };
   editar: Partial<Oferente> | null = null;
-
-  usuarios: UsuarioSistema[] = [];
-  userSearchTerm = '';
-  modalEditarUsuarioAbierto = false;
-  usuarioEditar: UsuarioSistema | null = null;
-
   get filteredOferentes(): Oferente[] {
     const term = this.searchTerm.trim().toLowerCase();
     if (!term) {
@@ -76,7 +59,6 @@ export class AdminOferentesGastronomiaComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOferentes();
-    this.loadUsuarios();
   }
 
   private loadOferentes() {
@@ -94,34 +76,6 @@ export class AdminOferentesGastronomiaComponent implements OnInit {
       },
       error: (err) => this.toastService.error('Error al cargar oferentes de gastronomía')
     });
-  }
-
-  private loadUsuarios() {
-    this.adminService.listUsuariosAdmin().pipe(first()).subscribe({
-      next: (data: AdminUserDto[]) => {
-        this.usuarios = (data || []).map((u) => ({
-          id: u.id,
-          nombre: u.nombre || '',
-          email: u.email || '',
-          telefono: u.telefono || '',
-          roles: u.roles || [],
-          accessFailedCount: u.accessFailedCount || 0,
-          lockoutEnd: u.lockoutEnd || null,
-          isLocked: !!u.isLocked
-        }));
-      },
-      error: () => this.toastService.error('Error al cargar usuarios del sistema')
-    });
-  }
-
-  get filteredUsuarios(): UsuarioSistema[] {
-    const term = this.userSearchTerm.trim().toLowerCase();
-    if (!term) return this.usuarios;
-
-    return this.usuarios.filter((u) =>
-      [u.nombre, u.email, u.telefono, (u.roles || []).join(', ')]
-        .some((value) => value?.toLowerCase().includes(term))
-    );
   }
 
   abrirDetalles(o: Oferente) {
@@ -266,62 +220,6 @@ export class AdminOferentesGastronomiaComponent implements OnInit {
         this.toastService.success(`Oferente ${o.nombre} eliminado`);
       },
       error: () => this.toastService.error('Error al eliminar oferente')
-    });
-  }
-
-  abrirEditarUsuario(u: UsuarioSistema) {
-    this.usuarioEditar = { ...u, roles: [...(u.roles || [])] };
-    this.modalEditarUsuarioAbierto = true;
-  }
-
-  cerrarEditarUsuario() {
-    this.usuarioEditar = null;
-    this.modalEditarUsuarioAbierto = false;
-  }
-
-  guardarEditarUsuario(form: NgForm) {
-    if (form.invalid || !this.usuarioEditar?.id) return;
-
-    this.adminService.updateUsuarioAdmin(this.usuarioEditar.id, {
-      nombre: this.usuarioEditar.nombre,
-      email: this.usuarioEditar.email,
-      telefono: this.usuarioEditar.telefono
-    }).pipe(first()).subscribe({
-      next: () => {
-        this.toastService.success('Usuario actualizado correctamente');
-        this.cerrarEditarUsuario();
-        this.loadUsuarios();
-      },
-      error: (err) => this.toastService.error(err?.error?.message || 'No se pudo actualizar el usuario')
-    });
-  }
-
-  desbloquearUsuario(u: UsuarioSistema) {
-    this.adminService.desbloquearUsuario(u.id).pipe(first()).subscribe({
-      next: () => {
-        this.toastService.success('Cuenta desbloqueada');
-        this.loadUsuarios();
-      },
-      error: (err) => this.toastService.error(err?.error?.message || 'No se pudo desbloquear la cuenta')
-    });
-  }
-
-  async eliminarUsuario(u: UsuarioSistema) {
-    const ok = await this.confirmModal.confirm({
-      title: 'Eliminar usuario',
-      message: `¿Eliminar al usuario "${u.email}"?`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      isDangerous: true
-    });
-    if (!ok) return;
-
-    this.adminService.deleteUsuarioAdmin(u.id).pipe(first()).subscribe({
-      next: () => {
-        this.toastService.success('Usuario eliminado');
-        this.loadUsuarios();
-      },
-      error: (err) => this.toastService.error(err?.error?.message || 'No se pudo eliminar el usuario')
     });
   }
 }

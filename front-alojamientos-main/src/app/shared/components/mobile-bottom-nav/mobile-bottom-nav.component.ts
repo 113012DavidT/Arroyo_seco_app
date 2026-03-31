@@ -49,12 +49,14 @@ export class MobileBottomNavComponent {
       if (gastro) {
         return [
           { path: '/admin/gastronomia/dashboard', label: 'Inicio', icon: 'home' },
+          { path: '/admin/gastronomia/usuarios', label: 'Usuarios', icon: 'person' },
           { path: '/admin/gastronomia/solicitudes', label: 'Solicitudes', icon: 'assignment' },
           { path: '/admin/gastronomia/notificaciones', label: 'Notif.', icon: 'notifications' }
         ];
       }
       return [
         { path: '/admin/dashboard', label: 'Inicio', icon: 'home' },
+        { path: '/admin/usuarios', label: 'Usuarios', icon: 'person' },
         { path: '/admin/solicitudes', label: 'Solicitudes', icon: 'assignment' },
         { path: '/admin/notificaciones', label: 'Notif.', icon: 'notifications' }
       ];

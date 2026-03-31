@@ -56,60 +56,6 @@
     </table>
   </div>
 
-  <section class="toolbar" style="margin-top: 1.5rem;">
-    <h3 style="margin: 0;">Usuarios del sistema</h3>
-    <div class="search">
-      <input
-        type="text"
-        placeholder="Buscar usuario por nombre, correo o rol"
-        [(ngModel)]="userSearchTerm"
-      />
-    </div>
-  </section>
-
-  <div class="table-wrapper" *ngIf="filteredUsuarios.length; else emptyUsers">
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Correo</th>
-          <th>Teléfono</th>
-          <th>Roles</th>
-          <th>Bloqueo</th>
-          <th>Fallos</th>
-          <th class="actions">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let usuario of filteredUsuarios">
-          <td>{{ usuario.nombre }}</td>
-          <td>{{ usuario.email }}</td>
-          <td>{{ usuario.telefono || 'N/A' }}</td>
-          <td>{{ usuario.roles.join(', ') }}</td>
-          <td>
-            <span class="pill" [ngClass]="usuario.isLocked ? 'inactivo' : 'activo'">
-              {{ usuario.isLocked ? 'Bloqueado' : 'Activo' }}
-            </span>
-          </td>
-          <td>{{ usuario.accessFailedCount }}</td>
-          <td class="actions">
-            <button type="button" class="btn ghost" (click)="abrirEditarUsuario(usuario)">Editar</button>
-            <button type="button" class="btn" [class.success]="usuario.isLocked" [disabled]="!usuario.isLocked" (click)="desbloquearUsuario(usuario)">
-              Desbloquear
-            </button>
-            <button type="button" class="btn danger" (click)="eliminarUsuario(usuario)">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <ng-template #emptyUsers>
-    <div class="empty">
-      <p>No se encontraron usuarios del sistema.</p>
-    </div>
-  </ng-template>
-
   <ng-template #emptyState>
     <div class="empty">
       <p>No se encontraron oferentes de gastronomía.</p>
@@ -260,34 +206,6 @@
       <div class="modal__footer">
         <button class="btn ghost" type="button" (click)="cerrarEditar()">Cancelar</button>
         <button class="btn primary" [disabled]="fe.invalid">Guardar cambios</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="modal-backdrop" *ngIf="modalEditarUsuarioAbierto" (click)="cerrarEditarUsuario()"></div>
-  <div class="modal" *ngIf="modalEditarUsuarioAbierto && usuarioEditar as u">
-    <div class="modal__header">
-      <h3>Editar usuario del sistema</h3>
-      <button class="close" (click)="cerrarEditarUsuario()">×</button>
-    </div>
-    <form #fu="ngForm" (ngSubmit)="guardarEditarUsuario(fu)">
-      <div class="modal__body form-grid">
-        <label>
-          Nombre
-          <input type="text" name="nombreUsuario" [(ngModel)]="u.nombre" required minlength="3" maxlength="80" />
-        </label>
-        <label>
-          Correo
-          <input type="email" name="correoUsuario" [(ngModel)]="u.email" required />
-        </label>
-        <label>
-          Teléfono
-          <input type="tel" name="telefonoUsuario" [(ngModel)]="u.telefono" required pattern="^\d{10}$" maxlength="10" />
-        </label>
-      </div>
-      <div class="modal__footer">
-        <button class="btn ghost" type="button" (click)="cerrarEditarUsuario()">Cancelar</button>
-        <button class="btn primary" [disabled]="fu.invalid">Guardar cambios</button>
       </div>
     </form>
   </div>

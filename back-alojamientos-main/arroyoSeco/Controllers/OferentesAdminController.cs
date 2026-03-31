@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 using System.Text.RegularExpressions;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Solicitudes;
@@ -42,7 +41,6 @@ public class OferentesAdminController : ControllerBase
     }
 
     public record CrearUsuarioOferenteDto(string Email, string Password, string Nombre, int Tipo);
-    public record ActualizarUsuarioSistemaDto(string? Nombre, string? Email, string? Telefono);
 
     [HttpPost("usuarios")]
     public async Task<IActionResult> CrearUsuarioOferente([FromBody] CrearUsuarioOferenteDto dto, CancellationToken ct)
@@ -123,138 +121,6 @@ public class OferentesAdminController : ControllerBase
             $"Tu cuenta de oferente para {tipoTexto} ha sido creada por un administrador. Hemos enviado tus credenciales al correo.", "Oferente", null, ct);
 
         return CreatedAtAction(nameof(Get), new { id = user.Id }, new { user.Id, user.Email });
-    }
-
-    [HttpGet("usuarios")]
-    public async Task<IActionResult> ListUsuarios(CancellationToken ct)
-    {
-        var users = await _userManager.Users
-            .AsNoTracking()
-            .OrderBy(u => u.Email)
-            .ToListAsync(ct);
-
-        var response = new List<object>(users.Count);
-        foreach (var user in users)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-            var isLocked = await _userManager.IsLockedOutAsync(user);
-
-            response.Add(new
-            {
-                id = user.Id,
-                nombre = user.UserName ?? string.Empty,
-                email = user.Email ?? string.Empty,
-                telefono = user.PhoneNumber,
-                roles,
-                lockoutEnabled = user.LockoutEnabled,
-                lockoutEnd = user.LockoutEnd,
-                accessFailedCount = user.AccessFailedCount,
-                isLocked
-            });
-        }
-
-        return Ok(response);
-    }
-
-    [HttpPut("usuarios/{id}")]
-    public async Task<IActionResult> UpdateUsuario(string id, [FromBody] ActualizarUsuarioSistemaDto dto)
-    {
-        var user = await _userManager.FindByIdAsync(id);
-        if (user is null)
-            return NotFound(new { message = "Usuario no encontrado" });
-
-        if (!string.IsNullOrWhiteSpace(dto.Nombre))
-        {
-            var nombre = dto.Nombre.Trim();
-            if (!NombreRegex.IsMatch(nombre))
-                return BadRequest(new { message = "Nombre invalido. Debe tener entre 3 y 80 caracteres" });
-            user.UserName = nombre;
-        }
-
-        if (!string.IsNullOrWhiteSpace(dto.Email))
-        {
-            var email = dto.Email.Trim();
-            if (!EmailValidator.IsValid(email) || email.Length > 120)
-                return BadRequest(new { message = "Correo invalido" });
-
-            var exists = await _userManager.FindByEmailAsync(email);
-            if (exists is not null && exists.Id != user.Id)
-                return BadRequest(new { message = "El correo ya está en uso" });
-
-            user.Email = email;
-            user.NormalizedEmail = _userManager.NormalizeEmail(email);
-        }
-
-        if (dto.Telefono != null)
-        {
-            var telefono = dto.Telefono.Trim();
-            if (!TelefonoRegex.IsMatch(telefono))
-                return BadRequest(new { message = "Telefono invalido. Debe tener exactamente 10 digitos numericos" });
-            user.PhoneNumber = telefono;
-        }
-
-        var result = await _userManager.UpdateAsync(user);
-        if (!result.Succeeded)
-            return BadRequest(new { message = "No se pudo actualizar el usuario", errors = result.Errors });
-
-        return Ok(new { message = "Usuario actualizado" });
-    }
-
-    [HttpPost("usuarios/{id}/desbloquear")]
-    public async Task<IActionResult> DesbloquearUsuario(string id)
-    {
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(adminId))
-            return Unauthorized();
-
-        if (string.Equals(adminId, id, StringComparison.Ordinal))
-            return BadRequest(new { message = "Otro admin debe desbloquear tu cuenta" });
-
-        var user = await _userManager.FindByIdAsync(id);
-        if (user is null)
-            return NotFound(new { message = "Usuario no encontrado" });
-
-        var unlockResult = await _userManager.SetLockoutEndDateAsync(user, null);
-        if (!unlockResult.Succeeded)
-            return BadRequest(new { message = "No se pudo desbloquear la cuenta", errors = unlockResult.Errors });
-
-        await _userManager.ResetAccessFailedCountAsync(user);
-
-        return Ok(new { message = "Cuenta desbloqueada correctamente" });
-    }
-
-    [HttpDelete("usuarios/{id}")]
-    public async Task<IActionResult> DeleteUsuario(string id, CancellationToken ct)
-    {
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(adminId))
-            return Unauthorized();
-
-        if (string.Equals(adminId, id, StringComparison.Ordinal))
-            return BadRequest(new { message = "No puedes eliminar tu propia cuenta" });
-
-        var user = await _userManager.FindByIdAsync(id);
-        if (user is null)
-            return NotFound(new { message = "Usuario no encontrado" });
-
-        var roles = await _userManager.GetRolesAsync(user);
-        if (roles.Contains("Admin"))
-        {
-            var adminCount = (await _userManager.GetUsersInRoleAsync("Admin")).Count;
-            if (adminCount <= 1)
-                return BadRequest(new { message = "No se puede eliminar el ultimo administrador" });
-        }
-
-        var oferente = await _db.Oferentes.FirstOrDefaultAsync(o => o.Id == id, ct);
-        if (oferente is not null)
-            _db.Oferentes.Remove(oferente);
-
-        var deleteResult = await _userManager.DeleteAsync(user);
-        if (!deleteResult.Succeeded)
-            return BadRequest(new { message = "No se pudo eliminar el usuario", errors = deleteResult.Errors });
-
-        await _db.SaveChangesAsync(ct);
-        return NoContent();
     }
 
     [HttpGet]

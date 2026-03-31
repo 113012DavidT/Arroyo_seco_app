@@ -42,6 +42,7 @@ import { OferenteReservasGastronomiaComponent } from './gastronomia/components/o
 import { AnalyticsGastronomiaComponent } from './gastronomia/components/analytics-gastronomia/analytics-gastronomia.component';
 import { AdminDashboardGastronomiaComponent } from './alojamiento/components/admin-dashboard-gastronomia/admin-dashboard-gastronomia.component';
 import { AdminOferentesGastronomiaComponent } from './alojamiento/components/admin-oferentes-gastronomia/admin-oferentes-gastronomia.component';
+import { AdminUsuariosComponent } from './alojamiento/components/admin-usuarios/admin-usuarios.component';
 import { AdminSolicitudesComponent } from './alojamiento/components/admin-solicitudes/admin-solicitudes.component';
 import { CheckoutComponent } from './alojamiento/components/checkout/checkout.component';
 import { CambiarPasswordForzadoComponent } from './shared/components/cambiar-password-forzado/cambiar-password-forzado.component';
@@ -141,6 +142,15 @@ export const routes: Routes = [
               heroImage: 'assets/images/hero-oferentes.svg'
             }
           },
+          {
+            path: 'usuarios',
+            component: AdminUsuariosComponent,
+            data: {
+              heroTitle: 'Usuarios del sistema',
+              heroSubtitle: 'Administra cuentas, bloqueos y altas de administradores',
+              heroImage: 'assets/images/hero-oferentes.svg'
+            }
+          },
           { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
         ]
       },
@@ -199,6 +209,15 @@ export const routes: Routes = [
               heroTitle: 'Notificaciones - Gastronomía',
               heroSubtitle: 'Gestiona notificaciones del módulo de gastronomía',
               heroImage: 'assets/images/hero-notificaciones.svg'
+            }
+          },
+          {
+            path: 'usuarios',
+            component: AdminUsuariosComponent,
+            data: {
+              heroTitle: 'Usuarios del sistema',
+              heroSubtitle: 'Administra cuentas, bloqueos y altas de administradores',
+              heroImage: 'assets/images/hero-oferentes.svg'
             }
           },
           { path: '', redirectTo: 'dashboard', pathMatch: 'full' }

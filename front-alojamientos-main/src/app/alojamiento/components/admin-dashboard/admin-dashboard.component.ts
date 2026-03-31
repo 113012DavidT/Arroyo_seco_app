@@ -58,6 +58,12 @@ export class AdminDashboardComponent {
       route: '/admin/solicitudes'
     },
     {
+      title: 'Usuarios',
+      description: 'Administra cuentas, bloqueos y nuevos administradores.',
+      icon: 'person',
+      route: '/admin/usuarios'
+    },
+    {
       title: 'Gastronomía',
       description: 'Gestiona establecimientos gastronómicos de la zona.',
       icon: 'food',

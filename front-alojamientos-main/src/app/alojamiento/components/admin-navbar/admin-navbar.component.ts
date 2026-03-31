@@ -24,6 +24,7 @@ export class AdminNavbarComponent implements OnInit {
   private readonly alojamientoLinks: NavLink[] = [
     { label: 'Dashboard', route: '/admin/dashboard' },
     { label: 'Oferentes', route: '/admin/oferentes' },
+    { label: 'Usuarios', route: '/admin/usuarios' },
     { label: 'Solicitudes', route: '/admin/solicitudes' },
     { label: 'Notificaciones', route: '/admin/notificaciones' }
   ];
@@ -31,6 +32,7 @@ export class AdminNavbarComponent implements OnInit {
   private readonly gastronomiaLinks: NavLink[] = [
     { label: 'Dashboard', route: '/admin/gastronomia/dashboard' },
     { label: 'Oferentes', route: '/admin/gastronomia/oferentes' },
+    { label: 'Usuarios', route: '/admin/gastronomia/usuarios' },
     { label: 'Solicitudes', route: '/admin/gastronomia/solicitudes' },
     { label: 'Reservas', route: '/admin/gastronomia/reservas' },
     { label: 'Notificaciones', route: '/admin/gastronomia/notificaciones' }

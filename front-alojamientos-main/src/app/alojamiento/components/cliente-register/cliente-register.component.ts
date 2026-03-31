@@ -25,6 +25,7 @@ export class ClienteRegisterComponent {
   cpError = '';
   cpInfo: MexicanCpInfo | null = null;
   coloniasDisponibles: string[] = [];
+  coloniaSugerida = false;
 
   private cpLookupTimeout: any = null;
 
@@ -40,6 +41,7 @@ export class ClienteRegisterComponent {
     this.cpInfo = null;
     this.coloniasDisponibles = [];
     this.model.colonia = '';
+    this.coloniaSugerida = false;
     this.cpError = '';
 
     if (this.cpLookupTimeout !== null) {
@@ -59,7 +61,7 @@ export class ClienteRegisterComponent {
         const info = await this.cpService.lookup(cp);
         if (info) {
           this.cpInfo = info;
-          this.coloniasDisponibles = info.colonias;
+          this.coloniasDisponibles = this.normalizeColonias(info.colonias);
         } else {
           this.cpError = 'Código postal no encontrado. Verifica e intenta de nuevo.';
         }
@@ -73,6 +75,12 @@ export class ClienteRegisterComponent {
         this.cpLoading = false;
       }
     }, 400);
+  }
+
+  onColoniaInput(): void {
+    const coloniaActual = this.normalizeColonia(this.model.colonia);
+    this.model.colonia = coloniaActual;
+    this.coloniaSugerida = this.coloniasDisponibles.includes(coloniaActual);
   }
 
   submit(form: NgForm) {
@@ -175,6 +183,19 @@ export class ClienteRegisterComponent {
   private validarDireccion(direccion: string): boolean {
     const direccionLimpia = (direccion || '').trim();
     return new RegExp(this.direccionPattern).test(direccionLimpia);
+  }
+
+  private normalizeColonias(colonias: string[]): string[] {
+    return [...new Set((colonias || [])
+      .map((colonia) => this.normalizeColonia(colonia))
+      .filter((colonia) => colonia.length > 0))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  private normalizeColonia(colonia: string): string {
+    return (colonia || '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private getRegisterErrorMessage(err: any): string {

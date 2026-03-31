@@ -78,17 +78,28 @@
             <label for="colonia">Colonia</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
-              <select
+              <input
                 id="colonia"
+                type="text"
                 name="colonia"
                 [(ngModel)]="model.colonia"
-                [disabled]="coloniasDisponibles.length === 0"
+                (ngModelChange)="onColoniaInput()"
+                [attr.list]="coloniasDisponibles.length > 0 ? 'colonias-list' : null"
+                [disabled]="!cpInfo"
+                [placeholder]="cpInfo ? 'Escribe o selecciona tu colonia' : 'Ingresa un CP primero'"
                 required
-              >
-                <option value="" disabled>{{ coloniasDisponibles.length === 0 ? 'Ingresa un CP primero' : 'Selecciona una colonia' }}</option>
-                <option *ngFor="let colonia of coloniasDisponibles" [value]="colonia">{{ colonia }}</option>
-              </select>
+                autocomplete="address-level3"
+              />
             </div>
+            <datalist id="colonias-list">
+              <option *ngFor="let colonia of coloniasDisponibles" [value]="colonia"></option>
+            </datalist>
+            <small class="field-hint" *ngIf="cpInfo && coloniasDisponibles.length > 0 && !coloniaSugerida && model.colonia.trim().length > 0">
+              Si tu colonia no aparece en la lista, puedes escribirla manualmente.
+            </small>
+            <small class="field-hint" *ngIf="cpInfo && coloniasDisponibles.length > 0 && model.colonia.trim().length === 0">
+              Encontramos {{ coloniasDisponibles.length }} colonias para este CP. Puedes filtrar escribiendo.
+            </small>
           </div>
 
           <div class="input-group">

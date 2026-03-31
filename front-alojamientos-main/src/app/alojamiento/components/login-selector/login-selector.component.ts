@@ -14,13 +14,16 @@ import { first } from 'rxjs/operators';
   styleUrl: './login-selector.component.scss'
 })
 export class LoginSelectorComponent implements OnInit {
-  viewMode: 'login' | 'forgot' | 'reset' = 'login';
+  viewMode: 'login' | 'forgot' | 'reset' | 'verify' = 'login';
   model = { email: '', password: '' };
   forgotModel = { email: '' };
   resetModel = { email: '', token: '', newPassword: '', confirmPassword: '' };
+  verifyModel = { email: '', code: '' };
   loading = false;
   forgotLoading = false;
   resetLoading = false;
+  verifyLoading = false;
+  resendLoading = false;
   biometricLoading = false;
   checkingBiometric = false;
   biometricReady = false;
@@ -45,6 +48,7 @@ export class LoginSelectorComponent implements OnInit {
     const mode = this.route.snapshot.queryParamMap.get('mode');
     const resetEmail = this.route.snapshot.queryParamMap.get('email');
     const resetToken = this.route.snapshot.queryParamMap.get('token');
+    const verifyEmail = this.route.snapshot.queryParamMap.get('email');
 
     if (resetEmail) {
       this.model.email = resetEmail;
@@ -55,6 +59,9 @@ export class LoginSelectorComponent implements OnInit {
     if (mode === 'reset' && resetEmail && resetToken) {
       this.viewMode = 'reset';
       this.resetModel.token = decodeURIComponent(resetToken);
+    } else if (mode === 'verify' && verifyEmail) {
+      this.viewMode = 'verify';
+      this.verifyModel.email = verifyEmail;
     } else if (mode === 'forgot') {
       this.viewMode = 'forgot';
     }
@@ -77,6 +84,13 @@ export class LoginSelectorComponent implements OnInit {
     this.resetModel.token = '';
     this.resetModel.newPassword = '';
     this.resetModel.confirmPassword = '';
+    this.verifyModel.code = '';
+  }
+
+  goToVerify(email?: string): void {
+    this.verifyModel.email = (email || this.model.email || this.verifyModel.email || '').trim();
+    this.verifyModel.code = '';
+    this.viewMode = 'verify';
   }
 
   submitForgot(form: NgForm): void {
@@ -172,8 +186,56 @@ export class LoginSelectorComponent implements OnInit {
             return;
           }
 
+          if (err?.status === 403 && err?.error?.requiresEmailVerification === true) {
+            this.loading = false;
+            this.goToVerify(err?.error?.email || this.model.email);
+            this.toast.info('Primero verifica tu correo con el código enviado.');
+            return;
+          }
+
           this.toast.show(err?.error?.message || 'Credenciales inválidas', 'error');
           this.loading = false;
+        }
+      });
+  }
+
+  submitVerify(form: NgForm): void {
+    if (form.invalid || this.verifyLoading) return;
+
+    this.verifyLoading = true;
+    this.auth.confirmEmailVerification({
+      email: this.verifyModel.email.trim(),
+      code: this.verifyModel.code.trim()
+    })
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.verifyLoading = false;
+          this.model.email = this.verifyModel.email.trim();
+          this.toast.show('Correo verificado. Ya puedes iniciar sesión.', 'success');
+          this.goToLogin();
+        },
+        error: (err) => {
+          this.verifyLoading = false;
+          this.toast.show(err?.error?.message || 'No se pudo verificar el código', 'error');
+        }
+      });
+  }
+
+  resendVerificationCode(): void {
+    if (!this.verifyModel.email?.trim() || this.resendLoading) return;
+
+    this.resendLoading = true;
+    this.auth.requestEmailVerification({ email: this.verifyModel.email.trim() })
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.resendLoading = false;
+          this.toast.show('Código reenviado. Revisa tu correo.', 'success');
+        },
+        error: (err) => {
+          this.resendLoading = false;
+          this.toast.show(err?.error?.message || 'No se pudo reenviar el código', 'error');
         }
       });
   }
@@ -255,6 +317,8 @@ export class LoginSelectorComponent implements OnInit {
         return 'No encontramos una llave biometrica para este correo en este dispositivo.';
       case 'WEB_AUTHN_NOT_SUPPORTED':
         return 'Tu navegador no soporta biometria web. Usa contraseña o cambia a un navegador compatible.';
+      case 'EMAIL_NOT_VERIFIED':
+        return 'Primero verifica tu correo. Despues podras iniciar con huella o Face ID.';
       default:
         return '';
     }

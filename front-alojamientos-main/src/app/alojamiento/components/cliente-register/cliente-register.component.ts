@@ -84,8 +84,27 @@ export class ClienteRegisterComponent {
       next: (res: any) => {
         if (res?.queuedOffline) {
           this.toast.show('Sin internet: registro guardado y pendiente de sincronizacion', 'success');
-        } else {
+          this.loading = false;
+          this.router.navigate(['/cliente/login']);
+          return;
+        }
+
+        if (res?.requiresEmailVerification) {
+          this.toast.show('Registro exitoso. Te enviamos un código al correo para verificar tu cuenta.', 'success');
+          this.loading = false;
+          this.router.navigate(['/cliente/login'], {
+            queryParams: {
+              mode: 'verify',
+              email: this.model.email.trim()
+            }
+          });
+          return;
+        }
+
+        if (res?.token) {
           this.toast.show('Registro exitoso. Inicia sesión.', 'success');
+        } else {
+          this.toast.show('Registro completado. Inicia sesión para continuar.', 'success');
         }
         this.loading = false;
         this.router.navigate(['/cliente/login']);

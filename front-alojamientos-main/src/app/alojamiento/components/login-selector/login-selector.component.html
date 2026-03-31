@@ -37,9 +37,11 @@
           <h2 *ngIf="viewMode === 'login'">Bienvenido de vuelta</h2>
           <h2 *ngIf="viewMode === 'forgot'">Recuperar contraseña</h2>
           <h2 *ngIf="viewMode === 'reset'">Restablecer contraseña</h2>
+          <h2 *ngIf="viewMode === 'verify'">Verificar correo</h2>
           <p class="form-subtitle" *ngIf="viewMode === 'login'">Inicia sesión para continuar tu experiencia</p>
           <p class="form-subtitle" *ngIf="viewMode === 'forgot'">Te enviaremos un enlace de recuperación por correo.</p>
           <p class="form-subtitle" *ngIf="viewMode === 'reset'">Define una nueva contraseña para tu cuenta.</p>
+          <p class="form-subtitle" *ngIf="viewMode === 'verify'">Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
         </div>
 
         <form *ngIf="viewMode === 'login'" #f="ngForm" (ngSubmit)="submit(f)" class="login-form">
@@ -58,6 +60,7 @@
                 (blur)="onEmailBlur()"
                 placeholder="tu&#64;correo.com"
                 required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
                 autocomplete="email"
               />
             </div>
@@ -139,6 +142,7 @@
                 [(ngModel)]="forgotModel.email"
                 placeholder="tu&#64;correo.com"
                 required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
                 autocomplete="email"
               />
             </div>
@@ -165,6 +169,7 @@
                 name="resetEmail"
                 [(ngModel)]="resetModel.email"
                 required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
                 autocomplete="email"
               />
             </div>
@@ -229,6 +234,56 @@
           <button type="submit" class="btn-submit" [disabled]="resetForm.invalid || resetLoading">
             <span *ngIf="!resetLoading">Guardar nueva contraseña</span>
             <span *ngIf="resetLoading" class="spinner"></span>
+          </button>
+
+          <button type="button" class="btn-biometric-secondary" (click)="goToLogin()">Volver al inicio de sesión</button>
+        </form>
+
+        <form *ngIf="viewMode === 'verify'" #verifyForm="ngForm" (ngSubmit)="submitVerify(verifyForm)" class="login-form">
+          <div class="input-group">
+            <label for="verify-email">Correo Electrónico</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24">
+                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+              </svg>
+              <input
+                id="verify-email"
+                type="email"
+                name="verifyEmail"
+                [(ngModel)]="verifyModel.email"
+                required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
+                autocomplete="email"
+              />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="verify-code">Código de verificación</label>
+            <div class="input-wrapper">
+              <input
+                id="verify-code"
+                type="text"
+                name="verifyCode"
+                [(ngModel)]="verifyModel.code"
+                placeholder="123456"
+                minlength="6"
+                maxlength="6"
+                pattern="^[0-9]{6}$"
+                inputmode="numeric"
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit" [disabled]="verifyForm.invalid || verifyLoading">
+            <span *ngIf="!verifyLoading">Verificar correo</span>
+            <span *ngIf="verifyLoading" class="spinner"></span>
+          </button>
+
+          <button type="button" class="btn-biometric-secondary" [disabled]="resendLoading" (click)="resendVerificationCode()">
+            <span *ngIf="!resendLoading">Reenviar código</span>
+            <span *ngIf="resendLoading" class="spinner-dark"></span>
           </button>
 
           <button type="button" class="btn-biometric-secondary" (click)="goToLogin()">Volver al inicio de sesión</button>

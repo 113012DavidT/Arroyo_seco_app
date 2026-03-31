@@ -30,6 +30,15 @@ export interface ResetPasswordPayload {
   newPassword: string;
 }
 
+export interface RequestEmailVerificationPayload {
+  email: string;
+}
+
+export interface ConfirmEmailVerificationPayload {
+  email: string;
+  code: string;
+}
+
 interface PasskeyCredentialResponse {
   token?: string;
   accessToken?: string;
@@ -49,10 +58,23 @@ export class AuthService {
   private readonly tokenKey = 'as_token';
   private readonly pendingLoginKey = 'as_pending_login';
 
-  constructor() { }
+  constructor() {
+    this.migrateLegacyTokenFromLocalStorage();
+  }
+
+  private migrateLegacyTokenFromLocalStorage() {
+    const legacyToken = localStorage.getItem(this.tokenKey);
+    if (!legacyToken) return;
+
+    // Keep current tab logged in after deployment, but enforce tab-scoped sessions from now on.
+    if (!sessionStorage.getItem(this.tokenKey)) {
+      sessionStorage.setItem(this.tokenKey, legacyToken);
+    }
+    localStorage.removeItem(this.tokenKey);
+  }
 
   private saveToken(token: string) {
-    localStorage.setItem(this.tokenKey, token);
+    sessionStorage.setItem(this.tokenKey, token);
   }
 
   setToken(token: string) {
@@ -60,7 +82,7 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return sessionStorage.getItem(this.tokenKey);
   }
 
   isAuthenticated(): boolean {
@@ -92,6 +114,7 @@ export class AuthService {
   }
 
   logout() {
+    sessionStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.tokenKey);
     sessionStorage.removeItem(this.pendingLoginKey);
   }
@@ -260,7 +283,15 @@ export class AuthService {
         hasCredential: allowCredentials > 0,
         reason: allowCredentials > 0 ? undefined : 'NO_REGISTERED_PASSKEY'
       };
-    } catch {
+    } catch (err: any) {
+      if (err?.status === 403 && err?.error?.message) {
+        return {
+          supported: true,
+          hasCredential: false,
+          reason: 'EMAIL_NOT_VERIFIED'
+        };
+      }
+
       return {
         supported: true,
         hasCredential: false,
@@ -330,6 +361,14 @@ export class AuthService {
 
   resetPassword(payload: ResetPasswordPayload): Observable<any> {
     return this.api.post<any>('/auth/reset-password', payload);
+  }
+
+  requestEmailVerification(payload: RequestEmailVerificationPayload): Observable<any> {
+    return this.api.post<any>('/auth/verify-email/request', payload);
+  }
+
+  confirmEmailVerification(payload: ConfirmEmailVerificationPayload): Observable<any> {
+    return this.api.post<any>('/auth/verify-email/confirm', payload);
   }
 
   savePendingLogin(email: string): void {

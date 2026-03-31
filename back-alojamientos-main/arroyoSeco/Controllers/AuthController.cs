@@ -8,6 +8,7 @@ using System.Text;
 using System.Net;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Usuarios;
 using arroyoSeco.Infrastructure.Auth;
@@ -22,6 +23,10 @@ public class AuthController : ControllerBase
 {
     private const int PrimerBloqueoIntentos = 5;
     private const int SegundosBloqueoBase = 30;
+    private const int EmailVerificationCodeLength = 6;
+    private const int EmailVerificationMaxAttempts = 5;
+    private static readonly TimeSpan EmailVerificationCodeTtl = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan EmailVerificationResendCooldown = TimeSpan.FromSeconds(60);
 
     private static readonly EmailAddressAttribute EmailValidator = new();
     private static readonly Regex NombreRegex = new(@"^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]{3,80}$", RegexOptions.Compiled);
@@ -48,8 +53,11 @@ public class AuthController : ControllerBase
     private static string RegisterCacheKey(string userId) => $"webauthn:register:{userId}";
     private static string LoginCacheKey(string email) => $"webauthn:login:{email.ToLowerInvariant()}";
     private static string FailedLoginCacheKey(string email) => $"auth:failed-login:{email.ToLowerInvariant()}";
+    private static string EmailVerificationCacheKey(string email) => $"auth:email-verification:{email.ToLowerInvariant()}";
 
     private sealed record FailedLoginState(int FailedCount, DateTimeOffset? LockedUntil);
+    private sealed record EmailVerificationState(string Code, int Attempts, DateTimeOffset ExpiresAt, DateTimeOffset LastSentAt);
+    private sealed record VerificationDispatchResult(bool Sent, int RetryAfterSeconds, DateTimeOffset ExpiresAt);
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
@@ -77,6 +85,8 @@ public class AuthController : ControllerBase
     public record UpdatePerfilDto(string? Nombre, string? Email, string? Telefono, string? Direccion, string? Sexo);
     public record ForgotPasswordDto(string Email);
     public record ResetPasswordDto(string Email, string Token, string NewPassword);
+    public record RequestEmailVerificationDto(string Email);
+    public record ConfirmEmailVerificationDto(string Email, string Code);
 
     public record PasskeyRegisterOptionsDto(string? DeviceName);
     public record PasskeyRegisterVerifyDto(string? DeviceName, PasskeyCredentialDto Credential);
@@ -100,7 +110,7 @@ public class AuthController : ControllerBase
         {
             UserName = dto.Email.Trim(),
             Email = dto.Email.Trim(),
-            EmailConfirmed = true,
+            EmailConfirmed = false,
             LockoutEnabled = true,
             Direccion = dto.Direccion.Trim(),
             Sexo = dto.Sexo.Trim()
@@ -128,9 +138,24 @@ public class AuthController : ControllerBase
             await _db.SaveChangesAsync();
         }
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var jwt = _token.Generate(user.Id, user.Email!, roles);
-        return Ok(new { token = jwt });
+        var dispatchResult = await DispatchEmailVerificationCodeAsync(user, bypassCooldown: true);
+        if (!dispatchResult.Sent)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = "La cuenta se creó, pero no pudimos enviar el código de verificación. Solicita reenvío desde el login.",
+                requiresEmailVerification = true,
+                email = user.Email
+            });
+        }
+
+        return Ok(new
+        {
+            message = "Cuenta creada. Revisa tu correo para verificar tu cuenta.",
+            requiresEmailVerification = true,
+            email = user.Email,
+            codeExpiresInSeconds = (int)EmailVerificationCodeTtl.TotalSeconds
+        });
     }
 
     [AllowAnonymous]
@@ -189,11 +214,124 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = $"Credenciales invalidas. Te quedan {restantes} intentos antes del bloqueo." });
         }
 
+        if (!user.EmailConfirmed)
+        {
+            await _userManager.ResetAccessFailedCountAsync(user);
+            await _userManager.SetLockoutEndDateAsync(user, null);
+            _cache.Remove(FailedLoginCacheKey(email));
+
+            var dispatch = await DispatchEmailVerificationCodeAsync(user);
+
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                message = "Debes verificar tu correo antes de iniciar sesión.",
+                requiresEmailVerification = true,
+                email = user.Email,
+                codeResent = dispatch.Sent,
+                retryAfterSeconds = dispatch.RetryAfterSeconds
+            });
+        }
+
         await _userManager.ResetAccessFailedCountAsync(user);
         await _userManager.SetLockoutEndDateAsync(user, null);
         _cache.Remove(FailedLoginCacheKey(email));
 
         return await BuildLoginResponseAsync(user);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("verify-email/request")]
+    public async Task<IActionResult> RequestEmailVerification([FromBody] RequestEmailVerificationDto dto)
+    {
+        var genericResponse = Ok(new { message = "Si la cuenta existe y no está verificada, enviaremos un código." });
+        if (string.IsNullOrWhiteSpace(dto.Email) || !EmailValidator.IsValid(dto.Email.Trim()))
+            return genericResponse;
+
+        var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+        if (user is null || user.EmailConfirmed)
+            return genericResponse;
+
+        var dispatch = await DispatchEmailVerificationCodeAsync(user);
+        if (!dispatch.Sent && dispatch.RetryAfterSeconds > 0)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                message = $"Espera {dispatch.RetryAfterSeconds} segundos para reenviar otro código.",
+                retryAfterSeconds = dispatch.RetryAfterSeconds
+            });
+        }
+
+        if (!dispatch.Sent)
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo enviar el correo de verificación" });
+
+        return Ok(new
+        {
+            message = "Código enviado. Revisa tu correo.",
+            expiresInSeconds = (int)EmailVerificationCodeTtl.TotalSeconds
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("verify-email/confirm")]
+    public async Task<IActionResult> ConfirmEmailVerification([FromBody] ConfirmEmailVerificationDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Code))
+            return BadRequest(new { message = "Email y código son obligatorios" });
+
+        var email = dto.Email.Trim();
+        if (!EmailValidator.IsValid(email))
+            return BadRequest(new { message = "Correo invalido" });
+
+        var code = dto.Code.Trim();
+        if (code.Length != EmailVerificationCodeLength || !code.All(char.IsDigit))
+            return BadRequest(new { message = "Código inválido" });
+
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user is null)
+            return BadRequest(new { message = "No encontramos una cuenta para ese correo" });
+
+        if (user.EmailConfirmed)
+            return Ok(new { message = "El correo ya está verificado" });
+
+        if (!_cache.TryGetValue(EmailVerificationCacheKey(email), out EmailVerificationState? state) || state is null)
+            return BadRequest(new { message = "El código expiró. Solicita uno nuevo." });
+
+        if (state.ExpiresAt <= DateTimeOffset.UtcNow)
+        {
+            _cache.Remove(EmailVerificationCacheKey(email));
+            return BadRequest(new { message = "El código expiró. Solicita uno nuevo." });
+        }
+
+        if (!string.Equals(state.Code, code, StringComparison.Ordinal))
+        {
+            var attempts = state.Attempts + 1;
+            if (attempts >= EmailVerificationMaxAttempts)
+            {
+                _cache.Remove(EmailVerificationCacheKey(email));
+                return BadRequest(new { message = "Demasiados intentos. Solicita un código nuevo." });
+            }
+
+            var remaining = Math.Max(1, (int)Math.Ceiling((state.ExpiresAt - DateTimeOffset.UtcNow).TotalSeconds));
+            _cache.Set(
+                EmailVerificationCacheKey(email),
+                state with { Attempts = attempts },
+                TimeSpan.FromSeconds(remaining));
+
+            return BadRequest(new
+            {
+                message = "Código incorrecto",
+                attemptsLeft = EmailVerificationMaxAttempts - attempts
+            });
+        }
+
+        user.EmailConfirmed = true;
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo verificar el correo" });
+
+        _cache.Remove(EmailVerificationCacheKey(email));
+
+        return Ok(new { message = "Correo verificado correctamente" });
     }
 
     [AllowAnonymous]
@@ -206,6 +344,9 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
         if (user is null)
             return Unauthorized();
+
+        if (!user.EmailConfirmed)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Debes verificar tu correo antes de usar biometría" });
 
         var credentials = await _authDb.WebAuthnCredentials
             .AsNoTracking()
@@ -239,6 +380,9 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
         if (user is null)
             return Unauthorized();
+
+        if (!user.EmailConfirmed)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Debes verificar tu correo antes de usar biometría" });
 
         if (!_cache.TryGetValue(LoginCacheKey(dto.Email), out AssertionOptions? options) || options is null)
             return BadRequest(new { message = "La solicitud biometrica expiro. Intenta de nuevo" });
@@ -660,19 +804,94 @@ public class AuthController : ControllerBase
         var rpId = _configuration["WebAuthn:RelyingPartyId"];
         var rpName = _configuration["WebAuthn:RelyingPartyName"];
         var origin = _configuration["WebAuthn:Origin"];
+        var originsFromArray = _configuration.GetSection("WebAuthn:Origins").Get<string[]>() ?? Array.Empty<string>();
 
         rpId ??= HttpContext.Request.Host.Host;
         rpName ??= "Arroyo Seco";
         origin ??= $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
 
+        var origins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var configuredOrigin in originsFromArray)
+        {
+            var candidate = configuredOrigin?.Trim();
+            if (string.IsNullOrWhiteSpace(candidate))
+                continue;
+
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out _))
+                origins.Add(candidate);
+        }
+
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            var splitOrigins = origin.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var candidate in splitOrigins)
+            {
+                if (Uri.TryCreate(candidate, UriKind.Absolute, out _))
+                    origins.Add(candidate);
+            }
+        }
+
+        if (origins.Count == 0)
+            origins.Add($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}");
+
         var cfg = new Fido2Configuration
         {
             ServerDomain = rpId,
             ServerName = rpName,
-            Origins = new HashSet<string> { origin }
+            Origins = origins
         };
 
         return new Fido2(cfg);
+    }
+
+    private async Task<VerificationDispatchResult> DispatchEmailVerificationCodeAsync(ApplicationUser user, bool bypassCooldown = false)
+    {
+        var email = user.Email?.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            return new VerificationDispatchResult(false, 0, DateTimeOffset.UtcNow);
+
+        var now = DateTimeOffset.UtcNow;
+        var cacheKey = EmailVerificationCacheKey(email);
+        _cache.TryGetValue(cacheKey, out EmailVerificationState? existingState);
+
+        if (!bypassCooldown && existingState is not null)
+        {
+            var nextAllowed = existingState.LastSentAt.Add(EmailVerificationResendCooldown);
+            if (nextAllowed > now)
+            {
+                var retryAfter = (int)Math.Ceiling((nextAllowed - now).TotalSeconds);
+                return new VerificationDispatchResult(false, retryAfter < 1 ? 1 : retryAfter, existingState.ExpiresAt);
+            }
+        }
+
+        var code = GenerateEmailVerificationCode();
+        var expiresAt = now.Add(EmailVerificationCodeTtl);
+
+        var html = $@"
+<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:20px'>
+  <h2 style='color:#111827'>Verifica tu correo</h2>
+  <p>Usa este código para activar tu cuenta en Arroyo Seco:</p>
+  <div style='font-size:30px;font-weight:700;letter-spacing:6px;margin:16px 0;color:#E31B23'>{code}</div>
+  <p style='margin-top:0'>Este código expira en 10 minutos.</p>
+  <p style='color:#6b7280'>Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+</div>";
+
+        var sent = await _email.SendEmailAsync(email, "Codigo de verificacion - Arroyo Seco", html);
+        if (!sent)
+            return new VerificationDispatchResult(false, 0, expiresAt);
+
+        var state = new EmailVerificationState(code, 0, expiresAt, now);
+        _cache.Set(cacheKey, state, EmailVerificationCodeTtl);
+
+        return new VerificationDispatchResult(true, 0, expiresAt);
+    }
+
+    private static string GenerateEmailVerificationCode()
+    {
+        var min = (int)Math.Pow(10, EmailVerificationCodeLength - 1);
+        var maxExclusive = (int)Math.Pow(10, EmailVerificationCodeLength);
+        return RandomNumberGenerator.GetInt32(min, maxExclusive).ToString();
     }
 
     private static byte[] Base64UrlDecode(string value)

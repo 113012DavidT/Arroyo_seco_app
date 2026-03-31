@@ -45,6 +45,11 @@ else
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("sepomex", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Add("User-Agent", "ArroyoSeco-Backend/1.0");
+});
 
 builder.Services.AddResponseCompression(options =>
 {

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { ApiService } from '../../core/services/api.service';
 
 export interface MexicanCpInfo {
   estado: string;
@@ -10,12 +10,10 @@ export interface MexicanCpInfo {
 
 @Injectable({ providedIn: 'root' })
 export class MexicanPostalCodeService {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(ApiService);
 
   /** In-memory cache to avoid re-fetching the same CP. */
   private readonly cache = new Map<string, MexicanCpInfo>();
-
-  private readonly API_BASE = 'https://api-sepomex.hckdrk.mx/query/info_cp';
 
   async lookup(cp: string): Promise<MexicanCpInfo | null> {
     const clean = (cp || '').trim();
@@ -25,24 +23,15 @@ export class MexicanPostalCodeService {
 
     try {
       const res: any = await firstValueFrom(
-        this.http.get(`${this.API_BASE}/${clean}`)
+        this.api.get<any>(`/ubicacion/cp/${clean}`)
       );
 
-      if (res?.error || !Array.isArray(res?.response) || res.response.length === 0) {
-        return null;
-      }
+      if (!res || !Array.isArray(res.colonias)) return null;
 
-      const colonias: string[] = [...new Set<string>(
-        res.response.map((r: any) => (r.d_asenta as string) || '')
-      )]
-        .filter(c => c.trim().length > 0)
-        .sort((a, b) => a.localeCompare(b, 'es'));
-
-      const first = res.response[0];
       const info: MexicanCpInfo = {
-        estado: first.d_estado ?? '',
-        municipio: first.D_mnpio ?? '',
-        colonias
+        estado: res.estado ?? '',
+        municipio: res.municipio ?? '',
+        colonias: res.colonias as string[]
       };
 
       this.cache.set(clean, info);

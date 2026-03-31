@@ -61,10 +61,14 @@ export class ClienteRegisterComponent {
           this.cpInfo = info;
           this.coloniasDisponibles = info.colonias;
         } else {
-          this.cpError = 'CP no encontrado. Verifica que sea un código postal válido de México.';
+          this.cpError = 'Código postal no encontrado. Verifica e intenta de nuevo.';
         }
-      } catch {
-        this.cpError = 'No se pudo buscar el CP. Verifica tu conexión.';
+      } catch (err: any) {
+        if (err?.status === 404) {
+          this.cpError = 'Código postal no encontrado.';
+        } else {
+          this.cpError = 'No se pudo consultar el CP. Intenta de nuevo en un momento.';
+        }
       } finally {
         this.cpLoading = false;
       }

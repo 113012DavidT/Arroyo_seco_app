@@ -6,6 +6,7 @@ import { GastronomiaService, EstablecimientoDto } from '../../services/gastronom
 import { ToastService } from '../../../shared/services/toast.service';
 import { first } from 'rxjs/operators';
 import { MapPickerComponent } from '../../../shared/components/map-picker/map-picker.component';
+import { ArroyoSecoLocationsService } from '../../../shared/services/arroyo-seco-locations.service';
 
 @Component({
   selector: 'app-form-establecimiento',
@@ -29,6 +30,12 @@ export class FormEstablecimientoComponent implements OnInit {
   isEdit = false;
   submitting = false;
   subiendoFotos = false;
+  cp = '';
+  colonia = '';
+  detalleDireccion = '';
+  codigosPostales: string[] = [];
+  coloniasDisponibles: string[] = [];
+  ubicacionesSugeridas: string[] = [];
 
   readonly tiposEstablecimiento = [
     { key: 'restaurante', label: 'Restaurante' },
@@ -58,8 +65,11 @@ export class FormEstablecimientoComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private gastronomiaService: GastronomiaService,
-    private toast: ToastService
-  ) {}
+    private toast: ToastService,
+    private locations: ArroyoSecoLocationsService
+  ) {
+    this.codigosPostales = this.locations.getCodigosPostales();
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -76,6 +86,7 @@ export class FormEstablecimientoComponent implements OnInit {
           .filter((value): value is string => !!value)
           .filter((value, index, array) => array.indexOf(value) === index);
         this.establecimiento = data;
+        this.onUbicacionInput();
       },
       error: () => {
         this.toast.error('Error al cargar establecimiento');
@@ -111,6 +122,11 @@ export class FormEstablecimientoComponent implements OnInit {
     this.establecimiento.nombre = nombre;
     this.establecimiento.descripcion = descripcion;
 
+    if (this.cp && this.colonia && this.detalleDireccion.trim()) {
+      this.establecimiento.direccion = `CP ${this.cp}, Col. ${this.colonia}, ${this.detalleDireccion.trim()}, Arroyo Seco, Queretaro`;
+      this.establecimiento.ubicacion = this.colonia;
+    }
+
     // Las coordenadas son opcionales ahora
     if (!this.establecimiento.latitud || !this.establecimiento.longitud) {
       console.warn('Sin coordenadas, guardando solo con ubicación de texto');
@@ -143,6 +159,17 @@ export class FormEstablecimientoComponent implements OnInit {
     } else {
       this.toast.success('📍 Ubicación marcada en el mapa');
     }
+  }
+
+  onCpChange() {
+    this.coloniasDisponibles = this.locations.getColoniasByCp(this.cp);
+    if (!this.coloniasDisponibles.includes(this.colonia)) {
+      this.colonia = '';
+    }
+  }
+
+  onUbicacionInput() {
+    this.ubicacionesSugeridas = this.locations.searchColonias(this.establecimiento.ubicacion || '');
   }
 
   onFotosSeleccionadas(event: Event) {

@@ -34,7 +34,6 @@ export class AdminNavbarComponent implements OnInit {
     { label: 'Oferentes', route: '/admin/gastronomia/oferentes' },
     { label: 'Usuarios', route: '/admin/gastronomia/usuarios' },
     { label: 'Solicitudes', route: '/admin/gastronomia/solicitudes' },
-    { label: 'Reservas', route: '/admin/gastronomia/reservas' },
     { label: 'Notificaciones', route: '/admin/gastronomia/notificaciones' }
   ];
 
@@ -55,10 +54,6 @@ export class AdminNavbarComponent implements OnInit {
     this.isGastronomia = url.includes('/admin/gastronomia');
     this.links = this.isGastronomia ? this.gastronomiaLinks : this.alojamientoLinks;
     this.homeRoute = this.isGastronomia ? '/admin/gastronomia/dashboard' : '/admin/dashboard';
-    
-    console.log('🔍 Admin Navbar - URL actual:', url);
-    console.log('🔍 Admin Navbar - Es gastronomía?', this.isGastronomia);
-    console.log('🔍 Admin Navbar - Links actuales:', this.links);
   }
 
   menuOpen = false;

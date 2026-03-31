@@ -1,6 +1,9 @@
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { NgFor, NgSwitch, NgSwitchCase, NgSwitchDefault, DatePipe } from '@angular/common';
+import { NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault } from '@angular/common';
+import { first } from 'rxjs/operators';
+import { Chart, registerables } from 'chart.js';
+import { AdminAnalyticsService, AdminAnalyticsDto, TopEstablecimientoReservasDto } from '../../services/admin-analytics.service';
 
 interface DashboardCard {
   title: string;
@@ -12,31 +15,27 @@ interface DashboardCard {
 interface StatCard {
   label: string;
   value: string;
-  change: string;
-  positive: boolean;
   icon: string;
-}
-
-interface RecentActivity {
-  text: string;
-  date: Date;
-  type: 'oferente' | 'reserva' | 'notificacion' | 'solicitud';
 }
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [RouterLink, NgFor, NgSwitch, NgSwitchCase, NgSwitchDefault, DatePipe],
+  imports: [RouterLink, NgFor, NgIf, NgSwitch, NgSwitchCase, NgSwitchDefault],
   templateUrl: './admin-dashboard.component.html',
   styleUrl: './admin-dashboard.component.scss'
 })
-export class AdminDashboardComponent {
-  readonly stats: StatCard[] = [
-    { label: 'Oferentes activos', value: '24', change: '+3 este mes', positive: true, icon: 'person' },
-    { label: 'Reservas del mes', value: '156', change: '+12% vs. anterior', positive: true, icon: 'calendar' },
-    { label: 'Ingresos estimados', value: '$2.4M', change: '+8.5%', positive: true, icon: 'money' },
-    { label: 'Solicitudes pendientes', value: '7', change: '3 nuevas hoy', positive: false, icon: 'pending' }
-  ];
+export class AdminDashboardComponent implements AfterViewInit, OnDestroy {
+  @ViewChild('sexoChart') sexoChartRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('cpChart') cpChartRef?: ElementRef<HTMLCanvasElement>;
+
+  stats: StatCard[] = [];
+  topEstablecimientos: TopEstablecimientoReservasDto[] = [];
+  loading = true;
+  error: string | null = null;
+
+  private sexoChart?: Chart;
+  private cpChart?: Chart;
 
   readonly cards: DashboardCard[] = [
     {
@@ -71,13 +70,89 @@ export class AdminDashboardComponent {
     }
   ];
 
-  readonly recentActivity: RecentActivity[] = [
-    { text: 'Nuevo oferente registrado: Cabaña Los Álamos', date: new Date(Date.now() - 1000 * 60 * 30), type: 'oferente' },
-    { text: 'Reserva confirmada #1042 - Hostería del Río', date: new Date(Date.now() - 1000 * 60 * 60 * 2), type: 'reserva' },
-    { text: 'Notificación enviada a 12 oferentes', date: new Date(Date.now() - 1000 * 60 * 60 * 4), type: 'notificacion' },
-    { text: 'Solicitud recibida: Posada Mendoza', date: new Date(Date.now() - 1000 * 60 * 60 * 6), type: 'solicitud' },
-    { text: 'Reserva cancelada #1038 - Hotel Central', date: new Date(Date.now() - 1000 * 60 * 60 * 8), type: 'reserva' },
-    { text: 'Oferente actualizado: Lodge Arroyo', date: new Date(Date.now() - 1000 * 60 * 60 * 12), type: 'oferente' },
-    { text: 'Solicitud aprobada: Restaurante El Patio', date: new Date(Date.now() - 1000 * 60 * 60 * 24), type: 'solicitud' }
-  ];
+  constructor(private analyticsService: AdminAnalyticsService) {
+    Chart.register(...registerables);
+    this.loadAnalytics();
+  }
+
+  ngAfterViewInit(): void {
+    this.tryRenderCharts();
+  }
+
+  ngOnDestroy(): void {
+    this.sexoChart?.destroy();
+    this.cpChart?.destroy();
+  }
+
+  private loadAnalytics(): void {
+    this.loading = true;
+    this.analyticsService.getAnalytics().pipe(first()).subscribe({
+      next: (data: AdminAnalyticsDto) => {
+        this.stats = [
+          { label: 'Usuarios registrados', value: String(data.totalUsuarios), icon: 'person' },
+          { label: 'Oferentes activos', value: String(data.totalOferentes), icon: 'store' },
+          { label: 'Solicitudes pendientes', value: String(data.solicitudesPendientes), icon: 'pending' },
+          { label: 'Reportes de reseñas', value: String(data.reportesResenasPendientes), icon: 'notifications' }
+        ];
+        this.topEstablecimientos = data.topEstablecimientosPorReservas || [];
+        this.loading = false;
+        setTimeout(() => this.renderCharts(data), 0);
+      },
+      error: () => {
+        this.error = 'No se pudo cargar la analítica del panel';
+        this.loading = false;
+      }
+    });
+  }
+
+  private tryRenderCharts(): void {
+    // Render happens once data and canvas are both ready.
+  }
+
+  private renderCharts(data: AdminAnalyticsDto): void {
+    if (!this.sexoChartRef?.nativeElement || !this.cpChartRef?.nativeElement) return;
+
+    this.sexoChart?.destroy();
+    this.cpChart?.destroy();
+
+    const sexoLabels = (data.usuariosPorSexo || []).map((x) => x.etiqueta);
+    const sexoValues = (data.usuariosPorSexo || []).map((x) => x.valor);
+
+    this.sexoChart = new Chart(this.sexoChartRef.nativeElement, {
+      type: 'doughnut',
+      data: {
+        labels: sexoLabels,
+        datasets: [{
+          data: sexoValues,
+          backgroundColor: ['#E31B23', '#0EA5E9', '#22C55E', '#F59E0B', '#64748B']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+
+    const cpLabels = (data.usuariosPorCodigoPostal || []).map((x) => x.etiqueta);
+    const cpValues = (data.usuariosPorCodigoPostal || []).map((x) => x.valor);
+
+    this.cpChart = new Chart(this.cpChartRef.nativeElement, {
+      type: 'bar',
+      data: {
+        labels: cpLabels,
+        datasets: [{
+          label: 'Usuarios',
+          data: cpValues,
+          backgroundColor: '#E31B23'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
 }

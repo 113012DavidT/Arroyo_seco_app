@@ -186,14 +186,6 @@ export const routes: Routes = [
             }
           },
           {
-            path: 'reservas',
-            component: AdminNotificacionesComponent,
-            data: {
-              heroTitle: 'Gestión de Reservas',
-              heroImage: 'assets/images/hero-notificaciones.svg'
-            }
-          },
-          {
             path: 'solicitudes',
             component: AdminSolicitudesComponent,
             data: {

@@ -10,6 +10,7 @@
         type="search"
         placeholder="Buscar por nombre o ubicación..."
         [(ngModel)]="searchTerm"
+        (ngModelChange)="onSearchChange()"
       />
       <a routerLink="/oferente/gastronomia/establecimientos/agregar" class="btn primary">Agregar restaurante</a>
     </div>
@@ -38,7 +39,7 @@
   </div>
 
   <div class="cards" *ngIf="!loading && filteredEstablecimientos.length > 0">
-    <article *ngFor="let est of filteredEstablecimientos" class="establecimiento-card">
+    <article *ngFor="let est of paginatedEstablecimientos" class="establecimiento-card">
       <div class="card-image">
         <img [src]="est.fotoPrincipal || 'assets/images/hero-oferentes.svg'" [alt]="est.nombre" />
       </div>
@@ -62,5 +63,18 @@
         </div>
       </div>
     </article>
+  </div>
+
+  <div class="pagination" *ngIf="!loading && filteredEstablecimientos.length > pageSize">
+    <button type="button" class="page-btn" (click)="goPrevPage()" [disabled]="currentPage === 1">Anterior</button>
+    <button
+      type="button"
+      class="page-number"
+      *ngFor="let p of pages"
+      [class.active]="p === currentPage"
+      (click)="goToPage(p)">
+      {{ p }}
+    </button>
+    <button type="button" class="page-btn" (click)="goNextPage()" [disabled]="currentPage === totalPages">Siguiente</button>
   </div>
 </section>

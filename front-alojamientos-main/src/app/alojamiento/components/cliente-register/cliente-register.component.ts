@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { first } from 'rxjs/operators';
+import { ArroyoSecoLocationsService } from '../../../shared/services/arroyo-seco-locations.service';
 
 @Component({
   selector: 'app-cliente-register',
@@ -14,13 +15,29 @@ import { first } from 'rxjs/operators';
   styleUrls: ['./cliente-register.component.scss']
 })
 export class ClienteRegisterComponent {
-  model = { email: '', password: '', confirm: '', direccion: '', sexo: '' };
+  model = { email: '', password: '', confirm: '', direccion: '', sexo: '', cp: '', colonia: '', detalleDireccion: '' };
   loading = false;
   showPassword = false;
   showConfirm = false;
   readonly direccionPattern = '^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\\s.,#-]{5,200}$';
+  codigosPostales: string[] = [];
+  coloniasDisponibles: string[] = [];
 
-  constructor(private toast: ToastService, private router: Router, private auth: AuthService) {}
+  constructor(
+    private toast: ToastService,
+    private router: Router,
+    private auth: AuthService,
+    private locations: ArroyoSecoLocationsService
+  ) {
+    this.codigosPostales = this.locations.getCodigosPostales();
+  }
+
+  onCpChange(): void {
+    this.coloniasDisponibles = this.locations.getColoniasByCp(this.model.cp);
+    if (!this.coloniasDisponibles.includes(this.model.colonia)) {
+      this.model.colonia = '';
+    }
+  }
 
   submit(form: NgForm) {
     if (form.invalid || this.loading) return;
@@ -39,11 +56,14 @@ export class ClienteRegisterComponent {
     }
     this.loading = true;
     // El backend asigna rol CLIENTE por defecto; no enviamos role
-    if (!this.model.direccion.trim()) {
-      this.toast.show('La direccion es obligatoria', 'error');
+    if (!this.model.cp || !this.model.colonia || !this.model.detalleDireccion.trim()) {
+      this.toast.show('Completa código postal, colonia y detalle de dirección', 'error');
       this.loading = false;
       return;
     }
+
+    this.model.direccion = `CP ${this.model.cp}, Col. ${this.model.colonia}, ${this.model.detalleDireccion.trim()}, Arroyo Seco, Queretaro`;
+
     if (!this.validarDireccion(this.model.direccion)) {
       this.toast.show('La direccion debe tener entre 5 y 200 caracteres permitidos', 'error');
       this.loading = false;

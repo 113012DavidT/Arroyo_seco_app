@@ -8,10 +8,15 @@
   </div>
 
   <div class="toolbar">
+    <div class="tabs">
+      <button type="button" [class.active]="activeTab === 'notificaciones'" (click)="setActiveTab('notificaciones')">Notificaciones</button>
+      <button type="button" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')">Reportes de reseñas</button>
+    </div>
+
     <div class="search">
       <input
         type="text"
-        placeholder="Buscar Notificaciones"
+        [placeholder]="activeTab === 'notificaciones' ? 'Buscar notificaciones' : 'Buscar reportes'"
         [(ngModel)]="searchTerm"
       />
       <button type="button" aria-label="Buscar">
@@ -22,29 +27,36 @@
     </div>
   </div>
 
-  <div class="table-wrapper" *ngIf="filteredNotificaciones.length; else emptyState">
+  <div class="state" *ngIf="activeTab === 'notificaciones' && loading">Cargando notificaciones...</div>
+  <div class="state error" *ngIf="activeTab === 'notificaciones' && error">{{ error }}</div>
+  <div class="state" *ngIf="activeTab === 'reportes' && loadingReportes">Cargando reportes de reseñas...</div>
+  <div class="state error" *ngIf="activeTab === 'reportes' && errorReportes">{{ errorReportes }}</div>
+
+  <div class="table-wrapper" *ngIf="activeTab === 'notificaciones' && !loading && filteredNotificaciones.length; else emptyStateNotificaciones">
     <table>
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th>Teléfono</th>
-          <th>Negocio</th>
+          <th>Título</th>
+          <th>Mensaje</th>
+          <th>Tipo</th>
+          <th>Fecha</th>
           <th>Estatus</th>
           <th class="actions">Acciones</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let notificacion of filteredNotificaciones">
-          <td>{{ notificacion.nombre }}</td>
-          <td>{{ notificacion.telefono }}</td>
-          <td>{{ notificacion.negocio }}</td>
-          <td>
+          <td data-label="Título">{{ notificacion.titulo }}</td>
+          <td data-label="Mensaje">{{ notificacion.mensaje }}</td>
+          <td data-label="Tipo">{{ notificacion.tipo || 'General' }}</td>
+          <td data-label="Fecha">{{ formatFecha(notificacion.fecha) }}</td>
+          <td data-label="Estatus">
             <span class="pill">
               {{ notificacion.estatus }}
             </span>
           </td>
-          <td class="actions">
-            <button type="button" class="btn view">Vista</button>
+          <td class="actions" data-label="Acciones">
+            <button type="button" class="btn view" (click)="verNotificacion(notificacion)" [disabled]="!notificacion.urlAccion">Vista</button>
             <button type="button" class="btn mark" [disabled]="notificacion.leida" (click)="marcarLeida(notificacion)">
               {{ notificacion.leida ? 'Leída' : 'Marcar como leída' }}
             </button>
@@ -54,9 +66,56 @@
     </table>
   </div>
 
-  <ng-template #emptyState>
-    <div class="empty">
+  <ng-template #emptyStateNotificaciones>
+    <div class="empty" *ngIf="activeTab === 'notificaciones' && !loading && !error">
       <p>No se encontraron notificaciones para "{{ searchTerm }}".</p>
+    </div>
+  </ng-template>
+
+  <div class="table-wrapper" *ngIf="activeTab === 'reportes' && !loadingReportes && filteredReportes.length; else emptyStateReportes">
+    <table>
+      <thead>
+        <tr>
+          <th>Establecimiento</th>
+          <th>Reseña</th>
+          <th>Motivo del oferente</th>
+          <th class="actions">Resolver</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let reporte of filteredReportes">
+          <td data-label="Establecimiento">{{ reporte.establecimientoNombre }}</td>
+          <td data-label="Reseña">
+            <div class="review-cell">
+              <strong>{{ reporte.puntuacion }}★</strong>
+              <span>{{ reporte.comentario }}</span>
+            </div>
+          </td>
+          <td data-label="Motivo">{{ reporte.motivoReporte || 'Sin motivo' }}</td>
+          <td class="actions" data-label="Resolver">
+            <textarea
+              rows="2"
+              placeholder="Comentario admin (opcional)"
+              [disabled]="resolvingReportId === reporte.id"
+              [(ngModel)]="comentarioPorReporte[reporte.id]"
+            ></textarea>
+            <div class="report-actions">
+              <button type="button" class="btn mark" [disabled]="resolvingReportId === reporte.id" (click)="resolverReporte(reporte, true)">
+                {{ resolvingReportId === reporte.id ? 'Procesando...' : 'Reporte válido' }}
+              </button>
+              <button type="button" class="btn view" [disabled]="resolvingReportId === reporte.id" (click)="resolverReporte(reporte, false)">
+                {{ resolvingReportId === reporte.id ? 'Procesando...' : 'Reporte no válido' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyStateReportes>
+    <div class="empty" *ngIf="activeTab === 'reportes' && !loadingReportes && !errorReportes">
+      <p>No hay reportes pendientes por revisar.</p>
     </div>
   </ng-template>
 </section>

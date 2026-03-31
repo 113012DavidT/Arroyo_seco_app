@@ -114,6 +114,25 @@ export interface ReportarReviewDto {
   motivo?: string;
 }
 
+export interface ReviewReportadaAdminDto {
+  id: number;
+  establecimientoId: number;
+  establecimientoNombre: string;
+  usuarioId: string;
+  comentario: string;
+  puntuacion: number;
+  fecha: string;
+  estado: string;
+  motivoReporte?: string;
+  moderadaPorId?: string;
+  fechaModeracionUtc?: string;
+}
+
+export interface ResolverReporteReviewDto {
+  esValido: boolean;
+  comentarioAdmin?: string;
+}
+
 export interface RankingGastronomiaDto extends EstablecimientoDto {
   promedio?: number;
   totalResenas?: number;
@@ -270,6 +289,16 @@ export class GastronomiaService {
   /** Reportar reseña como oferente */
   reportarReview(reviewId: number, payload: ReportarReviewDto): Observable<void> {
     return this.api.patch<void>(`/Gastronomias/reviews/${reviewId}/reportar`, payload);
+  }
+
+  /** Admin: listar reseñas reportadas */
+  listReviewsReportadas(): Observable<ReviewReportadaAdminDto[]> {
+    return this.api.get<ReviewReportadaAdminDto[]>(`/Gastronomias/reviews/reportadas`);
+  }
+
+  /** Admin: resolver reporte de reseña */
+  resolverReporteReview(reviewId: number, payload: ResolverReporteReviewDto): Observable<void> {
+    return this.api.patch<void>(`/Gastronomias/reviews/${reviewId}/resolver-reporte`, payload);
   }
 
   // ===== Oferente (autenticado) =====

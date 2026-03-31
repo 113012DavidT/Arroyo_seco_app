@@ -118,6 +118,49 @@
   gap: 1.5rem;
 }
 
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.page-btn,
+.page-number {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  min-width: 40px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.page-number.active {
+  border-color: var(--color-primary, #E31B23);
+  background: var(--color-primary, #E31B23);
+  color: #fff;
+}
+
+.page-btn:hover,
+.page-number:hover {
+  border-color: var(--color-primary, #E31B23);
+  color: var(--color-primary, #E31B23);
+}
+
+.page-number.active:hover {
+  color: #fff;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .establecimiento-card {
   background: #fff;
   border: 1px solid #e5e7eb;

@@ -34,23 +34,42 @@
 
         <form #f="ngForm" (ngSubmit)="submit(f)" class="register-form">
           <div class="input-group">
-            <label for="direccion">Direccion</label>
+            <label for="cp">Código postal</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+              <select id="cp" name="cp" [(ngModel)]="model.cp" (ngModelChange)="onCpChange()" required>
+                <option value="" disabled>Selecciona un CP</option>
+                <option *ngFor="let cp of codigosPostales" [value]="cp">{{ cp }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="colonia">Colonia</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+              <select id="colonia" name="colonia" [(ngModel)]="model.colonia" [disabled]="!model.cp" required>
+                <option value="" disabled>Selecciona una colonia</option>
+                <option *ngFor="let colonia of coloniasDisponibles" [value]="colonia">{{ colonia }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="detalleDireccion">Calle y número (int/ext)</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
               <input
-                id="direccion"
+                id="detalleDireccion"
                 type="text"
-                name="direccion"
-                [(ngModel)]="model.direccion"
-                placeholder="Calle, colonia, municipio"
+                name="detalleDireccion"
+                [(ngModel)]="model.detalleDireccion"
+                placeholder="Ej: Calle Hidalgo 120, Int 2"
                 required
                 minlength="5"
-                maxlength="200"
-                [pattern]="direccionPattern"
-                #direccion="ngModel"
+                maxlength="120"
               />
             </div>
-            <small class="field-error" *ngIf="direccion.invalid && (direccion.dirty || direccion.touched)">Ingresa una direccion valida (5-200 caracteres)</small>
           </div>
 
           <div class="input-group">

@@ -37,6 +37,17 @@ public class AdminUsuariosController : ControllerBase
         string Codigo,
         DateTimeOffset ExpiresAt);
 
+    public record AnalyticsBucketDto(string Etiqueta, int Valor);
+    public record TopEstablecimientoReservasDto(string Nombre, string Tipo, int TotalReservas);
+    public record AdminAnalyticsResponseDto(
+        int TotalUsuarios,
+        int TotalOferentes,
+        int SolicitudesPendientes,
+        int ReportesResenasPendientes,
+        List<AnalyticsBucketDto> UsuariosPorSexo,
+        List<AnalyticsBucketDto> UsuariosPorCodigoPostal,
+        List<TopEstablecimientoReservasDto> TopEstablecimientosPorReservas);
+
     public record ActualizarUsuarioSistemaDto(string? Nombre, string? Email, string? Telefono);
     public record SolicitarCodigoAltaAdminDto(string Nombre, string Email, string Telefono);
     public record ConfirmarAltaAdminDto(string Nombre, string Email, string Telefono, string Codigo);
@@ -82,6 +93,73 @@ public class AdminUsuariosController : ControllerBase
                 isLocked
             });
         }
+
+        return Ok(response);
+    }
+
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetAnalytics(CancellationToken ct)
+    {
+        var users = await _userManager.Users.AsNoTracking().ToListAsync(ct);
+        var totalUsuarios = users.Count;
+
+        var totalOferentes = await _db.Oferentes.AsNoTracking().CountAsync(ct);
+        var solicitudesPendientes = await _db.SolicitudesOferente
+            .AsNoTracking()
+            .CountAsync(s => s.Estatus == "Pendiente", ct);
+        var reportesResenasPendientes = await _db.Reviews
+            .AsNoTracking()
+            .CountAsync(r => r.Estado == "Reportada", ct);
+
+        var usuariosPorSexo = users
+            .GroupBy(u => string.IsNullOrWhiteSpace(u.Sexo) ? "No especificado" : u.Sexo.Trim())
+            .Select(g => new AnalyticsBucketDto(g.Key, g.Count()))
+            .OrderByDescending(x => x.Valor)
+            .ThenBy(x => x.Etiqueta)
+            .ToList();
+
+        var usuariosPorCodigoPostal = users
+            .Select(u => ExtractPostalCode(u.Direccion))
+            .Where(cp => !string.IsNullOrWhiteSpace(cp))
+            .GroupBy(cp => cp!)
+            .Select(g => new AnalyticsBucketDto(g.Key, g.Count()))
+            .OrderByDescending(x => x.Valor)
+            .ThenBy(x => x.Etiqueta)
+            .Take(10)
+            .ToList();
+
+        var topAlojamientos = await _db.Alojamientos
+            .AsNoTracking()
+            .Select(a => new TopEstablecimientoReservasDto(
+                string.IsNullOrWhiteSpace(a.Nombre) ? $"Alojamiento #{a.Id}" : a.Nombre,
+                "Alojamiento",
+                _db.Reservas.Count(r => r.AlojamientoId == a.Id)))
+            .ToListAsync(ct);
+
+        var topGastronomia = await _db.Establecimientos
+            .AsNoTracking()
+            .Select(e => new TopEstablecimientoReservasDto(
+                string.IsNullOrWhiteSpace(e.Nombre) ? $"Restaurante #{e.Id}" : e.Nombre,
+                "Gastronomia",
+                _db.ReservasGastronomia.Count(r => r.EstablecimientoId == e.Id)))
+            .ToListAsync(ct);
+
+        var topEstablecimientos = topAlojamientos
+            .Concat(topGastronomia)
+            .Where(x => x.TotalReservas > 0)
+            .OrderByDescending(x => x.TotalReservas)
+            .ThenBy(x => x.Nombre)
+            .Take(10)
+            .ToList();
+
+        var response = new AdminAnalyticsResponseDto(
+            totalUsuarios,
+            totalOferentes,
+            solicitudesPendientes,
+            reportesResenasPendientes,
+            usuariosPorSexo,
+            usuariosPorCodigoPostal,
+            topEstablecimientos);
 
         return Ok(response);
     }
@@ -395,5 +473,12 @@ public class AdminUsuariosController : ControllerBase
             chars.Add(all[RandomNumberGenerator.GetInt32(all.Length)]);
 
         return new string(chars.OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).ToArray());
+    }
+
+    private static string? ExtractPostalCode(string? direccion)
+    {
+        if (string.IsNullOrWhiteSpace(direccion)) return null;
+        var match = Regex.Match(direccion, @"\b\d{5}\b");
+        return match.Success ? match.Value : null;
     }
 }

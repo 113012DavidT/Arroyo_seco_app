@@ -9,8 +9,6 @@ import { AdminOferentesService } from '../../services/admin-oferentes.service';
 interface DashboardStats {
   totalEstablecimientos: number;
   pendientesAprobacion: number;
-  reservasActivas: number;
-  reservasHoy: number;
   solicitudesPendientes: number;
 }
 
@@ -25,8 +23,6 @@ export class AdminDashboardGastronomiaComponent implements OnInit {
   stats: DashboardStats = {
     totalEstablecimientos: 0,
     pendientesAprobacion: 0,
-    reservasActivas: 0,
-    reservasHoy: 0,
     solicitudesPendientes: 0
   };
 
@@ -70,10 +66,6 @@ export class AdminDashboardGastronomiaComponent implements OnInit {
     this.stats.pendientesAprobacion = this.establecimientos.filter(
       e => e.estado === 'Pendiente'
     ).length;
-
-    // TODO: Cargar reservas desde el servicio cuando esté disponible
-    this.stats.reservasActivas = 0;
-    this.stats.reservasHoy = 0;
   }
 
   get recentEstablecimientos(): EstablecimientoDto[] {

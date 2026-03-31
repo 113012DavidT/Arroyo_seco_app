@@ -184,7 +184,7 @@ public class GastronomiasController : ControllerBase
                 "Reseña reportada por oferente",
                 $"Se reportó una reseña en {review.Establecimiento?.Nombre ?? "un establecimiento"} y requiere revisión.",
                 "ReporteReview",
-                "/admin/gastronomia/notificaciones",
+                "/admin/gastronomia/notificaciones?tab=reportes",
                 ct);
         }
 

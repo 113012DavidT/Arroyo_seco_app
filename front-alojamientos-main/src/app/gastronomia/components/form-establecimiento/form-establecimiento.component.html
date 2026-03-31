@@ -22,9 +22,14 @@
         type="text" 
         id="ubicacion" 
         [(ngModel)]="establecimiento.ubicacion" 
+        (ngModelChange)="onUbicacionInput()"
         name="ubicacion"
         required
-        placeholder="Ej: Centro Histórico" />
+        list="ubicaciones-arroyo"
+        placeholder="Ej: Centro, Río del Sabino" />
+      <datalist id="ubicaciones-arroyo">
+        <option *ngFor="let sugerida of ubicacionesSugeridas" [value]="sugerida"></option>
+      </datalist>
     </div>
 
     <div class="form-group">
@@ -35,6 +40,32 @@
         [(ngModel)]="establecimiento.direccion"
         name="direccion"
         placeholder="Ej: Calle Principal 120, Arroyo Seco" />
+    </div>
+
+    <div class="form-group">
+      <label for="cp">Código postal</label>
+      <select id="cp" name="cp" [(ngModel)]="cp" (ngModelChange)="onCpChange()">
+        <option value="">Selecciona un CP</option>
+        <option *ngFor="let cpItem of codigosPostales" [value]="cpItem">{{ cpItem }}</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="colonia">Colonia</label>
+      <select id="colonia" name="colonia" [(ngModel)]="colonia" [disabled]="!cp">
+        <option value="">Selecciona una colonia</option>
+        <option *ngFor="let coloniaItem of coloniasDisponibles" [value]="coloniaItem">{{ coloniaItem }}</option>
+      </select>
+    </div>
+
+    <div class="form-group full-width">
+      <label for="detalleDireccion">Detalle calle/número</label>
+      <input
+        type="text"
+        id="detalleDireccion"
+        name="detalleDireccion"
+        [(ngModel)]="detalleDireccion"
+        placeholder="Ej: Calle Juárez 22, Int 4" />
     </div>
 
     <div class="form-group">

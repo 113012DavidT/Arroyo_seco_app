@@ -194,7 +194,12 @@ export class AdminUsuariosComponent implements OnInit {
         this.cerrarRegistroAdmin();
         this.loadUsuarios();
       },
-      error: (err) => this.toastService.error(err?.error?.message || 'No se pudo crear el administrador'),
+      error: (err) => {
+        const backendErrors = Array.isArray(err?.error?.errors)
+          ? err.error.errors.map((item: any) => item?.description || item?.code || '').filter(Boolean).join(' ')
+          : '';
+        this.toastService.error(err?.error?.message || backendErrors || 'No se pudo crear el administrador');
+      },
       complete: () => { this.creandoAdmin = false; }
     });
   }

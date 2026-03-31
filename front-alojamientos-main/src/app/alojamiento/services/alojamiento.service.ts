@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface FotoAlojamientoDto {
   id?: number;
@@ -31,12 +32,32 @@ export interface AlojamientoDto {
 export class AlojamientoService {
   private readonly api = inject(ApiService);
 
+  private normalizeFoto(foto: FotoAlojamientoDto): FotoAlojamientoDto {
+    return {
+      ...foto,
+      url: this.api.toPublicAssetUrl(foto?.url)
+    };
+  }
+
+  private normalizeAlojamiento(item: AlojamientoDto): AlojamientoDto {
+    return {
+      ...item,
+      fotoPrincipal: this.api.toPublicAssetUrl(item.fotoPrincipal),
+      fotos: (item.fotos || []).map((foto) => this.normalizeFoto(foto)),
+      fotosUrls: (item.fotosUrls || []).map((url) => this.api.toPublicAssetUrl(url)).filter(Boolean)
+    };
+  }
+
   listAll(): Observable<AlojamientoDto[]> {
-    return this.api.get<AlojamientoDto[]>('/alojamientos');
+    return this.api.get<AlojamientoDto[]>('/alojamientos').pipe(
+      map((items) => (items || []).map((item) => this.normalizeAlojamiento(item)))
+    );
   }
 
   getById(id: number): Observable<AlojamientoDto> {
-    return this.api.get<AlojamientoDto>(`/alojamientos/${id}`);
+    return this.api.get<AlojamientoDto>(`/alojamientos/${id}`).pipe(
+      map((item) => this.normalizeAlojamiento(item))
+    );
   }
 
   create(payload: AlojamientoDto): Observable<any> {
@@ -52,17 +73,23 @@ export class AlojamientoService {
   }
 
   listMine(): Observable<AlojamientoDto[]> {
-    return this.api.get<AlojamientoDto[]>('/alojamientos/mios');
+    return this.api.get<AlojamientoDto[]>('/alojamientos/mios').pipe(
+      map((items) => (items || []).map((item) => this.normalizeAlojamiento(item)))
+    );
   }
 
   listFotos(id: number): Observable<FotoAlojamientoDto[]> {
-    return this.api.get<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`);
+    return this.api.get<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`).pipe(
+      map((items) => (items || []).map((item) => this.normalizeFoto(item)))
+    );
   }
 
   uploadFotos(id: number, files: File[]): Observable<FotoAlojamientoDto[]> {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
-    return this.api.post<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`, formData);
+    return this.api.post<FotoAlojamientoDto[]>(`/alojamientos/${id}/fotos`, formData).pipe(
+      map((items) => (items || []).map((item) => this.normalizeFoto(item)))
+    );
   }
 
   deleteFoto(id: number, fotoId: number): Observable<void> {
@@ -72,6 +99,8 @@ export class AlojamientoService {
   uploadTempFoto(file: File): Observable<{ url: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.api.post<{ url: string }>('/Storage/upload?folder=fotos/alojamientos', formData);
+    return this.api.post<{ url: string }>('/Storage/upload?folder=fotos/alojamientos', formData).pipe(
+      map((response) => ({ ...response, url: this.api.toPublicAssetUrl(response?.url) }))
+    );
   }
 }

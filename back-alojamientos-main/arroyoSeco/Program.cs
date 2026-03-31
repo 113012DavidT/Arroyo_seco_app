@@ -149,6 +149,7 @@ builder.Services
     .AddIdentityCore<ApplicationUser>(opt =>
     {
         opt.User.RequireUniqueEmail = true;
+        opt.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+ ÁÉÍÓÚÜÑáéíóúüñ'";
         opt.Password.RequireDigit = true;
         opt.Password.RequireLowercase = true;
         opt.Password.RequireNonAlphanumeric = true;

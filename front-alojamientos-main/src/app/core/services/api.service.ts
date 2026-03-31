@@ -34,6 +34,28 @@ export class ApiService {
     return `${this.baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   }
 
+  toPublicAssetUrl(path: string | null | undefined): string {
+    if (!path) {
+      return '';
+    }
+
+    if (/^https?:\/\//i.test(path) || path.startsWith('assets/')) {
+      return path;
+    }
+
+    if (path.startsWith('/comprobantes/')) {
+      const relativePath = path.replace(/^\/comprobantes\//i, '');
+      return `${this.baseUrl}/Storage/public/${relativePath}`;
+    }
+
+    if (path.startsWith('/')) {
+      const apiRoot = this.baseUrl.replace(/\/api$/i, '');
+      return `${apiRoot}${path}`;
+    }
+
+    return `${this.baseUrl}/Storage/public/${path.replace(/^\/+/, '')}`;
+  }
+
   get<T>(path: string, params?: HttpParams | { [key: string]: string | number | boolean }, headers?: HttpHeaders): Observable<T> {
     return this.http.get<T>(this.url(path), { params: params as any, headers });
   }

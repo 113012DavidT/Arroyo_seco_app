@@ -17,7 +17,7 @@ export class LoginSelectorComponent implements OnInit {
   viewMode: 'login' | 'forgot' | 'reset' | 'verify' = 'login';
   model = { email: '', password: '' };
   forgotModel = { email: '' };
-  resetModel = { email: '', newPassword: '', confirmPassword: '' };
+  resetModel = { email: '', code: '', newPassword: '', confirmPassword: '' };
   verifyModel = { email: '', code: '' };
   loading = false;
   forgotLoading = false;
@@ -33,6 +33,7 @@ export class LoginSelectorComponent implements OnInit {
   showResetPassword = false;
   showResetPasswordConfirm = false;
   rememberMe = false;
+  hasLegacyResetToken = false;
   private returnUrl: string | null = null;
   private resetToken = '';
 
@@ -60,6 +61,7 @@ export class LoginSelectorComponent implements OnInit {
     if (mode === 'reset' && resetEmail && resetToken) {
       this.viewMode = 'reset';
       this.resetToken = decodeURIComponent(resetToken);
+      this.hasLegacyResetToken = true;
       void this.router.navigate([], {
         relativeTo: this.route,
         replaceUrl: true,
@@ -70,8 +72,7 @@ export class LoginSelectorComponent implements OnInit {
         }
       });
     } else if (mode === 'reset') {
-      this.toast.show('El enlace de recuperación no es válido o está incompleto.', 'error');
-      this.viewMode = 'forgot';
+      this.viewMode = 'reset';
     } else if (mode === 'verify' && verifyEmail) {
       this.viewMode = 'verify';
       this.verifyModel.email = verifyEmail;
@@ -95,9 +96,18 @@ export class LoginSelectorComponent implements OnInit {
   goToLogin(): void {
     this.viewMode = 'login';
     this.resetToken = '';
+    this.hasLegacyResetToken = false;
+    this.resetModel.code = '';
     this.resetModel.newPassword = '';
     this.resetModel.confirmPassword = '';
     this.verifyModel.code = '';
+  }
+
+  goToReset(email?: string): void {
+    const normalizedEmail = (email || this.forgotModel.email || this.model.email || this.resetModel.email || '').trim();
+    this.resetModel.email = normalizedEmail;
+    this.forgotModel.email = normalizedEmail;
+    this.viewMode = 'reset';
   }
 
   goToVerify(email?: string): void {
@@ -115,21 +125,24 @@ export class LoginSelectorComponent implements OnInit {
       .subscribe({
         next: () => {
           this.forgotLoading = false;
-          this.toast.show('Si el correo existe, enviamos instrucciones para restablecer contraseña.', 'success');
-          this.goToLogin();
+          this.goToReset(this.forgotModel.email);
+          this.toast.show('Si el correo existe, enviamos un código de recuperación.', 'success');
         },
-        error: () => {
+        error: (err) => {
           this.forgotLoading = false;
-          this.toast.show('No fue posible procesar la solicitud en este momento.', 'error');
+          if (err?.status === 429) {
+            this.goToReset(this.forgotModel.email);
+          }
+          this.toast.show(err?.error?.message || 'No fue posible procesar la solicitud en este momento.', 'error');
         }
       });
   }
 
   submitReset(form: NgForm): void {
     if (form.invalid || this.resetLoading) return;
-    if (!this.resetToken) {
-      this.toast.show('El enlace de recuperación no es válido o expiró.', 'error');
-      this.viewMode = 'forgot';
+    const resetCredential = this.resetModel.code.trim() || this.resetToken;
+    if (!resetCredential) {
+      this.toast.show('Ingresa el código de recuperación.', 'error');
       return;
     }
     if (this.resetModel.newPassword.length < 6) {
@@ -144,7 +157,7 @@ export class LoginSelectorComponent implements OnInit {
     this.resetLoading = true;
     this.auth.resetPassword({
       email: this.resetModel.email.trim(),
-      token: this.resetToken,
+      code: resetCredential,
       newPassword: this.resetModel.newPassword
     })
       .pipe(first())
@@ -152,13 +165,32 @@ export class LoginSelectorComponent implements OnInit {
         next: () => {
           this.resetLoading = false;
           this.resetToken = '';
+          this.hasLegacyResetToken = false;
+          this.resetModel.code = '';
           this.toast.show('Contraseña restablecida correctamente. Ya puedes iniciar sesión.', 'success');
           this.goToLogin();
         },
-        error: () => {
+        error: (err) => {
           this.resetLoading = false;
-          this.resetToken = '';
-          this.toast.show('El enlace de recuperación no es válido o expiró.', 'error');
+          this.toast.show(err?.error?.message || 'No se pudo restablecer la contraseña.', 'error');
+        }
+      });
+  }
+
+  resendResetCode(): void {
+    if (!this.resetModel.email?.trim() || this.resendLoading) return;
+
+    this.resendLoading = true;
+    this.auth.forgotPassword({ email: this.resetModel.email.trim() })
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.resendLoading = false;
+          this.toast.show('Si el correo existe, reenviamos un nuevo código.', 'success');
+        },
+        error: (err) => {
+          this.resendLoading = false;
+          this.toast.show(err?.error?.message || 'No se pudo reenviar el código.', 'error');
         }
       });
   }

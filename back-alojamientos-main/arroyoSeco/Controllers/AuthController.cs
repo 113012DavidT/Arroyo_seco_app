@@ -54,9 +54,11 @@ public class AuthController : ControllerBase
     private static string LoginCacheKey(string email) => $"webauthn:login:{email.ToLowerInvariant()}";
     private static string FailedLoginCacheKey(string email) => $"auth:failed-login:{email.ToLowerInvariant()}";
     private static string EmailVerificationCacheKey(string email) => $"auth:email-verification:{email.ToLowerInvariant()}";
+    private static string PasswordResetCacheKey(string email) => $"auth:password-reset:{email.ToLowerInvariant()}";
 
     private sealed record FailedLoginState(int FailedCount, DateTimeOffset? LockedUntil);
     private sealed record EmailVerificationState(string Code, int Attempts, DateTimeOffset ExpiresAt, DateTimeOffset LastSentAt);
+    private sealed record PasswordResetState(string Code, string Token, int Attempts, DateTimeOffset ExpiresAt, DateTimeOffset LastSentAt);
     private sealed record VerificationDispatchResult(bool Sent, int RetryAfterSeconds, DateTimeOffset ExpiresAt);
 
     public AuthController(
@@ -627,7 +629,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
         // Respuesta neutral para no filtrar si el correo existe o no.
-        var generic = Ok(new { message = "Si el correo existe, enviaremos instrucciones para recuperar tu contraseña" });
+        var generic = Ok(new { message = "Si el correo existe, enviaremos un código para recuperar tu contraseña" });
 
         if (string.IsNullOrWhiteSpace(dto.Email))
             return generic;
@@ -637,28 +639,17 @@ public class AuthController : ControllerBase
         if (user is null)
             return generic;
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        var baseUrl = _configuration["App:FrontendBaseUrl"];
-        if (string.IsNullOrWhiteSpace(baseUrl))
-            baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var dispatch = await DispatchPasswordResetCodeAsync(user);
+        if (!dispatch.Sent && dispatch.RetryAfterSeconds > 0)
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                message = $"Espera {dispatch.RetryAfterSeconds} segundos para solicitar otro código.",
+                retryAfterSeconds = dispatch.RetryAfterSeconds
+            });
+        }
 
-        var resetUrl = $"{baseUrl!.TrimEnd('/')}/login?mode=reset&email={WebUtility.UrlEncode(user.Email)}&token={WebUtility.UrlEncode(token)}";
-
-        var html = $@"
-<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:20px'>
-  <h2 style='color:#111827'>Recuperación de contraseña</h2>
-  <p>Recibimos una solicitud para restablecer tu contraseña.</p>
-  <p>Haz clic en el siguiente botón para continuar:</p>
-  <p>
-    <a href='{resetUrl}' style='display:inline-block;background:#E31B23;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600'>Restablecer contraseña</a>
-  </p>
-  <p style='color:#6b7280'>Si no solicitaste este cambio, puedes ignorar este correo.</p>
-  <hr style='border:none;border-top:1px solid #e5e7eb;margin:20px 0' />
-  <p style='font-size:12px;color:#9ca3af'>Arroyo Seco</p>
-</div>";
-
-        var sent = await _email.SendEmailAsync(user.Email!, "Recuperación de contraseña", html);
-        if (!sent)
+        if (!dispatch.Sent)
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "No se pudo enviar el correo de recuperación" });
 
         return generic;
@@ -669,14 +660,59 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.NewPassword))
-            return BadRequest(new { message = "Email, token y nueva contraseña son obligatorios" });
+            return BadRequest(new { message = "Email, código y nueva contraseña son obligatorios" });
 
-        var user = await _userManager.FindByEmailAsync(dto.Email.Trim());
+        var email = dto.Email.Trim();
+        var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
             return BadRequest(new { message = "Solicitud inválida" });
 
-        var decodedToken = WebUtility.UrlDecode(dto.Token.Trim());
-        var result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
+        IdentityResult result;
+        var submittedTokenOrCode = dto.Token.Trim();
+
+        if (submittedTokenOrCode.Length == EmailVerificationCodeLength && submittedTokenOrCode.All(char.IsDigit))
+        {
+            if (!_cache.TryGetValue(PasswordResetCacheKey(email), out PasswordResetState? state) || state is null)
+                return BadRequest(new { message = "El código expiró. Solicita uno nuevo." });
+
+            if (state.ExpiresAt <= DateTimeOffset.UtcNow)
+            {
+                _cache.Remove(PasswordResetCacheKey(email));
+                return BadRequest(new { message = "El código expiró. Solicita uno nuevo." });
+            }
+
+            if (!string.Equals(state.Code, submittedTokenOrCode, StringComparison.Ordinal))
+            {
+                var attempts = state.Attempts + 1;
+                if (attempts >= EmailVerificationMaxAttempts)
+                {
+                    _cache.Remove(PasswordResetCacheKey(email));
+                    return BadRequest(new { message = "Demasiados intentos. Solicita un código nuevo." });
+                }
+
+                var remaining = Math.Max(1, (int)Math.Ceiling((state.ExpiresAt - DateTimeOffset.UtcNow).TotalSeconds));
+                _cache.Set(
+                    PasswordResetCacheKey(email),
+                    state with { Attempts = attempts },
+                    TimeSpan.FromSeconds(remaining));
+
+                return BadRequest(new
+                {
+                    message = "Código incorrecto",
+                    attemptsLeft = EmailVerificationMaxAttempts - attempts
+                });
+            }
+
+            result = await _userManager.ResetPasswordAsync(user, state.Token, dto.NewPassword);
+            if (result.Succeeded)
+                _cache.Remove(PasswordResetCacheKey(email));
+        }
+        else
+        {
+            var decodedToken = WebUtility.UrlDecode(submittedTokenOrCode);
+            result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
+        }
+
         if (!result.Succeeded)
             return BadRequest(new { message = "No se pudo restablecer la contraseña", errors = result.Errors });
 
@@ -887,6 +923,49 @@ public class AuthController : ControllerBase
             return new VerificationDispatchResult(false, 0, expiresAt);
 
         var state = new EmailVerificationState(code, 0, expiresAt, now);
+        _cache.Set(cacheKey, state, EmailVerificationCodeTtl);
+
+        return new VerificationDispatchResult(true, 0, expiresAt);
+    }
+
+    private async Task<VerificationDispatchResult> DispatchPasswordResetCodeAsync(ApplicationUser user, bool bypassCooldown = false)
+    {
+        var email = user.Email?.Trim();
+        if (string.IsNullOrWhiteSpace(email))
+            return new VerificationDispatchResult(false, 0, DateTimeOffset.UtcNow);
+
+        var now = DateTimeOffset.UtcNow;
+        var cacheKey = PasswordResetCacheKey(email);
+        _cache.TryGetValue(cacheKey, out PasswordResetState? existingState);
+
+        if (!bypassCooldown && existingState is not null)
+        {
+            var nextAllowed = existingState.LastSentAt.Add(EmailVerificationResendCooldown);
+            if (nextAllowed > now)
+            {
+                var retryAfter = (int)Math.Ceiling((nextAllowed - now).TotalSeconds);
+                return new VerificationDispatchResult(false, retryAfter < 1 ? 1 : retryAfter, existingState.ExpiresAt);
+            }
+        }
+
+        var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var code = GenerateEmailVerificationCode();
+        var expiresAt = now.Add(EmailVerificationCodeTtl);
+
+        var html = $@"
+<div style='font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:20px'>
+  <h2 style='color:#111827'>Recuperación de contraseña</h2>
+  <p>Usa este código para restablecer tu contraseña en Arroyo Seco:</p>
+  <div style='font-size:30px;font-weight:700;letter-spacing:6px;margin:16px 0;color:#E31B23'>{code}</div>
+  <p style='margin-top:0'>Este código expira en 10 minutos.</p>
+  <p style='color:#6b7280'>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+</div>";
+
+        var sent = await _email.SendEmailAsync(email, "Codigo de recuperacion - Arroyo Seco", html);
+        if (!sent)
+            return new VerificationDispatchResult(false, 0, expiresAt);
+
+        var state = new PasswordResetState(code, resetToken, 0, expiresAt, now);
         _cache.Set(cacheKey, state, EmailVerificationCodeTtl);
 
         return new VerificationDispatchResult(true, 0, expiresAt);

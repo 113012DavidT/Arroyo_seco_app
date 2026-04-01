@@ -29,7 +29,7 @@ export interface ForgotPasswordPayload {
 
 export interface ResetPasswordPayload {
   email: string;
-  token: string;
+  code: string;
   newPassword: string;
 }
 
@@ -363,7 +363,11 @@ export class AuthService {
   }
 
   resetPassword(payload: ResetPasswordPayload): Observable<any> {
-    return this.api.post<any>('/auth/reset-password', payload);
+    return this.api.post<any>('/auth/reset-password', {
+      email: payload.email,
+      token: payload.code,
+      newPassword: payload.newPassword
+    });
   }
 
   requestEmailVerification(payload: RequestEmailVerificationPayload): Observable<any> {

@@ -39,8 +39,8 @@
           <h2 *ngIf="viewMode === 'reset'">Restablecer contraseña</h2>
           <h2 *ngIf="viewMode === 'verify'">Verificar correo</h2>
           <p class="form-subtitle" *ngIf="viewMode === 'login'">Inicia sesión para continuar tu experiencia</p>
-          <p class="form-subtitle" *ngIf="viewMode === 'forgot'">Te enviaremos un enlace de recuperación por correo.</p>
-          <p class="form-subtitle" *ngIf="viewMode === 'reset'">Define una nueva contraseña para tu cuenta.</p>
+          <p class="form-subtitle" *ngIf="viewMode === 'forgot'">Te enviaremos un código de 6 dígitos por correo.</p>
+          <p class="form-subtitle" *ngIf="viewMode === 'reset'">Ingresa el código recibido y define tu nueva contraseña.</p>
           <p class="form-subtitle" *ngIf="viewMode === 'verify'">Ingresa el código de 6 dígitos que enviamos a tu correo.</p>
         </div>
 
@@ -149,7 +149,7 @@
           </div>
 
           <button type="submit" class="btn-submit" [disabled]="forgotForm.invalid || forgotLoading">
-            <span *ngIf="!forgotLoading">Enviar enlace</span>
+            <span *ngIf="!forgotLoading">Enviar código</span>
             <span *ngIf="forgotLoading" class="spinner"></span>
           </button>
 
@@ -171,6 +171,24 @@
                 required
                 pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
                 autocomplete="email"
+              />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="reset-code">Código de recuperación</label>
+            <div class="input-wrapper">
+              <input
+                id="reset-code"
+                type="text"
+                name="resetCode"
+                [(ngModel)]="resetModel.code"
+                placeholder="123456"
+                minlength="6"
+                maxlength="6"
+                pattern="^[0-9]{6}$"
+                inputmode="numeric"
+                [required]="!hasLegacyResetToken"
               />
             </div>
           </div>
@@ -220,6 +238,11 @@
           <button type="submit" class="btn-submit" [disabled]="resetForm.invalid || resetLoading">
             <span *ngIf="!resetLoading">Guardar nueva contraseña</span>
             <span *ngIf="resetLoading" class="spinner"></span>
+          </button>
+
+          <button type="button" class="btn-biometric-secondary" [disabled]="resendLoading || !resetModel.email" (click)="resendResetCode()">
+            <span *ngIf="!resendLoading">Reenviar código</span>
+            <span *ngIf="resendLoading" class="spinner-dark"></span>
           </button>
 
           <button type="button" class="btn-biometric-secondary" (click)="goToLogin()">Volver al inicio de sesión</button>

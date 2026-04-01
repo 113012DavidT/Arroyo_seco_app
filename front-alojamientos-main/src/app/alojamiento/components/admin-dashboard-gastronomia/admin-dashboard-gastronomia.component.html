@@ -5,9 +5,6 @@
       <p>Vista general de la gestión de restaurantes</p>
     </div>
     <div class="dashboard-actions">
-      <button type="button" class="btn-secondary" (click)="exportarPdf()" [disabled]="exportingPdf || loading">
-        {{ exportingPdf ? 'Generando PDF...' : 'Exportar PDF' }}
-      </button>
       <a routerLink="/admin/home" class="btn-secondary">
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
@@ -44,33 +41,9 @@
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon" style="background: #fee2e2;">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="#dc2626" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l3.59-3.58L17 12l-5 5zm0-10a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <p class="stat-label">Total Reservas</p>
-          <p class="stat-value">{{ stats.totalReservas }}</p>
-        </div>
-      </div>
-
-      <div class="stat-card">
         <div class="stat-icon" style="background: #fef3c7;">
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path fill="#f59e0b" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <p class="stat-label">Total Reseñas</p>
-          <p class="stat-value">{{ stats.totalResenas }}</p>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon" style="background: #e0e7ff;">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="#6366f1" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/>
           </svg>
         </div>
         <div class="stat-content">
@@ -86,41 +59,20 @@
           </svg>
         </div>
         <div class="stat-content">
-          <p class="stat-label">Calificación promedio</p>
-          <p class="stat-value">{{ stats.promedioCalificacion | number:'1.1-2' }}</p>
+          <p class="stat-label">Establecimientos Activos</p>
+          <p class="stat-value">{{ stats.activos }}</p>
         </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon" style="background: #ede9fe;">
+        <div class="stat-icon" style="background: #e0e7ff;">
           <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="#7c3aed" d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-2h2v2zm1.07-7.75l-.9.92A3.49 3.49 0 0012 13h-2v-.5c0-.8.31-1.56.88-2.12l1.24-1.26a1.5 1.5 0 10-2.56-1.06H7.56a3.5 3.5 0 116.51 1.19z"/>
+            <path fill="#6366f1" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 9h-2V5h2v6zm0 4h-2v-2h2v2z"/>
           </svg>
         </div>
         <div class="stat-content">
-          <p class="stat-label">Reportes pendientes</p>
-          <p class="stat-value">{{ stats.reportesPendientes }}</p>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="content-grid">
-      <div class="card">
-        <div class="card-header">
-          <h2>Reservas por mes</h2>
-        </div>
-        <div class="card-body">
-          <div class="chart-wrap"><canvas #reservasChart></canvas></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <h2>Establecimientos por tipo</h2>
-        </div>
-        <div class="card-body">
-          <div class="chart-wrap"><canvas #tiposChart></canvas></div>
+          <p class="stat-label">Pendientes de Aprobación</p>
+          <p class="stat-value">{{ pendingEstablecimientos.length }}</p>
         </div>
       </div>
     </div>
@@ -129,23 +81,23 @@
     <div class="content-grid">
       <div class="card">
         <div class="card-header">
-          <h2>Top por reservas</h2>
+          <h2>Pendientes de Aprobación</h2>
           <a routerLink="/admin/gastronomia/establecimientos" class="link">Ver todos</a>
         </div>
         <div class="card-body">
-          <div *ngIf="topEstablecimientos.length === 0" class="empty-state">
+          <div *ngIf="pendingEstablecimientos.length === 0" class="empty-state">
             <svg viewBox="0 0 24 24" width="48" height="48">
-              <path fill="#9ca3af" d="M12 2l2.39 7.36H22l-6.19 4.5L18.2 21 12 16.5 5.8 21l2.39-7.14L2 9.36h7.61z"/>
+              <path fill="#9ca3af" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            <p>No hay reservas suficientes para mostrar un ranking</p>
+            <p>No hay establecimientos pendientes</p>
           </div>
 
-          <div *ngFor="let establecimiento of topEstablecimientos" class="list-item">
+          <div *ngFor="let establecimiento of pendingEstablecimientos" class="list-item">
             <div class="list-item-content">
               <h3>{{ establecimiento.nombre }}</h3>
-              <p class="text-sm">{{ establecimiento.tipo }} · {{ establecimiento.totalReservas }} reservas</p>
+              <p class="text-sm">{{ establecimiento.tipoEstablecimiento || 'Sin categoría' }}</p>
             </div>
-            <span class="badge badge-success">★ {{ establecimiento.promedio | number:'1.1-1' }}</span>
+            <span class="badge badge-warning">Pendiente</span>
           </div>
         </div>
       </div>
@@ -170,34 +122,6 @@
             </div>
             <span class="badge badge-warning">Activo</span>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card neurona-card" *ngIf="analytics">
-      <div class="card-header">
-        <h2>Métricas de neurona</h2>
-      </div>
-      <div class="card-body neurona-grid">
-        <div>
-          <p class="stat-label">Establecimientos evaluados</p>
-          <p class="stat-value">{{ analytics.neurona.totalEvaluados }}</p>
-        </div>
-        <div>
-          <p class="stat-label">Clasificados por ML</p>
-          <p class="stat-value">{{ analytics.neurona.clasificacionesMl }}</p>
-        </div>
-        <div>
-          <p class="stat-label">Fallback local</p>
-          <p class="stat-value">{{ analytics.neurona.clasificacionesFallback }}</p>
-        </div>
-        <div>
-          <p class="stat-label">Confianza promedio</p>
-          <p class="stat-value">{{ analytics.neurona.confianzaPromedio | number:'1.2-2' }}</p>
-        </div>
-        <div>
-          <p class="stat-label">Clases alta / media / baja</p>
-          <p class="stat-value">{{ analytics.neurona.claseAlta }} / {{ analytics.neurona.claseMedia }} / {{ analytics.neurona.claseBaja }}</p>
         </div>
       </div>
     </div>

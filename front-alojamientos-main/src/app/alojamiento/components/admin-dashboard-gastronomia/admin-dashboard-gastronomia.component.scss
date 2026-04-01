@@ -44,6 +44,12 @@
   }
 }
 
+.dashboard-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -163,6 +169,21 @@
 
 .card-body {
   padding: 1rem 1.5rem;
+}
+
+.chart-wrap {
+  position: relative;
+  min-height: 280px;
+}
+
+.neurona-card {
+  margin-bottom: 2rem;
+}
+
+.neurona-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
 }
 
 .empty-state {

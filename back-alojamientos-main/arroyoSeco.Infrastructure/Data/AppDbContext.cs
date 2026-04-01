@@ -57,6 +57,17 @@ public class AppDbContext : DbContext, IAppDbContext
             .HasForeignKey(e => e.OferenteId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.Entity<Establecimiento>(e =>
+        {
+            e.Property(x => x.HoraApertura)
+                .HasColumnType("time without time zone")
+                .HasDefaultValue(new TimeSpan(12, 0, 0));
+
+            e.Property(x => x.HoraCierre)
+                .HasColumnType("time without time zone")
+                .HasDefaultValue(new TimeSpan(22, 0, 0));
+        });
+
         b.Entity<Establecimiento>()
             .HasMany(e => e.Fotos)
             .WithOne(f => f.Establecimiento)

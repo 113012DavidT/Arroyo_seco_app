@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using arroyoSeco.Application.Common.Helpers;
 using arroyoSeco.Application.Common.Interfaces;
 using arroyoSeco.Domain.Entities.Gastronomia;
 
@@ -34,12 +35,27 @@ public class CrearReservaGastronomiaCommandHandler
         if (request.NumeroPersonas <= 0)
             throw new ArgumentException("Número de personas inválido");
 
+        var slot = GastronomiaHorarioHelper.NormalizeReservationSlot(request.Fecha);
         var now = DateTime.UtcNow;
-        if (request.Fecha <= now)
+        if (slot <= now)
             throw new ArgumentException("La reserva debe ser para una fecha y hora futura");
 
         var est = await _context.Establecimientos.FirstOrDefaultAsync(e => e.Id == request.EstablecimientoId, ct);
         if (est == null) throw new InvalidOperationException("Establecimiento no encontrado");
+
+        GastronomiaHorarioHelper.ValidateBusinessHours(est.HoraApertura, est.HoraCierre);
+        if (!GastronomiaHorarioHelper.IsReservationSlotWithinSchedule(slot, est.HoraApertura, est.HoraCierre))
+            throw new InvalidOperationException("La reserva debe iniciar dentro del horario del establecimiento y terminar antes del cierre");
+
+        var reservedMesaIds = await _context.ReservasGastronomia
+            .AsNoTracking()
+            .Where(r => r.EstablecimientoId == est.Id
+                && (r.Estado == "Pendiente" || r.Estado == "Confirmada")
+                && r.Fecha >= slot
+                && r.Fecha < slot.AddHours(1)
+                && r.MesaId.HasValue)
+            .Select(r => r.MesaId!.Value)
+            .ToListAsync(ct);
 
         Mesa? mesa = null;
         if (request.MesaId.HasValue)
@@ -47,13 +63,17 @@ public class CrearReservaGastronomiaCommandHandler
             mesa = await _context.Mesas.FirstOrDefaultAsync(m => m.Id == request.MesaId && m.EstablecimientoId == est.Id, ct);
             if (mesa == null) throw new InvalidOperationException("Mesa no encontrada");
             if (!mesa.Disponible) throw new InvalidOperationException("Mesa no disponible");
+            if (reservedMesaIds.Contains(mesa.Id)) throw new InvalidOperationException("La mesa seleccionada ya está reservada en ese horario");
             if (mesa.Capacidad < request.NumeroPersonas)
                 throw new InvalidOperationException("La mesa seleccionada no tiene capacidad suficiente");
         }
         else
         {
             mesa = await _context.Mesas
-                .Where(m => m.EstablecimientoId == est.Id && m.Disponible && m.Capacidad >= request.NumeroPersonas)
+                .Where(m => m.EstablecimientoId == est.Id
+                    && m.Disponible
+                    && m.Capacidad >= request.NumeroPersonas
+                    && !reservedMesaIds.Contains(m.Id))
                 .OrderBy(m => m.Capacidad)
                 .ThenBy(m => m.Numero)
                 .FirstOrDefaultAsync(ct);
@@ -67,14 +87,11 @@ public class CrearReservaGastronomiaCommandHandler
             UsuarioId = _current.UserId,
             EstablecimientoId = est.Id,
             MesaId = mesa?.Id,
-            Fecha = request.Fecha,
+            Fecha = slot,
             NumeroPersonas = request.NumeroPersonas,
             Estado = "Pendiente",
             Total = 0
         };
-
-        // Once reserved, table is hidden from options until the oferente marks it available again.
-        mesa.Disponible = false;
 
         _context.ReservasGastronomia.Add(reserva);
         await _context.SaveChangesAsync(ct);
@@ -82,7 +99,7 @@ public class CrearReservaGastronomiaCommandHandler
         await _notifications.PushAsync(
             est.OferenteId,
             "Nueva Reserva",
-            $"Reserva para {request.NumeroPersonas} personas el {request.Fecha:dd/MM/yyyy HH:mm}",
+            $"Reserva para {request.NumeroPersonas} personas el {GastronomiaHorarioHelper.FormatBusinessDateTime(slot)}",
             "ReservaGastronomia",
             $"/gastronomia/{est.Id}/reservas/{reserva.Id}",
             ct);

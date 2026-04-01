@@ -50,6 +50,26 @@
       </select>
     </div>
 
+    <div class="form-group">
+      <label for="horaApertura">Hora de apertura *</label>
+      <input
+        type="time"
+        id="horaApertura"
+        [(ngModel)]="establecimiento.horaApertura"
+        name="horaApertura"
+        required />
+    </div>
+
+    <div class="form-group">
+      <label for="horaCierre">Hora de cierre *</label>
+      <input
+        type="time"
+        id="horaCierre"
+        [(ngModel)]="establecimiento.horaCierre"
+        name="horaCierre"
+        required />
+    </div>
+
     <div class="form-group full-width">
       <label>📍 Marcar en el mapa *</label>
       <app-map-picker 

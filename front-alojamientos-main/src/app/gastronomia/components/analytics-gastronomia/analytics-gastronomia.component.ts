@@ -5,6 +5,7 @@ import { first } from 'rxjs/operators';
 import { GastronomiaAnalyticsDto, GastronomiaService, ReviewOferenteDto } from '../../services/gastronomia.service';
 import { Chart, registerables } from 'chart.js';
 import { ToastService } from '../../../shared/services/toast.service';
+import { PdfExportService } from '../../../shared/services/pdf-export.service';
 
 Chart.register(...registerables);
 
@@ -22,6 +23,7 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   reviewsLoading = true;
   misReviews: ReviewOferenteDto[] = [];
   reportingReviewId: number | null = null;
+  exportingPdf = false;
 
   // Modal para reporte
   showReportModal = false;
@@ -36,7 +38,8 @@ export class AnalyticsGastronomiaComponent implements OnInit {
 
   constructor(
     private gastronomiaService: GastronomiaService,
-    private toast: ToastService
+    private toast: ToastService,
+    private pdfExportService: PdfExportService
   ) {}
 
   ngOnInit(): void {
@@ -205,5 +208,45 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     }
 
     return 'No se pudo reportar la reseña';
+  }
+
+  exportarPdf(): void {
+    if (!this.data || this.exportingPdf) {
+      return;
+    }
+
+    this.exportingPdf = true;
+
+    this.pdfExportService.exportReport({
+      fileName: 'analitica-gastronomia-oferente.pdf',
+      title: 'Analítica de gastronomía',
+      subtitle: 'Reporte del oferente',
+      summary: [
+        { label: 'Total de reseñas', value: String(this.data.totalResenas) },
+        { label: 'Calificación promedio', value: this.data.promedio.toFixed(2) },
+        { label: 'Establecimientos evaluados', value: String(this.data.top5.length || this.data.bottom5.length) }
+      ],
+      charts: [
+        { title: 'Distribución por estrellas', canvas: this.starsCanvas?.nativeElement },
+        { title: 'Tendencia mensual', canvas: this.trendCanvas?.nativeElement }
+      ],
+      sections: [
+        {
+          title: 'Top 5 establecimientos',
+          lines: (this.data.top5 || []).map((item, index) => `${index + 1}. ${item.nombre} | ${Number(item.promedio || 0).toFixed(1)} estrellas`)
+        },
+        {
+          title: 'Bottom 5 establecimientos',
+          lines: (this.data.bottom5 || []).map((item, index) => `${index + 1}. ${item.nombre} | ${Number(item.promedio || 0).toFixed(1)} estrellas`)
+        },
+        {
+          title: 'Reseñas recientes',
+          lines: this.misReviews.slice(0, 8).map((review) => `${review.establecimientoNombre} | ${review.puntuacion}/5 | ${review.estado}`)
+        }
+      ]
+    });
+
+    this.exportingPdf = false;
+    this.toast.success('PDF generado correctamente');
   }
 }

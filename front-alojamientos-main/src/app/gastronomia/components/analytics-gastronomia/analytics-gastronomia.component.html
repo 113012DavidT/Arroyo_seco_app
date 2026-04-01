@@ -1,4 +1,14 @@
 <section class="analytics">
+  <div class="analytics__header" *ngIf="!loading && !error && data">
+    <div>
+      <h2>Analítica de reseñas</h2>
+      <p class="muted">Exporta un resumen PDF con métricas y gráficas del módulo.</p>
+    </div>
+    <button type="button" class="btn-report" (click)="exportarPdf()" [disabled]="exportingPdf">
+      {{ exportingPdf ? 'Generando PDF...' : 'Exportar PDF' }}
+    </button>
+  </div>
+
   <div *ngIf="loading" class="state">Cargando analitica...</div>
   <div *ngIf="error" class="state state--error">{{ error }}</div>
 

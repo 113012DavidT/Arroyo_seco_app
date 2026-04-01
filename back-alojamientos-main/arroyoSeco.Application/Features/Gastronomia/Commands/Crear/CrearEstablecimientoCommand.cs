@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using arroyoSeco.Application.Common.Interfaces;
+using arroyoSeco.Application.Common.Helpers;
 using arroyoSeco.Application.Common.Validation;
 using arroyoSeco.Domain.Entities.Gastronomia;
 
@@ -22,6 +23,8 @@ public class CrearEstablecimientoCommand
     public string? Descripcion { get; set; }
     public string? FotoPrincipal { get; set; }
     public List<string> FotosUrls { get; set; } = new();
+    public string? HoraApertura { get; set; }
+    public string? HoraCierre { get; set; }
 }
 
 public class CrearEstablecimientoCommandHandler
@@ -68,6 +71,10 @@ public class CrearEstablecimientoCommandHandler
         if (owner == null)
             throw new InvalidOperationException("Oferente no encontrado para el usuario actual");
 
+        var horaApertura = GastronomiaHorarioHelper.ParseOrDefault(request.HoraApertura, GastronomiaHorarioHelper.DefaultOpeningTime);
+        var horaCierre = GastronomiaHorarioHelper.ParseOrDefault(request.HoraCierre, GastronomiaHorarioHelper.DefaultClosingTime);
+        GastronomiaHorarioHelper.ValidateBusinessHours(horaApertura, horaCierre);
+
         var e = new Establecimiento
         {
             OferenteId = owner.Id,
@@ -80,6 +87,8 @@ public class CrearEstablecimientoCommandHandler
             Amenidades = request.Amenidades,
             Descripcion = descripcion,
             FotoPrincipal = request.FotoPrincipal,
+            HoraApertura = horaApertura,
+            HoraCierre = horaCierre,
             Fotos = request.FotosUrls
                 .Where(url => !string.IsNullOrWhiteSpace(url))
                 .Select((url, index) => new FotoEstablecimiento

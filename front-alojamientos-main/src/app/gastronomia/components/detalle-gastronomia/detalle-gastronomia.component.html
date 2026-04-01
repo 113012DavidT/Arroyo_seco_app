@@ -223,6 +223,7 @@
         <ng-template #reservaAuth>
           <div *ngIf="!showReservaForm">
             <p class="booking-cta">Elige fecha, hora y cantidad de comensales</p>
+            <p class="booking-notice">Horario del establecimiento: {{ horarioEstablecimiento }}</p>
             <button class="btn-reserva btn-reserva--full" (click)="toggleReservaForm()">
               Reservar mesa
             </button>
@@ -232,15 +233,18 @@
             <div class="booking-form-row">
               <div class="booking-field">
                 <label>Fecha</label>
-                <input type="date" [(ngModel)]="fecha" [min]="minFecha" required />
+                <input type="date" [(ngModel)]="fecha" [min]="minFecha" required (ngModelChange)="onFechaChange()" />
               </div>
               <div class="booking-field">
                 <label>Hora</label>
-                <select [(ngModel)]="hora" required>
+                <select [(ngModel)]="hora" required (ngModelChange)="onHoraChange()">
                   <option *ngFor="let slot of horariosDisponibles" [ngValue]="slot">{{ slot }}</option>
                 </select>
               </div>
             </div>
+
+            <p class="booking-notice">Reservas por franjas de una hora. Último turno disponible: {{ horariosDisponibles[horariosDisponibles.length - 1] || 'Sin horario disponible' }}.</p>
+            <p class="booking-notice" *ngIf="horariosDisponibles.length === 0">No hay horarios disponibles para la fecha seleccionada.</p>
 
             <div class="booking-summary">
               <span>Tu horario</span>
@@ -249,7 +253,7 @@
 
             <div class="booking-field">
               <label>Comensales</label>
-              <input type="number" [(ngModel)]="numeroPersonas" min="1" max="20" required />
+              <input type="number" [(ngModel)]="numeroPersonas" min="1" max="20" required (ngModelChange)="onNumeroPersonasChange()" />
             </div>
 
             <div class="booking-field" *ngIf="establecimiento.mesas && establecimiento.mesas.length > 0">
@@ -261,11 +265,12 @@
                 </option>
               </select>
             </div>
-            <p class="booking-notice" *ngIf="showReservaForm && establecimiento.mesas?.length && mesasDisponibles.length === 0">
+            <p class="booking-notice" *ngIf="disponibilidadLoading">Consultando disponibilidad...</p>
+            <p class="booking-notice" *ngIf="showReservaForm && !disponibilidadLoading && establecimiento.mesas?.length && mesasDisponibles.length === 0">
               No hay mesas disponibles por el momento.
             </p>
 
-            <button class="btn-reserva btn-reserva--full" (click)="crearReserva()" [disabled]="submitting">
+            <button class="btn-reserva btn-reserva--full" (click)="crearReserva()" [disabled]="submitting || disponibilidadLoading || !hora || (!!establecimiento.mesas?.length && mesasDisponibles.length === 0)">
               <span *ngIf="!submitting">Confirmar reserva</span>
               <span *ngIf="submitting">Procesando...</span>
             </button>

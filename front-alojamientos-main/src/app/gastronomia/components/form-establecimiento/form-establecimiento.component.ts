@@ -23,7 +23,9 @@ export class FormEstablecimientoComponent implements OnInit {
     nombre: '',
     ubicacion: '',
     descripcion: '',
-    fotoPrincipal: ''
+    fotoPrincipal: '',
+    horaApertura: '12:00',
+    horaCierre: '22:00'
   };
   
   isEdit = false;
@@ -72,7 +74,11 @@ export class FormEstablecimientoComponent implements OnInit {
   private loadEstablecimiento(id: number) {
     this.gastronomiaService.getById(id).pipe(first()).subscribe({
       next: (data) => {
-        this.establecimiento = data;
+        this.establecimiento = {
+          ...data,
+          horaApertura: this.normalizeHour(data.horaApertura) || '12:00',
+          horaCierre: this.normalizeHour(data.horaCierre) || '22:00'
+        };
         this.gastronomiaService.listFotos(id).pipe(first()).subscribe({
           next: (fotos) => {
             this.establecimiento.fotos = fotos;
@@ -131,8 +137,17 @@ export class FormEstablecimientoComponent implements OnInit {
       return;
     }
 
+    const horaApertura = this.normalizeHour(this.establecimiento.horaApertura) || '12:00';
+    const horaCierre = this.normalizeHour(this.establecimiento.horaCierre) || '22:00';
+    if (!this.isValidSchedule(horaApertura, horaCierre)) {
+      this.toast.error('Configura un horario válido. El cierre debe ser posterior a la apertura.');
+      return;
+    }
+
     this.establecimiento.nombre = nombre;
     this.establecimiento.descripcion = descripcion;
+    this.establecimiento.horaApertura = horaApertura;
+    this.establecimiento.horaCierre = horaCierre;
 
     this.submitting = true;
     const request = this.isEdit && this.establecimiento.id
@@ -251,5 +266,28 @@ export class FormEstablecimientoComponent implements OnInit {
 
   get mapSearchAddress(): string {
     return this.establecimiento.direccion || this.establecimiento.ubicacion || '';
+  }
+
+  private normalizeHour(value?: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    return value.length >= 5 ? value.slice(0, 5) : value;
+  }
+
+  private isValidSchedule(openingTime: string, closingTime: string): boolean {
+    const openingValue = this.toMinutes(openingTime);
+    const closingValue = this.toMinutes(closingTime);
+    return openingValue >= 0 && closingValue >= 0 && closingValue > openingValue;
+  }
+
+  private toMinutes(value: string): number {
+    const [hours, minutes] = value.split(':').map((part) => Number.parseInt(part, 10));
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return -1;
+    }
+
+    return (hours * 60) + minutes;
   }
 }

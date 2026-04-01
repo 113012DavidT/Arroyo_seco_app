@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using arroyoSeco.Application.Common.Interfaces;
+using arroyoSeco.Application.Common.Helpers;
 using arroyoSeco.Application.Common.Validation;
 using arroyoSeco.Application.Features.Gastronomia.Commands.Crear;
 using arroyoSeco.Domain.Entities.Gastronomia;
 using arroyoSeco.Domain.Entities.Usuarios;
+using arroyoSeco.Domain.Entities.Enums;
 using EstablecimientoEntity = arroyoSeco.Domain.Entities.Gastronomia.Establecimiento;
 
 namespace arroyoSeco.Controllers;
@@ -465,6 +467,80 @@ public class GastronomiasController : ControllerBase
         ));
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin/analytics")]
+    public async Task<ActionResult<AdminGastronomiaAnalyticsDto>> GetAdminAnalytics(CancellationToken ct)
+    {
+        var totalEstablecimientos = await _db.Establecimientos.CountAsync(ct);
+        var totalReservas = await _db.ReservasGastronomia.CountAsync(ct);
+        var totalResenas = await _db.Reviews.CountAsync(r => r.Estado != ReviewEstadoRechazada, ct);
+        var reportesPendientes = await _db.Reviews.CountAsync(r => r.Estado == ReviewEstadoReportada || r.Estado == ReviewEstadoEliminacionSolicitada, ct);
+        var solicitudesPendientes = await _db.SolicitudesOferente.CountAsync(s => s.Estatus == "Pendiente" && s.TipoSolicitado == TipoOferente.Gastronomia, ct);
+
+        var promedioCalificacion = totalResenas > 0
+            ? await _db.Reviews.Where(r => r.Estado != ReviewEstadoRechazada).AverageAsync(r => (double)r.Puntuacion, ct)
+            : 0;
+
+        var reservasPorMesRaw = await _db.ReservasGastronomia
+            .AsNoTracking()
+            .Where(r => r.Fecha >= DateTime.UtcNow.AddMonths(-5))
+            .GroupBy(r => new { r.Fecha.Year, r.Fecha.Month })
+            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Count() })
+            .OrderBy(g => g.Year)
+            .ThenBy(g => g.Month)
+            .ToListAsync(ct);
+
+        var reservasPorMes = reservasPorMesRaw
+            .Select(item => new AnalyticsBucketDto($"{item.Year}-{item.Month:D2}", item.Total))
+            .ToList();
+
+        var tipos = await _db.Establecimientos
+            .AsNoTracking()
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!)
+            .Select(g => new AnalyticsBucketDto(g.Key, g.Count()))
+            .OrderByDescending(item => item.Valor)
+            .ToListAsync(ct);
+
+        var topReservados = await _db.Establecimientos
+            .AsNoTracking()
+            .Select(e => new AdminTopEstablecimientoDto(
+                e.Id,
+                e.Nombre,
+                string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!,
+                _db.ReservasGastronomia.Count(r => r.EstablecimientoId == e.Id),
+                _db.Reviews.Where(r => r.EstablecimientoId == e.Id && r.Estado != ReviewEstadoRechazada).Select(r => (double?)r.Puntuacion).Average() ?? 0
+            ))
+            .Where(item => item.TotalReservas > 0 || item.Promedio > 0)
+            .OrderByDescending(item => item.TotalReservas)
+            .ThenByDescending(item => item.Promedio)
+            .Take(5)
+            .ToListAsync(ct);
+
+        var ranking = await BuildRankingAsync(ct);
+        var neurona = new NeuronaMetricsDto(
+            ranking.Count,
+            ranking.Count(item => item.fuente == "ml"),
+            ranking.Count(item => item.fuente != "ml"),
+            ranking.Count(item => item.clase == 2),
+            ranking.Count(item => item.clase == 1),
+            ranking.Count(item => item.clase == 0),
+            ranking.Count == 0 ? 0 : ranking.Average(item => item.confidence)
+        );
+
+        return Ok(new AdminGastronomiaAnalyticsDto(
+            totalEstablecimientos,
+            totalReservas,
+            totalResenas,
+            promedioCalificacion,
+            solicitudesPendientes,
+            reportesPendientes,
+            reservasPorMes,
+            tipos,
+            topReservados,
+            neurona
+        ));
+    }
+
     private async Task<List<(EstablecimientoEntity est, int clase, double confidence, string fuente)>> BuildRankingAsync(CancellationToken ct)
     {
         var establecimientos = await _db.Establecimientos
@@ -622,7 +698,9 @@ public class GastronomiasController : ControllerBase
     [HttpPut("{id:int}/mesas/{mesaId:int}/disponible")]
     public async Task<IActionResult> SetDisponibilidad(int id, int mesaId, [FromBody] bool disponible, CancellationToken ct)
     {
-        var mesa = await _db.Mesas.FirstOrDefaultAsync(m => m.Id == mesaId && m.EstablecimientoId == id, ct);
+        var mesa = await _db.Mesas
+            .Include(m => m.Establecimiento)
+            .FirstOrDefaultAsync(m => m.Id == mesaId && m.EstablecimientoId == id, ct);
         if (mesa == null) return NotFound();
         if (mesa.Establecimiento?.OferenteId != _current.UserId) return Forbid();
         mesa.Disponible = disponible;
@@ -659,11 +737,46 @@ public class GastronomiasController : ControllerBase
     [HttpGet("{id:int}/disponibilidad")]
     public async Task<ActionResult> VerificarDisponibilidad(int id, [FromQuery] DateTime fecha, CancellationToken ct)
     {
-        var mesas = await _db.Mesas
-            .Where(m => m.EstablecimientoId == id && m.Disponible)
+        var establecimiento = await _db.Establecimientos
             .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (establecimiento is null)
+            return NotFound(new { message = "Establecimiento no encontrado" });
+
+        var slot = GastronomiaHorarioHelper.NormalizeReservationSlot(fecha);
+        var dentroHorario = GastronomiaHorarioHelper.IsReservationSlotWithinSchedule(slot, establecimiento.HoraApertura, establecimiento.HoraCierre);
+        if (!dentroHorario)
+        {
+            return Ok(new DisponibilidadGastronomiaDto(
+                0,
+                new List<Mesa>(),
+                GastronomiaHorarioHelper.ToHourMinuteString(establecimiento.HoraApertura),
+                GastronomiaHorarioHelper.ToHourMinuteString(establecimiento.HoraCierre)
+            ));
+        }
+
+        var reservedMesaIds = await _db.ReservasGastronomia
+            .AsNoTracking()
+            .Where(r => r.EstablecimientoId == id
+                && (r.Estado == "Pendiente" || r.Estado == "Confirmada")
+                && r.Fecha >= slot
+                && r.Fecha < slot.AddHours(1)
+                && r.MesaId.HasValue)
+            .Select(r => r.MesaId!.Value)
             .ToListAsync(ct);
-        return Ok(new { mesasDisponibles = mesas.Count, mesas });
+
+        var mesas = await _db.Mesas
+            .Where(m => m.EstablecimientoId == id && m.Disponible && !reservedMesaIds.Contains(m.Id))
+            .AsNoTracking()
+            .OrderBy(m => m.Capacidad)
+            .ThenBy(m => m.Numero)
+            .ToListAsync(ct);
+        return Ok(new DisponibilidadGastronomiaDto(
+            mesas.Count,
+            mesas,
+            GastronomiaHorarioHelper.ToHourMinuteString(establecimiento.HoraApertura),
+            GastronomiaHorarioHelper.ToHourMinuteString(establecimiento.HoraCierre)
+        ));
     }
 
     [Authorize(Roles = "Oferente")]
@@ -694,6 +807,19 @@ public class GastronomiasController : ControllerBase
             est.Direccion = request.Direccion;
         if (!string.IsNullOrWhiteSpace(request.TipoEstablecimiento))
             est.TipoEstablecimiento = request.TipoEstablecimiento;
+        if (request.HoraApertura != null || request.HoraCierre != null)
+        {
+            var horaApertura = request.HoraApertura is null
+                ? est.HoraApertura
+                : GastronomiaHorarioHelper.ParseOrDefault(request.HoraApertura, est.HoraApertura);
+            var horaCierre = request.HoraCierre is null
+                ? est.HoraCierre
+                : GastronomiaHorarioHelper.ParseOrDefault(request.HoraCierre, est.HoraCierre);
+
+            GastronomiaHorarioHelper.ValidateBusinessHours(horaApertura, horaCierre);
+            est.HoraApertura = horaApertura;
+            est.HoraCierre = horaCierre;
+        }
         if (request.Amenidades != null)
             est.Amenidades = request.Amenidades;
         if (request.Descripcion != null)
@@ -959,6 +1085,8 @@ public record UpdateEstablecimientoRequest(
     double? Longitud,
     string? Direccion,
     string? TipoEstablecimiento,
+    string? HoraApertura,
+    string? HoraCierre,
     List<string>? Amenidades,
     string? Descripcion,
     string? FotoPrincipal,
@@ -983,6 +1111,11 @@ public record RatingDistributionDto(
     int Valor
 );
 
+public record AnalyticsBucketDto(
+    string Etiqueta,
+    int Valor
+);
+
 public record EstablecimientoReviewStatsDto(
     int EstablecimientoId,
     string Nombre,
@@ -1002,6 +1135,44 @@ public record GastronomiaAnalyticsDto(
     List<EstablecimientoReviewStatsDto> Top5,
     List<EstablecimientoReviewStatsDto> Bottom5,
     List<ReviewsTrendPointDto> TendenciaMensual
+);
+
+public record DisponibilidadGastronomiaDto(
+    int MesasDisponibles,
+    List<Mesa> Mesas,
+    string HoraApertura,
+    string HoraCierre
+);
+
+public record AdminTopEstablecimientoDto(
+    int Id,
+    string Nombre,
+    string Tipo,
+    int TotalReservas,
+    double Promedio
+);
+
+public record NeuronaMetricsDto(
+    int TotalEvaluados,
+    int ClasificacionesMl,
+    int ClasificacionesFallback,
+    int ClaseAlta,
+    int ClaseMedia,
+    int ClaseBaja,
+    double ConfianzaPromedio
+);
+
+public record AdminGastronomiaAnalyticsDto(
+    int TotalEstablecimientos,
+    int TotalReservas,
+    int TotalResenas,
+    double PromedioCalificacion,
+    int SolicitudesPendientes,
+    int ReportesPendientes,
+    List<AnalyticsBucketDto> ReservasPorMes,
+    List<AnalyticsBucketDto> EstablecimientosPorTipo,
+    List<AdminTopEstablecimientoDto> TopEstablecimientos,
+    NeuronaMetricsDto Neurona
 );
 
 public record ReportarReviewDto(

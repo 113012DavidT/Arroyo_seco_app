@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { GastronomiaService, EstablecimientoDto, MenuDto, ReviewGastronomiaDto } from '../../services/gastronomia.service';
+import { GastronomiaService, EstablecimientoDto, MenuDto, MesaDto, ReviewGastronomiaDto } from '../../services/gastronomia.service';
 import { ReservasGastronomiaService } from '../../services/reservas-gastronomia.service';
 import { ToastService } from '../../../shared/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -37,14 +37,11 @@ export class DetalleGastronomiaComponent implements OnInit {
   numeroPersonas = 2;
   mesaId: number | null = null;
   submitting = false;
+  disponibilidadLoading = false;
   lightboxOpen = false;
   lightboxIndex = 0;
-  readonly horariosDisponibles = [
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-    '18:00', '18:30', '19:00', '19:30', '20:00', '20:30',
-    '21:00', '21:30', '22:00'
-  ];
+  horariosDisponibles: string[] = [];
+  private availableMesas: MesaDto[] = [];
 
   private readonly tipoLabels: Record<string, string> = {
     'restaurante': 'Restaurante',
@@ -106,7 +103,11 @@ export class DetalleGastronomiaComponent implements OnInit {
         console.log('Establecimiento cargado:', data);
         console.log('Mesas disponibles:', data?.mesas);
         data.fotosUrls = this.extractGalleryUrls(data);
+        data.horaApertura = this.normalizeHour(data.horaApertura) || '12:00';
+        data.horaCierre = this.normalizeHour(data.horaCierre) || '22:00';
         this.establecimiento = data;
+        this.refreshHorariosDisponibles(false);
+        this.refreshDisponibilidad();
         this.loading = false;
       },
       error: () => {
@@ -157,6 +158,10 @@ export class DetalleGastronomiaComponent implements OnInit {
       return;
     }
     this.showReservaForm = !this.showReservaForm;
+    if (this.showReservaForm) {
+      this.refreshHorariosDisponibles();
+      this.refreshDisponibilidad();
+    }
   }
 
   get minFecha(): string {
@@ -173,6 +178,12 @@ export class DetalleGastronomiaComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  get horarioEstablecimiento(): string {
+    const apertura = this.establecimiento?.horaApertura || '12:00';
+    const cierre = this.establecimiento?.horaCierre || '22:00';
+    return `${apertura} - ${cierre}`;
   }
 
   crearReserva() {
@@ -241,15 +252,31 @@ export class DetalleGastronomiaComponent implements OnInit {
 
   private resetForm() {
     this.setDefaultReservationDate();
-    this.hora = '19:00';
+    this.refreshHorariosDisponibles(false);
     this.numeroPersonas = 2;
     this.mesaId = null;
+    this.availableMesas = [];
   }
 
   private setDefaultReservationDate() {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     this.fecha = tomorrow.toISOString().split('T')[0];
+  }
+
+  onFechaChange(): void {
+    this.refreshHorariosDisponibles();
+    this.refreshDisponibilidad();
+  }
+
+  onHoraChange(): void {
+    this.refreshDisponibilidad();
+  }
+
+  onNumeroPersonasChange(): void {
+    if (this.mesaId && !this.mesasDisponibles.some((mesa) => mesa.id === this.mesaId)) {
+      this.mesaId = null;
+    }
   }
 
   enviarReview() {
@@ -393,6 +420,114 @@ export class DetalleGastronomiaComponent implements OnInit {
   }
 
   get mesasDisponibles() {
-    return (this.establecimiento?.mesas || []).filter((mesa) => !!mesa?.disponible);
+    return this.availableMesas.filter((mesa) => (mesa.capacidad || 0) >= this.numeroPersonas);
+  }
+
+  private refreshHorariosDisponibles(preserveSelection = true): void {
+    const slots = this.buildReservationSlots();
+    this.horariosDisponibles = slots;
+
+    if (!slots.length) {
+      this.hora = '';
+      this.availableMesas = [];
+      this.mesaId = null;
+      return;
+    }
+
+    if (!preserveSelection || !slots.includes(this.hora)) {
+      this.hora = slots[0];
+    }
+  }
+
+  private refreshDisponibilidad(): void {
+    if (!this.establecimiento?.id || !this.fecha || !this.hora) {
+      this.availableMesas = [];
+      this.mesaId = null;
+      return;
+    }
+
+    const slotDate = new Date(`${this.fecha}T${this.hora}:00`);
+    if (Number.isNaN(slotDate.getTime())) {
+      this.availableMesas = [];
+      this.mesaId = null;
+      return;
+    }
+
+    this.disponibilidadLoading = true;
+    this.gastronomiaService.getDisponibilidad(this.establecimiento.id, slotDate.toISOString()).pipe(first()).subscribe({
+      next: (response) => {
+        this.availableMesas = response.mesas || [];
+        if (response.horaApertura) {
+          this.establecimiento!.horaApertura = response.horaApertura;
+        }
+        if (response.horaCierre) {
+          this.establecimiento!.horaCierre = response.horaCierre;
+        }
+        if (this.mesaId && !this.mesasDisponibles.some((mesa) => mesa.id === this.mesaId)) {
+          this.mesaId = null;
+        }
+        this.disponibilidadLoading = false;
+      },
+      error: () => {
+        this.availableMesas = [];
+        this.mesaId = null;
+        this.disponibilidadLoading = false;
+      }
+    });
+  }
+
+  private buildReservationSlots(): string[] {
+    const openingTime = this.toMinutes(this.establecimiento?.horaApertura || '12:00');
+    const closingTime = this.toMinutes(this.establecimiento?.horaCierre || '22:00');
+    if (openingTime < 0 || closingTime <= openingTime) {
+      return [];
+    }
+
+    const slots: string[] = [];
+    const selectedDate = this.fecha ? new Date(`${this.fecha}T00:00:00`) : null;
+    const today = new Date();
+
+    for (let current = openingTime; current + 60 <= closingTime; current += 60) {
+      const label = this.minutesToHour(current);
+      if (selectedDate && this.isSameDay(selectedDate, today)) {
+        const slotDate = new Date(`${this.fecha}T${label}:00`);
+        if (slotDate.getTime() <= Date.now()) {
+          continue;
+        }
+      }
+
+      slots.push(label);
+    }
+
+    return slots;
+  }
+
+  private normalizeHour(value?: string | null): string {
+    if (!value) {
+      return '';
+    }
+
+    return value.length >= 5 ? value.slice(0, 5) : value;
+  }
+
+  private toMinutes(value: string): number {
+    const [hours, minutes] = value.split(':').map((part) => Number.parseInt(part, 10));
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return -1;
+    }
+
+    return (hours * 60) + minutes;
+  }
+
+  private minutesToHour(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  }
+
+  private isSameDay(left: Date, right: Date): boolean {
+    return left.getFullYear() === right.getFullYear()
+      && left.getMonth() === right.getMonth()
+      && left.getDate() === right.getDate();
   }
 }

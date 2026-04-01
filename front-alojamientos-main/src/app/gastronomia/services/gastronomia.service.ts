@@ -21,6 +21,8 @@ export interface EstablecimientoDto {
   nombre: string;
   ubicacion: string;
   tipoEstablecimiento?: string;
+  horaApertura?: string;
+  horaCierre?: string;
   amenidades?: string[];
   descripcion: string;
   fotoPrincipal?: string;
@@ -79,6 +81,9 @@ export interface CrearReservaGastronomiaDto {
 
 export interface DisponibilidadDto {
   mesasDisponibles: number;
+  mesas?: MesaDto[];
+  horaApertura?: string;
+  horaCierre?: string;
 }
 
 export interface ReviewGastronomiaDto {
@@ -160,10 +165,50 @@ export interface GastronomiaAnalyticsDto {
   tendenciaMensual: AnalyticsBucketDto[];
 }
 
+export interface AdminTopEstablecimientoDto {
+  id: number;
+  nombre: string;
+  tipo: string;
+  totalReservas: number;
+  promedio: number;
+}
+
+export interface NeuronaMetricsDto {
+  totalEvaluados: number;
+  clasificacionesMl: number;
+  clasificacionesFallback: number;
+  claseAlta: number;
+  claseMedia: number;
+  claseBaja: number;
+  confianzaPromedio: number;
+}
+
+export interface AdminGastronomiaAnalyticsDto {
+  totalEstablecimientos: number;
+  totalReservas: number;
+  totalResenas: number;
+  promedioCalificacion: number;
+  solicitudesPendientes: number;
+  reportesPendientes: number;
+  reservasPorMes: AnalyticsBucketDto[];
+  establecimientosPorTipo: AnalyticsBucketDto[];
+  topEstablecimientos: AdminTopEstablecimientoDto[];
+  neurona: NeuronaMetricsDto;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GastronomiaService {
   private readonly api = inject(ApiService);
   private analyticsCache$?: Observable<GastronomiaAnalyticsDto>;
+  private adminAnalyticsCache$?: Observable<AdminGastronomiaAnalyticsDto>;
+
+  private normalizeHour(value?: string | null): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    return value.length >= 5 ? value.slice(0, 5) : value;
+  }
 
   private normalizeFoto(foto: FotoEstablecimientoDto): FotoEstablecimientoDto {
     return {
@@ -179,6 +224,8 @@ export class GastronomiaService {
     return {
       ...item,
       fotoPrincipal: this.api.toPublicAssetUrl(item.fotoPrincipal),
+      horaApertura: this.normalizeHour(item.horaApertura),
+      horaCierre: this.normalizeHour(item.horaCierre),
       fotos,
       fotosUrls
     };
@@ -241,6 +288,38 @@ export class GastronomiaService {
     return this.analyticsCache$;
   }
 
+  getAdminAnalytics(forceRefresh = false): Observable<AdminGastronomiaAnalyticsDto> {
+    if (!this.adminAnalyticsCache$ || forceRefresh) {
+      this.adminAnalyticsCache$ = this.api
+        .get<AdminGastronomiaAnalyticsDto | ApiEnvelope<AdminGastronomiaAnalyticsDto>>('/Gastronomias/admin/analytics')
+        .pipe(
+          map((response) => this.unwrapItem(response) ?? {
+            totalEstablecimientos: 0,
+            totalReservas: 0,
+            totalResenas: 0,
+            promedioCalificacion: 0,
+            solicitudesPendientes: 0,
+            reportesPendientes: 0,
+            reservasPorMes: [],
+            establecimientosPorTipo: [],
+            topEstablecimientos: [],
+            neurona: {
+              totalEvaluados: 0,
+              clasificacionesMl: 0,
+              clasificacionesFallback: 0,
+              claseAlta: 0,
+              claseMedia: 0,
+              claseBaja: 0,
+              confianzaPromedio: 0
+            }
+          }),
+          shareReplay({ bufferSize: 1, refCount: true })
+        );
+    }
+
+    return this.adminAnalyticsCache$;
+  }
+
   /** Detalle de un establecimiento */
   getById(id: number): Observable<EstablecimientoDto> {
     return this.api
@@ -259,7 +338,17 @@ export class GastronomiaService {
   getDisponibilidad(id: number, fecha: string): Observable<DisponibilidadDto> {
     return this.api
       .get<DisponibilidadDto | ApiEnvelope<DisponibilidadDto>>(`/Gastronomias/${id}/disponibilidad`, { fecha })
-      .pipe(map((response) => this.unwrapItem(response) as DisponibilidadDto));
+      .pipe(
+        map((response) => {
+          const disponibilidad = this.unwrapItem(response) as DisponibilidadDto;
+          return {
+            mesasDisponibles: disponibilidad?.mesasDisponibles ?? 0,
+            mesas: (disponibilidad?.mesas || []).map((mesa) => ({ ...mesa })),
+            horaApertura: this.normalizeHour(disponibilidad?.horaApertura),
+            horaCierre: this.normalizeHour(disponibilidad?.horaCierre)
+          };
+        })
+      );
   }
 
   /** Listar reseñas de un establecimiento */

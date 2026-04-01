@@ -20,6 +20,8 @@ public class Establecimiento
     public string? AmenidadesCsv { get; set; }
     public string? Descripcion { get; set; }
     public string? FotoPrincipal { get; set; }
+    public TimeSpan HoraApertura { get; set; } = new(12, 0, 0);
+    public TimeSpan HoraCierre { get; set; } = new(22, 0, 0);
 
     [NotMapped]
     public List<string> Amenidades

@@ -66,11 +66,11 @@ public class ReservasGastronomiaController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = "Error creando reserva", detalle = ex.Message });
+            return BadRequest(new { error = "Error creando reserva", message = ex.Message, detalle = ex.Message });
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = "Datos inválidos", detalle = ex.Message });
+            return BadRequest(new { error = "Datos inválidos", message = ex.Message, detalle = ex.Message });
         }
         catch (Exception ex)
         {

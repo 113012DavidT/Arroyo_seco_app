@@ -186,6 +186,10 @@ export class DetalleGastronomiaComponent implements OnInit {
     return `${apertura} - ${cierre}`;
   }
 
+  get sinMesasDisponibles(): boolean {
+    return !this.disponibilidadLoading && !!this.hora && this.mesasDisponibles.length === 0;
+  }
+
   crearReserva() {
     if (this.isPublic) {
       const id = this.establecimiento?.id;
@@ -217,6 +221,11 @@ export class DetalleGastronomiaComponent implements OnInit {
       return;
     }
 
+    if (this.mesasDisponibles.length === 0) {
+      this.toast.error('No hay mesas disponibles para la fecha y hora seleccionadas');
+      return;
+    }
+
     this.submitting = true;
     const payload = {
       establecimientoId: this.establecimiento.id,
@@ -244,7 +253,7 @@ export class DetalleGastronomiaComponent implements OnInit {
         },
         error: (err) => {
           console.error('Error al crear reserva de gastronomía:', err);
-          this.toast.error(err?.error?.message || 'Error al crear la reserva');
+          this.toast.error(err?.error?.message || err?.error?.detalle || 'Error al crear la reserva');
           this.submitting = false;
         }
       });

@@ -266,11 +266,11 @@
               </select>
             </div>
             <p class="booking-notice" *ngIf="disponibilidadLoading">Consultando disponibilidad...</p>
-            <p class="booking-notice" *ngIf="showReservaForm && !disponibilidadLoading && establecimiento.mesas?.length && mesasDisponibles.length === 0">
+            <p class="booking-notice" *ngIf="showReservaForm && sinMesasDisponibles">
               No hay mesas disponibles por el momento.
             </p>
 
-            <button class="btn-reserva btn-reserva--full" (click)="crearReserva()" [disabled]="submitting || disponibilidadLoading || !hora || (!!establecimiento.mesas?.length && mesasDisponibles.length === 0)">
+            <button class="btn-reserva btn-reserva--full" (click)="crearReserva()" [disabled]="submitting || disponibilidadLoading || !hora || sinMesasDisponibles">
               <span *ngIf="!submitting">Confirmar reserva</span>
               <span *ngIf="submitting">Procesando...</span>
             </button>

@@ -69,6 +69,20 @@ public class CrearReservaGastronomiaCommandHandler
         }
         else
         {
+            var totalMesas = await _context.Mesas
+                .AsNoTracking()
+                .CountAsync(m => m.EstablecimientoId == est.Id, ct);
+
+            if (totalMesas == 0)
+                throw new InvalidOperationException("El establecimiento aún no tiene mesas configuradas");
+
+            var mesasHabilitadas = await _context.Mesas
+                .AsNoTracking()
+                .CountAsync(m => m.EstablecimientoId == est.Id && m.Disponible, ct);
+
+            if (mesasHabilitadas == 0)
+                throw new InvalidOperationException("El establecimiento no tiene mesas habilitadas en este momento");
+
             mesa = await _context.Mesas
                 .Where(m => m.EstablecimientoId == est.Id
                     && m.Disponible

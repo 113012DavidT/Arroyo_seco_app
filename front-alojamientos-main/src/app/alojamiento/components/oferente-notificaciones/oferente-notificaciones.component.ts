@@ -20,14 +20,6 @@ interface Notificacion {
     <section class="notificaciones">
       <h2>Notificaciones</h2>
 
-      <div class="push-controls" *ngIf="pushSupported">
-        <button class="btn" (click)="activarPush()" [disabled]="pushEnabled || pushLoading">
-          {{ pushLoading && !pushEnabled ? 'Activando...' : 'Activar push PWA' }}
-        </button>
-        <button class="btn" (click)="desactivarPush()" [disabled]="!pushEnabled || pushLoading">Desactivar push</button>
-        <button class="btn" (click)="enviarPushPrueba()" [disabled]="!pushEnabled">Enviar prueba</button>
-      </div>
-
       <div class="lista" *ngIf="notificaciones.length; else empty">
         <article *ngFor="let n of notificaciones" class="item" [class.leida]="n.leida">
           <div class="item__main">
@@ -52,7 +44,6 @@ interface Notificacion {
     .notificaciones { display: grid; gap: 1.5rem; }
     h2 { margin: 0; font-size: 1.6rem; color: var(--color-text, #1f2937); }
     .lista { display: grid; gap: .75rem; }
-    .push-controls { display: flex; flex-wrap: wrap; gap: .5rem; }
     .item {
       background: #fff;
       border-radius: 12px;
@@ -104,7 +95,6 @@ export class OferenteNotificacionesComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    this.initPushState();
   }
 
   private async initPushState() {

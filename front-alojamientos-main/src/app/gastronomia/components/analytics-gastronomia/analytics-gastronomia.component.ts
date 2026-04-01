@@ -8,8 +8,6 @@ import { ToastService } from '../../../shared/services/toast.service';
 
 Chart.register(...registerables);
 
-type ModerationAction = 'report' | 'delete';
-
 @Component({
   selector: 'app-analytics-gastronomia',
   standalone: true,
@@ -29,7 +27,6 @@ export class AnalyticsGastronomiaComponent implements OnInit {
   showReportModal = false;
   selectedReview: ReviewOferenteDto | null = null;
   reportMotivo = '';
-  moderationAction: ModerationAction = 'report';
 
   @ViewChild('starsCanvas') starsCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('trendCanvas') trendCanvas!: ElementRef<HTMLCanvasElement>;
@@ -137,28 +134,15 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     return !['Reportada', 'EliminacionSolicitada', 'Rechazada'].includes(review.estado);
   }
 
-  puedeSolicitarEliminacion(review: ReviewOferenteDto): boolean {
-    return !['EliminacionSolicitada', 'Rechazada'].includes(review.estado);
-  }
-
   reportar(review: ReviewOferenteDto): void {
     if (!review?.id || !this.puedeReportar(review) || this.reportingReviewId === review.id) {
       return;
     }
 
-    this.openModerationModal(review, 'report');
+    this.openModerationModal(review);
   }
 
-  solicitarEliminacion(review: ReviewOferenteDto): void {
-    if (!review?.id || !this.puedeSolicitarEliminacion(review) || this.reportingReviewId === review.id) {
-      return;
-    }
-
-    this.openModerationModal(review, 'delete');
-  }
-
-  private openModerationModal(review: ReviewOferenteDto, action: ModerationAction): void {
-    this.moderationAction = action;
+  private openModerationModal(review: ReviewOferenteDto): void {
     this.selectedReview = review;
     this.reportMotivo = '';
     this.showReportModal = true;
@@ -168,59 +152,42 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     this.showReportModal = false;
     this.selectedReview = null;
     this.reportMotivo = '';
-    this.moderationAction = 'report';
   }
 
   get modalTitle(): string {
-    return this.moderationAction === 'delete' ? 'Solicitar eliminación de reseña' : 'Reportar reseña';
+    return 'Reportar reseña';
   }
 
   get modalDescription(): string {
-    if (this.moderationAction === 'delete') {
-      return 'Indícanos por qué deseas solicitar la eliminación de esta reseña. Un administrador deberá aprobar la solicitud.';
-    }
-
     return 'Indícanos por qué deseas reportar esta reseña. El administrador revisará la denuncia.';
   }
 
   get modalPlaceholder(): string {
-    return this.moderationAction === 'delete'
-      ? 'Motivo de la solicitud de eliminación (lenguaje ofensivo, contenido falso, etc.)'
-      : 'Motivo del reporte (grosería, spam, contenido inapropiado, etc.)';
+    return 'Motivo del reporte (grosería, spam, contenido inapropiado, etc.)';
   }
 
   get submitLabel(): string {
-    return this.moderationAction === 'delete' ? 'Solicitar eliminación' : 'Reportar';
+    return 'Reportar';
   }
 
   submitReport(): void {
     if (!this.selectedReview || !this.reportMotivo.trim()) {
-      this.toast.info(
-        this.moderationAction === 'delete'
-          ? 'Debes indicar el motivo de la solicitud de eliminación'
-          : 'Debes indicar el motivo del reporte'
-      );
+      this.toast.info('Debes indicar el motivo del reporte');
       return;
     }
 
     this.reportingReviewId = this.selectedReview.id;
     const motivo = this.reportMotivo.trim();
-    
-    const request$ = this.moderationAction === 'delete'
-      ? this.gastronomiaService.solicitarEliminacionReview(this.selectedReview.id, { motivo })
-      : this.gastronomiaService.reportarReview(this.selectedReview.id, { motivo });
+
+    const request$ = this.gastronomiaService.reportarReview(this.selectedReview.id, { motivo });
 
     request$.pipe(first()).subscribe({
       next: () => {
-        const nuevoEstado = this.moderationAction === 'delete' ? 'EliminacionSolicitada' : 'Reportada';
+        const nuevoEstado = 'Reportada';
         this.misReviews = this.misReviews.map((item) =>
           item.id === this.selectedReview!.id ? { ...item, estado: nuevoEstado, motivoRechazo: motivo } : item
         );
-        this.toast.success(
-          this.moderationAction === 'delete'
-            ? 'Solicitud enviada. El administrador decidirá si la reseña se elimina.'
-            : 'Reseña reportada. El administrador la revisará.'
-        );
+        this.toast.success('Reseña reportada. El administrador la revisará.');
         this.reportingReviewId = null;
         this.closeReportModal();
       },
@@ -235,14 +202,6 @@ export class AnalyticsGastronomiaComponent implements OnInit {
     const backendMessage = err?.error?.message;
     if (typeof backendMessage === 'string' && backendMessage.trim()) {
       return backendMessage;
-    }
-
-    if (this.moderationAction === 'delete') {
-      if (err?.status === 404) {
-        return 'No se pudo solicitar la eliminación. El servidor aún no tiene habilitada esta función.';
-      }
-
-      return 'No se pudo solicitar la eliminación de la reseña';
     }
 
     return 'No se pudo reportar la reseña';

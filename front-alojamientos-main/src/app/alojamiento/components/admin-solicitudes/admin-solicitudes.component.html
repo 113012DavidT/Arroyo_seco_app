@@ -15,11 +15,15 @@
     <p>Cargando solicitudes...</p>
   </div>
 
-  <div *ngIf="!loading && filteredSolicitudes.length === 0" class="empty-state">
+  <div *ngIf="!loading && error" class="empty-state">
+    <p>{{ error }}</p>
+  </div>
+
+  <div *ngIf="!loading && !error && filteredSolicitudes.length === 0" class="empty-state">
     <p>No hay solicitudes pendientes</p>
   </div>
 
-  <div *ngIf="!loading && filteredSolicitudes.length > 0" class="solicitudes-grid">
+  <div *ngIf="!loading && !error && filteredSolicitudes.length > 0" class="solicitudes-grid">
     <div *ngFor="let solicitud of filteredSolicitudes" class="solicitud-card">
       <div class="solicitud-header">
         <h3>{{ solicitud.nombre }}</h3>

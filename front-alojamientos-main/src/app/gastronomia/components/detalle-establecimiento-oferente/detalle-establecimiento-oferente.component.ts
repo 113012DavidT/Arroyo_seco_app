@@ -195,15 +195,30 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
     this.modalMesaAbierto = true;
   }
 
+  onMesaCapacidadInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const rawValue = (input.value || '').replace(/\D/g, '');
+    if (!rawValue) {
+      this.nuevaMesa.capacidad = 1;
+      input.value = '1';
+      return;
+    }
+
+    const normalized = Math.min(this.maxCapacidadMesa, Math.max(1, Number.parseInt(rawValue, 10) || 1));
+    this.nuevaMesa.capacidad = normalized;
+    input.value = String(normalized);
+  }
+
   cerrarModalMesa() {
     this.modalMesaAbierto = false;
   }
 
   agregarMesa() {
     this.nuevaMesa.numero = this.getNextMesaNumber();
+    this.nuevaMesa.capacidad = Math.trunc(Number(this.nuevaMesa.capacidad) || 0);
 
     if (this.nuevaMesa.numero <= 0 || this.nuevaMesa.capacidad <= 0) {
-      this.toast.error('Número y capacidad deben ser mayores a 0');
+      this.toast.error('La capacidad debe ser un número entero mayor o igual a 1');
       return;
     }
 
@@ -214,12 +229,8 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
 
     if (!this.establecimiento?.id) return;
 
-    console.log('Agregando mesa:', this.nuevaMesa, 'al establecimiento:', this.establecimiento.id);
     this.gastronomiaService.createMesa(this.establecimiento.id, this.nuevaMesa).pipe(first()).subscribe({
       next: (response: any) => {
-        console.log('Mesa creada exitosamente:', response);
-
-        // Agregar la mesa localmente tambien cuando queda en cola offline.
         if (this.establecimiento) {
           if (!this.establecimiento.mesas) {
             this.establecimiento.mesas = [];
@@ -247,7 +258,6 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
         }
       },
       error: (err) => {
-        console.error('Error al agregar mesa:', err);
         this.toast.error('Error al agregar mesa: ' + (err.error?.message || err.message));
       }
     });

@@ -169,11 +169,8 @@
     </label>
     <label>
       Capacidad (personas)
-      <input type="number" [(ngModel)]="nuevaMesa.capacidad" min="1" max="8" />
-    </label>
-    <label class="checkbox">
-      <input type="checkbox" [(ngModel)]="nuevaMesa.disponible" />
-      <span>Marcar como disponible</span>
+      <input type="text" [ngModel]="nuevaMesa.capacidad" (input)="onMesaCapacidadInput($event)" inputmode="numeric" maxlength="1" />
+      <small>Solo números enteros del 1 al 8.</small>
     </label>
   </div>
   <div class="modal-footer">

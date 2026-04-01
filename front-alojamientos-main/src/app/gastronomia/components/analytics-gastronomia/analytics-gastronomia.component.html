@@ -76,13 +76,6 @@
               [disabled]="!puedeReportar(review) || reportingReviewId === review.id">
               {{ review.estado === 'Reportada' ? 'Reportada' : (reportingReviewId === review.id ? 'Procesando...' : 'Reportar') }}
             </button>
-            <button
-              type="button"
-              class="btn-delete-request"
-              (click)="solicitarEliminacion(review)"
-              [disabled]="!puedeSolicitarEliminacion(review) || reportingReviewId === review.id">
-              {{ review.estado === 'EliminacionSolicitada' ? 'Eliminación solicitada' : (reportingReviewId === review.id ? 'Procesando...' : 'Solicitar eliminación') }}
-            </button>
           </div>
         </li>
       </ul>

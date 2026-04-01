@@ -325,7 +325,7 @@ export class GastronomiaService {
   }
 
   /** Crear mesa */
-  createMesa(establecimientoId: number, payload: { numero: number; capacidad: number }): Observable<any> {
+  createMesa(establecimientoId: number, payload: { numero: number; capacidad: number; disponible?: boolean }): Observable<any> {
     return this.api.post(`/Gastronomias/${establecimientoId}/mesas`, payload);
   }
 
@@ -336,7 +336,7 @@ export class GastronomiaService {
 
   /** Actualizar disponibilidad de mesa */
   updateDisponibilidadMesa(establecimientoId: number, mesaId: number, disponible: boolean): Observable<any> {
-    return this.api.put(`/Gastronomias/${establecimientoId}/mesas/${mesaId}/disponibilidad`, { disponible });
+    return this.api.put(`/Gastronomias/${establecimientoId}/mesas/${mesaId}/disponible`, disponible);
   }
 
   /** Listar reservas del establecimiento */

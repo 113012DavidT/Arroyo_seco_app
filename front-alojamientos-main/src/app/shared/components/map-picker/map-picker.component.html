@@ -1,5 +1,16 @@
 <div class="map-header">Selecciona la ubicación en el mapa</div>
 <div class="map-container">
-  <!-- El mapa se renderiza aquí por Leaflet o Google Maps -->
-  <ng-content></ng-content>
+  <div class="map-canvas" [id]="mapId"></div>
+
+  <div class="map-overlay" *ngIf="cargandoMapa">
+    Cargando mapa...
+  </div>
 </div>
+
+<p class="map-help" *ngIf="mapProvider === 'leaflet'">
+  Mapa cargado con OpenStreetMap.
+</p>
+
+<p class="map-error" *ngIf="errorMapa">
+  {{ errorMapa }}
+</p>

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GOOGLE_MAPS_CONFIG } from '../../../config/maps.config';
 
@@ -65,7 +65,7 @@ declare global {
   templateUrl: './map-picker.component.html',
   styleUrls: ['./map-picker.component.scss']
 })
-export class MapPickerComponent implements AfterViewInit, OnChanges {
+export class MapPickerComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() latitud: number | null = null;
   @Input() longitud: number | null = null;
   @Input() restrictToArroyoSeco = true;
@@ -78,18 +78,23 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
   private marker?: any;
   private geocoder?: any;
   private boundaryPolygon?: any;
+  private leafletLib?: any;
 
   cargandoMapa = false;
   errorMapa = '';
   direccionCapturada = '';
   buscandoDireccion = false;
+  mapProvider: 'google' | 'leaflet' = 'google';
   private lastGeocodedAddress = '';
 
   ngAfterViewInit(): void {
-    this.initMap().catch((error) => {
-      console.error('Error inicializando Google Maps:', error);
-      this.errorMapa = 'No se pudo cargar Google Maps. Verifica la API key.';
-    });
+    void this.initMap();
+  }
+
+  ngOnDestroy(): void {
+    if (this.mapProvider === 'leaflet' && this.map?.remove) {
+      this.map.remove();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -100,80 +105,23 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
 
   private async initMap(): Promise<void> {
     this.cargandoMapa = true;
-    await this.loadGoogleMaps();
+    this.errorMapa = '';
 
-    const defaultLat = this.latitud || ARROYO_SECO_CENTER.lat;
-    const defaultLng = this.longitud || ARROYO_SECO_CENTER.lng;
-
-    this.map = new window.google.maps.Map(document.getElementById(this.mapId), {
-      center: { lat: defaultLat, lng: defaultLng },
-      zoom: 14,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      gestureHandling: 'greedy',
-      ...(this.restrictToArroyoSeco ? {
-        restriction: {
-          latLngBounds: ARROYO_SECO_BOUNDS,
-          strictBounds: true
-        }
-      } : {})
-    });
-
-    if (this.restrictToArroyoSeco) {
-      this.boundaryPolygon = new window.google.maps.Polygon({
-        paths: ARROYO_SECO_POLYGON,
-        strokeColor: '#1d4ed8',
-        strokeOpacity: 0.95,
-        strokeWeight: 3,
-        fillColor: '#3b82f6',
-        fillOpacity: 0.15,
-        clickable: false
-      });
-      this.boundaryPolygon.setMap(this.map);
-
-      const bounds = new window.google.maps.LatLngBounds();
-      for (const point of ARROYO_SECO_POLYGON) {
-        bounds.extend(point);
-      }
-      this.map.fitBounds(bounds);
+    try {
+      await this.initGoogleMap();
+    } catch (error) {
+      console.warn('Google Maps no disponible, usando OpenStreetMap:', error);
+      await this.initLeafletMap();
+    } finally {
+      this.cargandoMapa = false;
     }
-
-    this.geocoder = new window.google.maps.Geocoder();
-
-    if (this.latitud && this.longitud) {
-      this.addMarker(this.latitud, this.longitud);
-      await this.getDireccion(this.latitud, this.longitud);
-    } else if (this.searchAddress?.trim()) {
-      await this.geocodeAddress(this.searchAddress.trim(), false);
-    }
-
-    this.map.addListener('click', async (event: any) => {
-      const lat = event?.latLng?.lat?.();
-      const lng = event?.latLng?.lng?.();
-      if (typeof lat !== 'number' || typeof lng !== 'number') {
-        return;
-      }
-
-      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
-        this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Querétaro.';
-        return;
-      }
-
-      this.errorMapa = '';
-
-      this.addMarker(lat, lng);
-      await this.getDireccion(lat, lng);
-    });
-
-    this.cargandoMapa = false;
   }
 
   private async syncFromInputs(): Promise<void> {
     if (this.latitud && this.longitud) {
       this.errorMapa = '';
       this.addMarker(this.latitud, this.longitud);
-      this.map?.setCenter({ lat: this.latitud, lng: this.longitud });
+      this.setMapCenter(this.latitud, this.longitud);
       return;
     }
 
@@ -185,53 +133,19 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
     await this.geocodeAddress(address, true);
   }
 
-  private async geocodeAddress(address: string, emitSelection: boolean): Promise<void> {
-    if (!this.geocoder || !address) {
-      return;
-    }
-
-    this.buscandoDireccion = true;
-    try {
-      const result = await this.geocoder.geocode({ address });
-      const first = result?.results?.[0];
-      const location = first?.geometry?.location;
-      const lat = location?.lat?.();
-      const lng = location?.lng?.();
-
-      if (typeof lat !== 'number' || typeof lng !== 'number') {
-        return;
-      }
-
-      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
-        this.errorMapa = 'La dirección encontrada está fuera de Arroyo Seco, Querétaro.';
-        return;
-      }
-
-      this.errorMapa = '';
-      this.lastGeocodedAddress = address;
-      this.direccionCapturada = first?.formatted_address || address;
-      this.addMarker(lat, lng);
-      this.map?.setCenter({ lat, lng });
-
-      if (emitSelection) {
-        this.locationSelected.emit({ lat, lng, address: this.direccionCapturada });
-      }
-    } catch (error) {
-      console.error('Error al geocodificar dirección:', error);
-    } finally {
-      this.buscandoDireccion = false;
-    }
-  }
-
   private addMarker(lat: number, lng: number): void {
-    if (this.marker) {
-      this.marker.setMap(null);
-    }
+    if (this.mapProvider === 'google') {
+      if (this.marker) {
+        this.marker.setMap(null);
+      }
 
-    this.marker = new window.google.maps.Marker({
-      position: { lat, lng },
-      map: this.map
-    });
+      this.marker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: this.map
+      });
+    } else {
+      this.addLeafletMarker(lat, lng);
+    }
 
     this.latitud = lat;
     this.longitud = lng;
@@ -242,12 +156,12 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
     this.direccionCapturada = '';
 
     try {
-      if (!this.geocoder) {
-        throw new Error('Geocoder no disponible');
+      if (this.mapProvider === 'google' && this.geocoder) {
+        const result = await this.geocoder.geocode({ location: { lat, lng } });
+        this.direccionCapturada = result?.results?.[0]?.formatted_address || '';
+      } else {
+        this.direccionCapturada = await this.reverseGeocodeWithNominatim(lat, lng);
       }
-
-      const result = await this.geocoder.geocode({ location: { lat, lng } });
-      this.direccionCapturada = result?.results?.[0]?.formatted_address || '';
 
       this.locationSelected.emit({
         lat,
@@ -319,5 +233,257 @@ export class MapPickerComponent implements AfterViewInit, OnChanges {
     });
 
     return window.__asGoogleMapsPromise;
+  }
+
+  private async initGoogleMap(): Promise<void> {
+    await this.loadGoogleMaps();
+
+    const defaultLat = this.latitud || ARROYO_SECO_CENTER.lat;
+    const defaultLng = this.longitud || ARROYO_SECO_CENTER.lng;
+    const mapElement = document.getElementById(this.mapId);
+    if (!mapElement) {
+      throw new Error('Contenedor del mapa no encontrado');
+    }
+
+    this.mapProvider = 'google';
+    this.map = new window.google.maps.Map(mapElement, {
+      center: { lat: defaultLat, lng: defaultLng },
+      zoom: 14,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      gestureHandling: 'greedy',
+      ...(this.restrictToArroyoSeco ? {
+        restriction: {
+          latLngBounds: ARROYO_SECO_BOUNDS,
+          strictBounds: true
+        }
+      } : {})
+    });
+
+    if (this.restrictToArroyoSeco) {
+      this.boundaryPolygon = new window.google.maps.Polygon({
+        paths: ARROYO_SECO_POLYGON,
+        strokeColor: '#1d4ed8',
+        strokeOpacity: 0.95,
+        strokeWeight: 3,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        clickable: false
+      });
+      this.boundaryPolygon.setMap(this.map);
+
+      const bounds = new window.google.maps.LatLngBounds();
+      for (const point of ARROYO_SECO_POLYGON) {
+        bounds.extend(point);
+      }
+      this.map.fitBounds(bounds);
+    }
+
+    this.geocoder = new window.google.maps.Geocoder();
+
+    await this.seedInitialLocation();
+
+    this.map.addListener('click', async (event: any) => {
+      const lat = event?.latLng?.lat?.();
+      const lng = event?.latLng?.lng?.();
+      await this.handleMapSelection(lat, lng);
+    });
+  }
+
+  private async initLeafletMap(): Promise<void> {
+    const L = await import('leaflet');
+    this.leafletLib = L;
+    const mapElement = document.getElementById(this.mapId);
+    if (!mapElement) {
+      throw new Error('Contenedor del mapa no encontrado');
+    }
+
+    if (this.map?.remove) {
+      this.map.remove();
+    }
+
+    const defaultLat = this.latitud || ARROYO_SECO_CENTER.lat;
+    const defaultLng = this.longitud || ARROYO_SECO_CENTER.lng;
+    this.mapProvider = 'leaflet';
+    this.map = L.map(mapElement, {
+      center: [defaultLat, defaultLng],
+      zoom: 14,
+      zoomControl: true,
+      maxBounds: this.restrictToArroyoSeco
+        ? [[ARROYO_SECO_BOUNDS.south, ARROYO_SECO_BOUNDS.west], [ARROYO_SECO_BOUNDS.north, ARROYO_SECO_BOUNDS.east]]
+        : undefined,
+      maxBoundsViscosity: this.restrictToArroyoSeco ? 1.0 : undefined
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(this.map);
+
+    if (this.restrictToArroyoSeco) {
+      const polygon = L.polygon(ARROYO_SECO_POLYGON.map((point) => [point.lat, point.lng] as [number, number]), {
+        color: '#1d4ed8',
+        weight: 3,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.15,
+        interactive: false
+      });
+      polygon.addTo(this.map);
+      this.map.fitBounds(polygon.getBounds(), { padding: [8, 8] });
+    }
+
+    await this.seedInitialLocation();
+
+    this.map.on('click', async (event: any) => {
+      const lat = event?.latlng?.lat;
+      const lng = event?.latlng?.lng;
+      await this.handleMapSelection(lat, lng);
+    });
+  }
+
+  private async seedInitialLocation(): Promise<void> {
+    if (this.latitud && this.longitud) {
+      this.addMarker(this.latitud, this.longitud);
+      await this.getDireccion(this.latitud, this.longitud);
+      return;
+    }
+
+    if (this.searchAddress?.trim()) {
+      await this.geocodeAddress(this.searchAddress.trim(), false);
+    }
+  }
+
+  private async handleMapSelection(lat: number | undefined, lng: number | undefined): Promise<void> {
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return;
+    }
+
+    if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
+      this.errorMapa = 'Solo puedes seleccionar ubicaciones dentro de Arroyo Seco, Querétaro.';
+      return;
+    }
+
+    this.errorMapa = '';
+    this.addMarker(lat, lng);
+    await this.getDireccion(lat, lng);
+  }
+
+  private setMapCenter(lat: number, lng: number): void {
+    if (this.mapProvider === 'google') {
+      this.map?.setCenter({ lat, lng });
+      return;
+    }
+
+    this.map?.setView?.([lat, lng], Math.max(this.map?.getZoom?.() || 14, 14));
+  }
+
+  private addLeafletMarker(lat: number, lng: number): void {
+    if (!this.map) {
+      return;
+    }
+
+    if (this.marker) {
+      this.map.removeLayer(this.marker);
+    }
+
+    const L = this.leafletLib;
+    if (L?.marker) {
+      this.marker = L.marker([lat, lng]).addTo(this.map);
+      this.setMapCenter(lat, lng);
+    }
+  }
+
+  private async geocodeAddress(address: string, emitSelection: boolean): Promise<void> {
+    if (this.mapProvider === 'google' && this.geocoder) {
+      await this.geocodeAddressWithGoogle(address, emitSelection);
+      return;
+    }
+
+    await this.geocodeAddressWithNominatim(address, emitSelection);
+  }
+
+  private async geocodeAddressWithGoogle(address: string, emitSelection: boolean): Promise<void> {
+    this.buscandoDireccion = true;
+    try {
+      const result = await this.geocoder.geocode({ address });
+      const first = result?.results?.[0];
+      const location = first?.geometry?.location;
+      const lat = location?.lat?.();
+      const lng = location?.lng?.();
+
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        return;
+      }
+
+      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
+        this.errorMapa = 'La dirección encontrada está fuera de Arroyo Seco, Querétaro.';
+        return;
+      }
+
+      this.errorMapa = '';
+      this.lastGeocodedAddress = address;
+      this.direccionCapturada = first?.formatted_address || address;
+      this.addMarker(lat, lng);
+      this.setMapCenter(lat, lng);
+
+      if (emitSelection) {
+        this.locationSelected.emit({ lat, lng, address: this.direccionCapturada });
+      }
+    } catch (error) {
+      console.error('Error al geocodificar dirección:', error);
+    } finally {
+      this.buscandoDireccion = false;
+    }
+  }
+
+  private async geocodeAddressWithNominatim(address: string, emitSelection: boolean): Promise<void> {
+    this.buscandoDireccion = true;
+
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=mx&q=${encodeURIComponent(address)}`, {
+        headers: {
+          'Accept-Language': 'es'
+        }
+      });
+      const results = await response.json();
+      const first = Array.isArray(results) ? results[0] : null;
+      const lat = Number.parseFloat(first?.lat);
+      const lng = Number.parseFloat(first?.lon);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      if (this.restrictToArroyoSeco && !this.isInsideArroyoSeco(lat, lng)) {
+        this.errorMapa = 'La dirección encontrada está fuera de Arroyo Seco, Querétaro.';
+        return;
+      }
+
+      this.errorMapa = '';
+      this.lastGeocodedAddress = address;
+      this.direccionCapturada = first?.display_name || address;
+      this.addMarker(lat, lng);
+      this.setMapCenter(lat, lng);
+
+      if (emitSelection) {
+        this.locationSelected.emit({ lat, lng, address: this.direccionCapturada });
+      }
+    } catch (error) {
+      console.error('Error al geocodificar con Nominatim:', error);
+      this.errorMapa = 'No se pudo consultar el mapa en línea.';
+    } finally {
+      this.buscandoDireccion = false;
+    }
+  }
+
+  private async reverseGeocodeWithNominatim(lat: number, lng: number): Promise<string> {
+    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
+      headers: {
+        'Accept-Language': 'es'
+      }
+    });
+    const result = await response.json();
+    return result?.display_name || '';
   }
 }

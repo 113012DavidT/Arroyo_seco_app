@@ -933,7 +933,7 @@ public class AuthController : ControllerBase
 
         if (!dto.AceptaAvisoPrivacidad)
         {
-            error = "Debes aceptar el aviso de privacidad y terminos de uso";
+            error = "Debes aceptar el aviso de privacidad para continuar";
             return false;
         }
 

@@ -15,6 +15,7 @@ import { MexicanPostalCodeService, MexicanCpInfo } from '../../../shared/service
   styleUrls: ['./cliente-register.component.scss']
 })
 export class ClienteRegisterComponent {
+  showOptionalFields = false;
   model = {
     email: '',
     password: '',
@@ -136,7 +137,7 @@ export class ClienteRegisterComponent {
       return;
     }
     if (!this.model.aceptaAvisoPrivacidad) {
-      this.toast.show('Debes aceptar el aviso de privacidad y los términos de uso', 'error');
+      this.toast.show('Debes aceptar el aviso de privacidad para continuar', 'error');
       this.loading = false;
       return;
     }

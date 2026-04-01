@@ -226,6 +226,43 @@
   font-weight: 500;
 }
 
+.optional-section {
+  border: 1px solid #e5e7eb;
+  background: #fff7ed;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.optional-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #9a3412;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+
+.optional-copy {
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.optional-fields {
+  display: grid;
+  gap: 1rem;
+}
+
 .privacy-notice {
   border: 1px solid #e5e7eb;
   background: #f9fafb;

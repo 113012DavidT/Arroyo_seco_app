@@ -17,7 +17,7 @@ export class LoginSelectorComponent implements OnInit {
   viewMode: 'login' | 'forgot' | 'reset' | 'verify' = 'login';
   model = { email: '', password: '' };
   forgotModel = { email: '' };
-  resetModel = { email: '', token: '', newPassword: '', confirmPassword: '' };
+  resetModel = { email: '', newPassword: '', confirmPassword: '' };
   verifyModel = { email: '', code: '' };
   loading = false;
   forgotLoading = false;
@@ -34,6 +34,7 @@ export class LoginSelectorComponent implements OnInit {
   showResetPasswordConfirm = false;
   rememberMe = false;
   private returnUrl: string | null = null;
+  private resetToken = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -58,7 +59,19 @@ export class LoginSelectorComponent implements OnInit {
 
     if (mode === 'reset' && resetEmail && resetToken) {
       this.viewMode = 'reset';
-      this.resetModel.token = decodeURIComponent(resetToken);
+      this.resetToken = decodeURIComponent(resetToken);
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        replaceUrl: true,
+        queryParams: {
+          mode: 'reset',
+          email: resetEmail,
+          ...(this.returnUrl ? { returnUrl: this.returnUrl } : {})
+        }
+      });
+    } else if (mode === 'reset') {
+      this.toast.show('El enlace de recuperación no es válido o está incompleto.', 'error');
+      this.viewMode = 'forgot';
     } else if (mode === 'verify' && verifyEmail) {
       this.viewMode = 'verify';
       this.verifyModel.email = verifyEmail;
@@ -81,7 +94,7 @@ export class LoginSelectorComponent implements OnInit {
 
   goToLogin(): void {
     this.viewMode = 'login';
-    this.resetModel.token = '';
+    this.resetToken = '';
     this.resetModel.newPassword = '';
     this.resetModel.confirmPassword = '';
     this.verifyModel.code = '';
@@ -114,6 +127,11 @@ export class LoginSelectorComponent implements OnInit {
 
   submitReset(form: NgForm): void {
     if (form.invalid || this.resetLoading) return;
+    if (!this.resetToken) {
+      this.toast.show('El enlace de recuperación no es válido o expiró.', 'error');
+      this.viewMode = 'forgot';
+      return;
+    }
     if (this.resetModel.newPassword.length < 6) {
       this.toast.info('La nueva contraseña debe tener al menos 6 caracteres.');
       return;
@@ -126,18 +144,20 @@ export class LoginSelectorComponent implements OnInit {
     this.resetLoading = true;
     this.auth.resetPassword({
       email: this.resetModel.email.trim(),
-      token: this.resetModel.token,
+      token: this.resetToken,
       newPassword: this.resetModel.newPassword
     })
       .pipe(first())
       .subscribe({
         next: () => {
           this.resetLoading = false;
+          this.resetToken = '';
           this.toast.show('Contraseña restablecida correctamente. Ya puedes iniciar sesión.', 'success');
           this.goToLogin();
         },
         error: () => {
           this.resetLoading = false;
+          this.resetToken = '';
           this.toast.show('El enlace de recuperación no es válido o expiró.', 'error');
         }
       });

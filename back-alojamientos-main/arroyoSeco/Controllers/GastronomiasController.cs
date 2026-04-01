@@ -471,104 +471,123 @@ public class GastronomiasController : ControllerBase
     [HttpGet("admin/analytics")]
     public async Task<ActionResult<AdminGastronomiaAnalyticsDto>> GetAdminAnalytics(CancellationToken ct)
     {
-        var totalEstablecimientos = await _db.Establecimientos.CountAsync(ct);
-        var totalReservas = await _db.ReservasGastronomia.CountAsync(ct);
-        var totalResenas = await _db.Reviews.CountAsync(r => r.Estado != ReviewEstadoRechazada, ct);
-        var reportesPendientes = await _db.Reviews.CountAsync(r => r.Estado == ReviewEstadoReportada || r.Estado == ReviewEstadoEliminacionSolicitada, ct);
-        var solicitudesPendientes = await _db.SolicitudesOferente.CountAsync(s => s.Estatus == "Pendiente" && s.TipoSolicitado == TipoOferente.Gastronomia, ct);
-
-        var promedioCalificacion = totalResenas > 0
-            ? await _db.Reviews.Where(r => r.Estado != ReviewEstadoRechazada).AverageAsync(r => (double)r.Puntuacion, ct)
-            : 0;
-
-        var reservasPorMesRaw = await _db.ReservasGastronomia
-            .AsNoTracking()
-            .Where(r => r.Fecha >= DateTime.UtcNow.AddMonths(-5))
-            .GroupBy(r => new { r.Fecha.Year, r.Fecha.Month })
-            .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Count() })
-            .OrderBy(g => g.Year)
-            .ThenBy(g => g.Month)
-            .ToListAsync(ct);
-
-        var reservasPorMes = reservasPorMesRaw
-            .Select(item => new AnalyticsBucketDto($"{item.Year}-{item.Month:D2}", item.Total))
-            .ToList();
-
-        var tipos = await _db.Establecimientos
-            .AsNoTracking()
-            .GroupBy(e => string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!)
-            .Select(g => new AnalyticsBucketDto(g.Key, g.Count()))
-            .OrderByDescending(item => item.Valor)
-            .ToListAsync(ct);
-
-        var reservaCounts = await _db.ReservasGastronomia
-            .AsNoTracking()
-            .GroupBy(r => r.EstablecimientoId)
-            .Select(g => new { EstablecimientoId = g.Key, Total = g.Count() })
-            .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Total, ct);
-
-        var reviewAverages = await _db.Reviews
-            .AsNoTracking()
-            .Where(r => r.Estado != ReviewEstadoRechazada)
-            .GroupBy(r => r.EstablecimientoId)
-            .Select(g => new { EstablecimientoId = g.Key, Promedio = g.Average(r => (double)r.Puntuacion) })
-            .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Promedio, ct);
-
-        var topReservados = (await _db.Establecimientos
-                .AsNoTracking()
-                .Select(e => new
-                {
-                    e.Id,
-                    e.Nombre,
-                    Tipo = string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!
-                })
-                .ToListAsync(ct))
-            .Select(e => new AdminTopEstablecimientoDto(
-                e.Id,
-                e.Nombre,
-                e.Tipo,
-                reservaCounts.TryGetValue(e.Id, out var totalReservas) ? totalReservas : 0,
-                reviewAverages.TryGetValue(e.Id, out var promedio) ? promedio : 0
-            ))
-            .Where(item => item.TotalReservas > 0 || item.Promedio > 0)
-            .OrderByDescending(item => item.TotalReservas)
-            .ThenByDescending(item => item.Promedio)
-            .Take(5)
-            .ToList();
-
-        List<(EstablecimientoEntity est, int clase, double confidence, string fuente)> ranking;
         try
         {
-            ranking = await BuildRankingAsync(ct);
+            var totalEstablecimientos = await _db.Establecimientos.CountAsync(ct);
+            var totalReservas = await _db.ReservasGastronomia.CountAsync(ct);
+            var totalResenas = await _db.Reviews.CountAsync(r => r.Estado != ReviewEstadoRechazada, ct);
+            var reportesPendientes = await _db.Reviews.CountAsync(r => r.Estado == ReviewEstadoReportada || r.Estado == ReviewEstadoEliminacionSolicitada, ct);
+            var solicitudesPendientes = await _db.SolicitudesOferente.CountAsync(s => s.Estatus == "Pendiente" && s.TipoSolicitado == TipoOferente.Gastronomia, ct);
+
+            var promedioCalificacion = totalResenas > 0
+                ? await _db.Reviews.Where(r => r.Estado != ReviewEstadoRechazada).AverageAsync(r => (double)r.Puntuacion, ct)
+                : 0;
+
+            var reservasPorMesRaw = await _db.ReservasGastronomia
+                .AsNoTracking()
+                .Where(r => r.Fecha >= DateTime.UtcNow.AddMonths(-5))
+                .GroupBy(r => new { r.Fecha.Year, r.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Count() })
+                .OrderBy(g => g.Year)
+                .ThenBy(g => g.Month)
+                .ToListAsync(ct);
+
+            var reservasPorMes = reservasPorMesRaw
+                .Select(item => new AnalyticsBucketDto($"{item.Year}-{item.Month:D2}", item.Total))
+                .ToList();
+
+            var tipos = await _db.Establecimientos
+                .AsNoTracking()
+                .GroupBy(e => string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!)
+                .Select(g => new AnalyticsBucketDto(g.Key, g.Count()))
+                .OrderByDescending(item => item.Valor)
+                .ToListAsync(ct);
+
+            var reservaCounts = await _db.ReservasGastronomia
+                .AsNoTracking()
+                .GroupBy(r => r.EstablecimientoId)
+                .Select(g => new { EstablecimientoId = g.Key, Total = g.Count() })
+                .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Total, ct);
+
+            var reviewAverages = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => r.Estado != ReviewEstadoRechazada)
+                .GroupBy(r => r.EstablecimientoId)
+                .Select(g => new { EstablecimientoId = g.Key, Promedio = g.Average(r => (double)r.Puntuacion) })
+                .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Promedio, ct);
+
+            var topReservados = (await _db.Establecimientos
+                    .AsNoTracking()
+                    .Select(e => new
+                    {
+                        e.Id,
+                        e.Nombre,
+                        Tipo = string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!
+                    })
+                    .ToListAsync(ct))
+                .Select(e => new AdminTopEstablecimientoDto(
+                    e.Id,
+                    e.Nombre,
+                    e.Tipo,
+                    reservaCounts.TryGetValue(e.Id, out var totalReservasEst) ? totalReservasEst : 0,
+                    reviewAverages.TryGetValue(e.Id, out var promedioEst) ? promedioEst : 0
+                ))
+                .Where(item => item.TotalReservas > 0 || item.Promedio > 0)
+                .OrderByDescending(item => item.TotalReservas)
+                .ThenByDescending(item => item.Promedio)
+                .Take(5)
+                .ToList();
+
+            List<(EstablecimientoEntity est, int clase, double confidence, string fuente)> ranking;
+            try
+            {
+                ranking = await BuildRankingAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error building gastronomy admin ranking: {ex}");
+                ranking = new();
+            }
+
+            var neurona = new NeuronaMetricsDto(
+                ranking.Count,
+                ranking.Count(item => item.fuente == "ml"),
+                ranking.Count(item => item.fuente != "ml"),
+                ranking.Count(item => item.clase == 2),
+                ranking.Count(item => item.clase == 1),
+                ranking.Count(item => item.clase == 0),
+                ranking.Count == 0 ? 0 : ranking.Average(item => item.confidence)
+            );
+
+            return Ok(new AdminGastronomiaAnalyticsDto(
+                totalEstablecimientos,
+                totalReservas,
+                totalResenas,
+                promedioCalificacion,
+                solicitudesPendientes,
+                reportesPendientes,
+                reservasPorMes,
+                tipos,
+                topReservados,
+                neurona
+            ));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error building gastronomy admin ranking: {ex}");
-            ranking = new();
+            Console.WriteLine($"Error in admin gastronomy analytics: {ex}");
+            return Ok(new AdminGastronomiaAnalyticsDto(
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                new List<AnalyticsBucketDto>(),
+                new List<AnalyticsBucketDto>(),
+                new List<AdminTopEstablecimientoDto>(),
+                new NeuronaMetricsDto(0, 0, 0, 0, 0, 0, 0)
+            ));
         }
-
-        var neurona = new NeuronaMetricsDto(
-            ranking.Count,
-            ranking.Count(item => item.fuente == "ml"),
-            ranking.Count(item => item.fuente != "ml"),
-            ranking.Count(item => item.clase == 2),
-            ranking.Count(item => item.clase == 1),
-            ranking.Count(item => item.clase == 0),
-            ranking.Count == 0 ? 0 : ranking.Average(item => item.confidence)
-        );
-
-        return Ok(new AdminGastronomiaAnalyticsDto(
-            totalEstablecimientos,
-            totalReservas,
-            totalResenas,
-            promedioCalificacion,
-            solicitudesPendientes,
-            reportesPendientes,
-            reservasPorMes,
-            tipos,
-            topReservados,
-            neurona
-        ));
     }
 
     private async Task<List<(EstablecimientoEntity est, int clase, double confidence, string fuente)>> BuildRankingAsync(CancellationToken ct)

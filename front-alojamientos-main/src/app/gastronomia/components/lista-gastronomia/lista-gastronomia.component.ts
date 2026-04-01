@@ -327,6 +327,10 @@ export class ListaGastronomiaComponent implements OnInit {
     return `${km.toFixed(1)} km`;
   }
 
+  isRatingStarFilled(star: number, rating: number | null | undefined): boolean {
+    return star <= Math.round(Number(rating) || 0);
+  }
+
   getTipoLabel(tipo: string): string {
     const found = this.tiposDisponibles.find((item) => item.key === tipo);
     return found?.label || 'Restaurante';

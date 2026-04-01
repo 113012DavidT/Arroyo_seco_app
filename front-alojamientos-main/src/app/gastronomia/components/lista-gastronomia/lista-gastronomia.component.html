@@ -74,7 +74,7 @@
 					<span class="card-distance" *ngIf="!isLoggedIn && e.distanciaKm !== null">{{ formatDistance(e.distanciaKm) }}</span>
 					   <span class="card-rating" *ngIf="e.totalReviews > 0">
 						   <ng-container *ngFor="let star of [1,2,3,4,5]">
-							   <span class="star" [class.filled]="star <= Math.round(e.ratingPromedio)">★</span>
+							   <span class="star" [class.filled]="isRatingStarFilled(star, e.ratingPromedio)">★</span>
 						   </ng-container>
 						   <span class="rating-number">{{ e.ratingPromedio | number:'1.1-1' }}</span>
 					   </span>

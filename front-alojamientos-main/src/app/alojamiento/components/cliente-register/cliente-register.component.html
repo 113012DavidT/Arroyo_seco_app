@@ -119,6 +119,27 @@
             </div>
           </div>
 
+          <div class="input-group">
+            <label for="sexo">Género</label>
+            <div class="input-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M13 3a5 5 0 1 0 2 9.58V15h-3v2h3v3h2v-3h3v-2h-3v-2.42A5 5 0 0 0 13 3z"/></svg>
+              <select
+                id="sexo"
+                name="sexo"
+                [(ngModel)]="model.sexo"
+                required
+                #sexo="ngModel"
+              >
+                <option value="" disabled>Selecciona una opción</option>
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+                <option value="Otro">Otro</option>
+                <option value="Prefiero no decir">Prefiero no decir</option>
+              </select>
+            </div>
+            <small class="field-error" *ngIf="sexo.invalid && (sexo.dirty || sexo.touched)">Selecciona tu género</small>
+          </div>
+
           <div class="optional-section">
             <button type="button" class="optional-toggle" (click)="showOptionalFields = !showOptionalFields" [attr.aria-expanded]="showOptionalFields">
               <span>Datos opcionales para estadísticas turísticas</span>
@@ -130,25 +151,6 @@
             </p>
 
             <div class="optional-fields" *ngIf="showOptionalFields">
-              <div class="input-group">
-                <label for="sexo">Género (opcional)</label>
-                <div class="input-wrapper">
-                  <svg class="input-icon" viewBox="0 0 24 24"><path d="M13 3a5 5 0 1 0 2 9.58V15h-3v2h3v3h2v-3h3v-2h-3v-2.42A5 5 0 0 0 13 3z"/></svg>
-                  <select
-                    id="sexo"
-                    name="sexo"
-                    [(ngModel)]="model.sexo"
-                    #sexo="ngModel"
-                  >
-                    <option value="">Prefiero no especificar</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Otro">Otro</option>
-                    <option value="Prefiero no decir">Prefiero no decir</option>
-                  </select>
-                </div>
-              </div>
-
               <div class="input-group">
                 <label for="edad">Edad (opcional)</label>
                 <div class="input-wrapper">
@@ -186,7 +188,7 @@
           <div class="privacy-notice">
             <p>
               Aviso de privacidad: tus datos de registro se usan para crear y administrar tu cuenta.
-              Los datos opcionales, como género, edad y lugar de origen, se usan únicamente de forma agregada
+              Los datos opcionales, como edad y lugar de origen, se usan únicamente de forma agregada
               para estadísticas y planeación turística del municipio. Compartir esos datos es opcional.
             </p>
             <label class="privacy-check">

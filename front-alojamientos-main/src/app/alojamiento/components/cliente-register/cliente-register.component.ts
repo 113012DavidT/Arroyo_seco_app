@@ -136,6 +136,11 @@ export class ClienteRegisterComponent {
       this.loading = false;
       return;
     }
+    if (!this.model.sexo) {
+      this.toast.show('Selecciona tu género para continuar', 'error');
+      this.loading = false;
+      return;
+    }
     if (!this.model.aceptaAvisoPrivacidad) {
       this.toast.show('Debes aceptar el aviso de privacidad para continuar', 'error');
       this.loading = false;
@@ -146,7 +151,7 @@ export class ClienteRegisterComponent {
       email: this.model.email,
       password: this.model.password,
       direccion: this.model.direccion.trim(),
-      sexo: this.model.sexo || undefined,
+      sexo: this.model.sexo,
       edad: this.model.edad ?? undefined,
       lugarOrigen: (this.model.lugarOrigen || '').trim() || undefined,
       aceptaAvisoPrivacidad: this.model.aceptaAvisoPrivacidad

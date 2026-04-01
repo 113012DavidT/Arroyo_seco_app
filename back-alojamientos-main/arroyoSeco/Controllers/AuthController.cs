@@ -1023,7 +1023,13 @@ public class AuthController : ControllerBase
             return false;
         }
 
-        if (!string.IsNullOrWhiteSpace(dto.Sexo) && !SexosPermitidos.Contains(dto.Sexo.Trim()))
+        if (string.IsNullOrWhiteSpace(dto.Sexo))
+        {
+            error = "El genero es obligatorio";
+            return false;
+        }
+
+        if (!SexosPermitidos.Contains(dto.Sexo.Trim()))
         {
             error = "Sexo invalido. Opciones: Masculino, Femenino, Otro, Prefiero no decir";
             return false;

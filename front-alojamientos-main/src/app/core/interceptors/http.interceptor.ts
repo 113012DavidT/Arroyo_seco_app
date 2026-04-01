@@ -52,7 +52,7 @@ export const httpInterceptor: HttpInterceptorFn = (req, next) => {
           } else if (url.includes('/oferente/')) {
             router.navigateByUrl('/oferente/login');
           } else {
-            router.navigateByUrl('/cliente/login');
+            router.navigateByUrl('/login');
           }
         } else {
           console.warn('401 en endpoint de reserva/comprobante - no hacer logout automático:', req.url);

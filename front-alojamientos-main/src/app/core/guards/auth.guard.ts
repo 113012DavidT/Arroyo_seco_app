@@ -9,5 +9,5 @@ export const authGuard: CanActivateFn = (route, state) => {
   // Redirect to a generic login selector or specific by url
   if (state.url.startsWith('/admin')) return router.parseUrl('/admin/login');
   if (state.url.startsWith('/oferente')) return router.parseUrl('/oferente/login');
-  return router.parseUrl('/cliente/login');
+  return router.parseUrl('/login');
 };

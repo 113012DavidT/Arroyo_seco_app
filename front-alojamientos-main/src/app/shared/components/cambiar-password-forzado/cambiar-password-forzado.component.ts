@@ -78,7 +78,7 @@ export class CambiarPasswordForzadoComponent {
         } else if (roles.some(r => /admin/i.test(r))) {
           setTimeout(() => this.router.navigate(['/admin/login']), 1500);
         } else {
-          setTimeout(() => this.router.navigate(['/cliente/login']), 1500);
+          setTimeout(() => this.router.navigate(['/login']), 1500);
         }
       },
       error: (err) => {

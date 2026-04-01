@@ -106,10 +106,15 @@ public class AuthController : ControllerBase
         if (!TryValidateRegisterDto(dto, out var registerValidationError))
             return BadRequest(new { message = registerValidationError });
 
+        var normalizedEmail = dto.Email.Trim();
+        var existingUser = await _userManager.FindByEmailAsync(normalizedEmail);
+        if (existingUser is not null)
+            return BadRequest(new { message = "Ya existe una cuenta registrada con este correo." });
+
         var user = new ApplicationUser
         {
-            UserName = dto.Email.Trim(),
-            Email = dto.Email.Trim(),
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
             EmailConfirmed = false,
             LockoutEnabled = true,
             Direccion = dto.Direccion.Trim(),

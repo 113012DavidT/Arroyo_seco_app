@@ -250,7 +250,9 @@ if (string.IsNullOrWhiteSpace(configuredStoragePath)
     || !Path.IsPathRooted(configuredStoragePath)
     || (!OperatingSystem.IsWindows() && looksLikeWindowsPath))
 {
-    configuredStoragePath = Path.Combine(Path.GetTempPath(), "arroyoseco-comprobantes");
+    configuredStoragePath = OperatingSystem.IsWindows()
+        ? Path.Combine(Path.GetTempPath(), "arroyoseco-comprobantes")
+        : "/data/comprobantes";
 }
 
 storage.ComprobantesPath = configuredStoragePath;

@@ -34,6 +34,10 @@ services:
       - Email__SmtpPassword=${EMAIL_PASSWORD}
       - Email__FromEmail=${EMAIL_USERNAME}
       - Email__FromName=Arroyo Seco
+      - Storage__ComprobantesPath=/data/comprobantes
+    volumes:
+      - api_uploads:/data/comprobantes
 
 volumes:
   pgdata:
+  api_uploads:

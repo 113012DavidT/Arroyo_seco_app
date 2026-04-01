@@ -501,22 +501,52 @@ public class GastronomiasController : ControllerBase
             .OrderByDescending(item => item.Valor)
             .ToListAsync(ct);
 
-        var topReservados = await _db.Establecimientos
+        var reservaCounts = await _db.ReservasGastronomia
             .AsNoTracking()
+            .GroupBy(r => r.EstablecimientoId)
+            .Select(g => new { EstablecimientoId = g.Key, Total = g.Count() })
+            .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Total, ct);
+
+        var reviewAverages = await _db.Reviews
+            .AsNoTracking()
+            .Where(r => r.Estado != ReviewEstadoRechazada)
+            .GroupBy(r => r.EstablecimientoId)
+            .Select(g => new { EstablecimientoId = g.Key, Promedio = g.Average(r => (double)r.Puntuacion) })
+            .ToDictionaryAsync(item => item.EstablecimientoId, item => item.Promedio, ct);
+
+        var topReservados = (await _db.Establecimientos
+                .AsNoTracking()
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Nombre,
+                    Tipo = string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!
+                })
+                .ToListAsync(ct))
             .Select(e => new AdminTopEstablecimientoDto(
                 e.Id,
                 e.Nombre,
-                string.IsNullOrWhiteSpace(e.TipoEstablecimiento) ? "Sin categoría" : e.TipoEstablecimiento!,
-                _db.ReservasGastronomia.Count(r => r.EstablecimientoId == e.Id),
-                _db.Reviews.Where(r => r.EstablecimientoId == e.Id && r.Estado != ReviewEstadoRechazada).Select(r => (double?)r.Puntuacion).Average() ?? 0
+                e.Tipo,
+                reservaCounts.TryGetValue(e.Id, out var totalReservas) ? totalReservas : 0,
+                reviewAverages.TryGetValue(e.Id, out var promedio) ? promedio : 0
             ))
             .Where(item => item.TotalReservas > 0 || item.Promedio > 0)
             .OrderByDescending(item => item.TotalReservas)
             .ThenByDescending(item => item.Promedio)
             .Take(5)
-            .ToListAsync(ct);
+            .ToList();
 
-        var ranking = await BuildRankingAsync(ct);
+        List<(EstablecimientoEntity est, int clase, double confidence, string fuente)> ranking;
+        try
+        {
+            ranking = await BuildRankingAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error building gastronomy admin ranking: {ex}");
+            ranking = new();
+        }
+
         var neurona = new NeuronaMetricsDto(
             ranking.Count,
             ranking.Count(item => item.fuente == "ml"),

@@ -24,6 +24,8 @@ export class AppComponent {
 
   constructor() {
     queueMicrotask(() => {
+      this._offlineSync.flushQueue().subscribe();
+
       if (!this._auth.isAuthenticated()) return;
       this._push.syncExistingSubscription().catch(() => {
         // No-op: this sync is opportunistic.

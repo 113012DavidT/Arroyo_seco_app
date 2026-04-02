@@ -78,6 +78,19 @@
       }
     },
     {
+      "name": "api-public-images",
+      "urls": [
+        "/api/Storage/public/**",
+        "/comprobantes/**"
+      ],
+      "cacheConfig": {
+        "maxSize": 300,
+        "maxAge": "30d",
+        "timeout": "3s",
+        "strategy": "performance"
+      }
+    },
+    {
       "name": "api-auth",
       "urls": [
         "/api/Auth/**"

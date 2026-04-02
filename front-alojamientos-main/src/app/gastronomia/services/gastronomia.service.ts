@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpHeaders } from '@angular/common/http';
 import { ApiService } from '../../core/services/api.service';
+import { OfflineSyncService } from '../../core/services/offline-sync.service';
 import { map, Observable, shareReplay } from 'rxjs';
 
 interface ApiEnvelope<T> {
@@ -199,6 +200,7 @@ export interface AdminGastronomiaAnalyticsDto {
 @Injectable({ providedIn: 'root' })
 export class GastronomiaService {
   private readonly api = inject(ApiService);
+  private readonly offline = inject(OfflineSyncService);
   private analyticsCache$?: Observable<GastronomiaAnalyticsDto>;
   private adminAnalyticsCache$?: Observable<AdminGastronomiaAnalyticsDto>;
 
@@ -231,6 +233,130 @@ export class GastronomiaService {
     };
   }
 
+  private applyQueuedMutations(items: EstablecimientoDto[]): EstablecimientoDto[] {
+    const result: EstablecimientoDto[] = items.map((item) => ({
+      ...item,
+      mesas: (item.mesas || []).map((mesa) => ({ ...mesa })),
+      menus: (item.menus || []).map((menu) => ({ ...menu, items: (menu.items || []).map((menuItem) => ({ ...menuItem })) }))
+    }));
+
+    const queue = this.offline.getQueuedRequests();
+
+    for (const queued of queue) {
+      const url = queued.url.toLowerCase();
+      const body = queued.body || {};
+
+      if (queued.method === 'POST' && /\/gastronomias$/i.test(url)) {
+        const localId = Number(`${queued.createdAt}`.slice(-9));
+        if (result.some((item) => Number(item.id) === localId)) continue;
+
+        result.unshift(this.normalizeEstablecimiento({
+          id: localId,
+          nombre: body.nombre || 'Establecimiento pendiente',
+          ubicacion: body.ubicacion || body.direccion || '',
+          descripcion: body.descripcion || '',
+          tipoEstablecimiento: body.tipoEstablecimiento,
+          direccion: body.direccion,
+          fotoPrincipal: body.fotoPrincipal,
+          fotosUrls: body.fotosUrls || [],
+          horaApertura: body.horaApertura,
+          horaCierre: body.horaCierre,
+          amenidades: body.amenidades || [],
+          estado: 'Pendiente',
+          menus: [],
+          mesas: []
+        }));
+        continue;
+      }
+
+      const entityMatch = url.match(/\/gastronomias\/(\d+)(?:$|\/)/i);
+      const entityId = entityMatch ? Number(entityMatch[1]) : NaN;
+      if (!entityId) continue;
+
+      if (queued.method === 'PUT' && /\/gastronomias\/\d+$/i.test(url)) {
+        const current = result.find((item) => Number(item.id) === entityId);
+        if (current) {
+          Object.assign(current, this.normalizeEstablecimiento({ ...current, ...body }));
+        }
+        continue;
+      }
+
+      if (queued.method === 'DELETE' && /\/gastronomias\/\d+$/i.test(url)) {
+        const idx = result.findIndex((item) => Number(item.id) === entityId);
+        if (idx >= 0) result.splice(idx, 1);
+        continue;
+      }
+
+      const current = result.find((item) => Number(item.id) === entityId);
+      if (!current) continue;
+
+      if (queued.method === 'POST' && /\/gastronomias\/\d+\/mesas$/i.test(url)) {
+        current.mesas = current.mesas || [];
+        const localMesaId = Number(`${queued.createdAt}`.slice(-9));
+        if (current.mesas.some((mesa) => Number(mesa.id) === localMesaId || mesa.numero === Number(body.numero))) continue;
+
+        current.mesas.push({
+          id: localMesaId,
+          establecimientoId: entityId,
+          numero: Number(body.numero) || current.mesas.length + 1,
+          capacidad: Number(body.capacidad) || 1,
+          disponible: body.disponible !== false
+        });
+        continue;
+      }
+
+      if (queued.method === 'PUT' && /\/gastronomias\/\d+\/mesas\/\d+\/disponible$/i.test(url)) {
+        const mesaMatch = url.match(/\/mesas\/(\d+)\/disponible$/i);
+        const mesaId = mesaMatch ? Number(mesaMatch[1]) : NaN;
+        const mesa = (current.mesas || []).find((item) => Number(item.id) === mesaId);
+        if (mesa) {
+          mesa.disponible = typeof body === 'boolean' ? body : !!body?.disponible;
+        }
+        continue;
+      }
+
+      if (queued.method === 'POST' && /\/gastronomias\/\d+\/menus$/i.test(url)) {
+        current.menus = current.menus || [];
+        const localMenuId = Number(`${queued.createdAt}`.slice(-9));
+        if (current.menus.some((menu) => Number(menu.id) === localMenuId || menu.nombre === body.nombre)) continue;
+
+        current.menus.push({
+          id: localMenuId,
+          establecimientoId: entityId,
+          nombre: body.nombre || 'Menu pendiente',
+          items: []
+        });
+        continue;
+      }
+
+      if (queued.method === 'POST' && /\/gastronomias\/\d+\/menus\/\d+\/items$/i.test(url)) {
+        const menuMatch = url.match(/\/menus\/(\d+)\/items$/i);
+        const menuId = menuMatch ? Number(menuMatch[1]) : NaN;
+        const menu = (current.menus || []).find((item) => Number(item.id) === menuId);
+        if (!menu) continue;
+
+        menu.items = menu.items || [];
+        const localItemId = Number(`${queued.createdAt}`.slice(-9));
+        if (menu.items.some((item) => Number(item.id) === localItemId || item.nombre === body.nombre)) continue;
+
+        menu.items.push({
+          id: localItemId,
+          menuId,
+          nombre: body.nombre || 'Item pendiente',
+          descripcion: body.descripcion || '',
+          precio: Number(body.precio) || 0
+        });
+      }
+    }
+
+    return result;
+  }
+
+  private applyQueuedMenuMutations(establecimientoId: number, menus: MenuDto[]): MenuDto[] {
+    const establecimientos = this.applyQueuedMutations([{ id: establecimientoId, nombre: '', ubicacion: '', descripcion: '', menus }]);
+    return establecimientos[0]?.menus || [];
+  }
+
   private unwrapItem<T>(response: T | ApiEnvelope<T> | null | undefined): T | null {
     if (response && typeof response === 'object' && 'data' in response) {
       return (response as ApiEnvelope<T>).data ?? null;
@@ -249,7 +375,7 @@ export class GastronomiaService {
   listAll(): Observable<EstablecimientoDto[]> {
     return this.api
       .get<EstablecimientoDto[] | ApiEnvelope<EstablecimientoDto[]>>('/Gastronomias')
-      .pipe(map((response) => this.unwrapArray(response).map((item) => this.normalizeEstablecimiento(item))));
+      .pipe(map((response) => this.applyQueuedMutations(this.unwrapArray(response).map((item) => this.normalizeEstablecimiento(item)))));
   }
 
   /** Ranking de restaurantes (orden del backend) */
@@ -324,14 +450,14 @@ export class GastronomiaService {
   getById(id: number): Observable<EstablecimientoDto> {
     return this.api
       .get<EstablecimientoDto | ApiEnvelope<EstablecimientoDto>>(`/Gastronomias/${id}`)
-      .pipe(map((response) => this.normalizeEstablecimiento(this.unwrapItem(response) as EstablecimientoDto)));
+      .pipe(map((response) => this.applyQueuedMutations([this.normalizeEstablecimiento(this.unwrapItem(response) as EstablecimientoDto)])[0]));
   }
 
   /** Listar menús de un establecimiento */
   getMenus(id: number): Observable<MenuDto[]> {
     return this.api
       .get<MenuDto[] | ApiEnvelope<MenuDto[]>>(`/Gastronomias/${id}/menus`)
-      .pipe(map((response) => this.unwrapArray(response)));
+      .pipe(map((response) => this.applyQueuedMenuMutations(id, this.unwrapArray(response))));
   }
 
   /** Verificar disponibilidad en una fecha */
@@ -439,7 +565,7 @@ export class GastronomiaService {
   listMine(): Observable<EstablecimientoDto[]> {
     return this.api
       .get<EstablecimientoDto[] | ApiEnvelope<EstablecimientoDto[]>>('/Gastronomias/mios')
-      .pipe(map((response) => this.unwrapArray(response).map((item) => this.normalizeEstablecimiento(item))));
+      .pipe(map((response) => this.applyQueuedMutations(this.unwrapArray(response).map((item) => this.normalizeEstablecimiento(item)))));
   }
 
   /** Actualizar establecimiento */

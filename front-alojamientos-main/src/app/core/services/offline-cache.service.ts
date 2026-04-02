@@ -8,8 +8,8 @@ interface CacheEntry<T = unknown> {
 
 @Injectable({ providedIn: 'root' })
 export class OfflineCacheService {
-  private readonly prefix = 'as-offline-cache-v1:';
-  private readonly defaultTtlMs = 1000 * 60 * 60 * 24; // 24h
+  private readonly prefix = 'as-offline-cache-v2:';
+  private readonly defaultTtlMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 
   set<T>(key: string, value: T, ttlMs = this.defaultTtlMs): void {
     if (typeof localStorage === 'undefined') return;

@@ -169,7 +169,7 @@
     </label>
     <label>
       Capacidad (personas)
-      <input type="text" [ngModel]="nuevaMesa.capacidad" (input)="onMesaCapacidadInput($event)" inputmode="numeric" maxlength="1" />
+      <input type="text" [(ngModel)]="mesaCapacidadInput" (input)="onMesaCapacidadInput($event)" (blur)="onMesaCapacidadBlur()" inputmode="numeric" maxlength="1" />
       <small>Solo números enteros del 1 al 8.</small>
     </label>
   </div>

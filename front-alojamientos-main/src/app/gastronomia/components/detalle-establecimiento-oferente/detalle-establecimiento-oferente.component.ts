@@ -36,6 +36,7 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   nuevoItem: MenuItemDto = { nombre: '', descripcion: '', precio: 0 };
   
   nuevaMesa: MesaDto = { numero: 1, capacidad: 2, disponible: true };
+  mesaCapacidadInput = '2';
   subiendoFotos = false;
   eliminandoFotoId: number | null = null;
 
@@ -192,6 +193,7 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
   // ========== MESAS ==========
   abrirModalMesa() {
     this.nuevaMesa = { numero: this.getNextMesaNumber(), capacidad: 2, disponible: true };
+    this.mesaCapacidadInput = String(this.nuevaMesa.capacidad);
     this.modalMesaAbierto = true;
   }
 
@@ -199,14 +201,26 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const rawValue = (input.value || '').replace(/\D/g, '');
     if (!rawValue) {
-      this.nuevaMesa.capacidad = 1;
-      input.value = '1';
+      this.mesaCapacidadInput = '';
       return;
     }
 
     const normalized = Math.min(this.maxCapacidadMesa, Math.max(1, Number.parseInt(rawValue, 10) || 1));
     this.nuevaMesa.capacidad = normalized;
-    input.value = String(normalized);
+    this.mesaCapacidadInput = String(normalized);
+    input.value = this.mesaCapacidadInput;
+  }
+
+  onMesaCapacidadBlur(): void {
+    if (!this.mesaCapacidadInput) {
+      this.nuevaMesa.capacidad = 1;
+      this.mesaCapacidadInput = '1';
+      return;
+    }
+
+    const normalized = Math.min(this.maxCapacidadMesa, Math.max(1, Number.parseInt(this.mesaCapacidadInput, 10) || 1));
+    this.nuevaMesa.capacidad = normalized;
+    this.mesaCapacidadInput = String(normalized);
   }
 
   cerrarModalMesa() {
@@ -215,7 +229,7 @@ export class DetalleEstablecimientoOferenteComponent implements OnInit {
 
   agregarMesa() {
     this.nuevaMesa.numero = this.getNextMesaNumber();
-    this.nuevaMesa.capacidad = Math.trunc(Number(this.nuevaMesa.capacidad) || 0);
+    this.nuevaMesa.capacidad = Math.trunc(Number(this.mesaCapacidadInput) || 0);
 
     if (this.nuevaMesa.numero <= 0 || this.nuevaMesa.capacidad <= 0) {
       this.toast.error('La capacidad debe ser un número entero mayor o igual a 1');

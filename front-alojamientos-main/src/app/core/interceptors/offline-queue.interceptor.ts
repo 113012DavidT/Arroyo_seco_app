@@ -47,7 +47,7 @@ export const offlineQueueInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req).pipe(
       tap((event) => {
         if (event instanceof HttpResponse && event.ok) {
-          cache.set(cacheKey, event.body, 1000 * 60 * 60 * 6);
+          cache.set(cacheKey, event.body, 1000 * 60 * 60 * 24 * 14);
         }
       }),
       catchError((error: HttpErrorResponse) => {
